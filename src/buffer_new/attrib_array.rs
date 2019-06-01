@@ -1,6 +1,5 @@
 
 use super::*;
-use crate::gl;
 use glsl::GLSLType;
 
 pub struct ArribArray<'a,A:GLSLType> {

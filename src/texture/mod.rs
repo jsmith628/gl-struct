@@ -1,7 +1,6 @@
 
 use super::*;
 use crate::gl;
-use crate::gl::types::*;
 
 use super::Target;
 

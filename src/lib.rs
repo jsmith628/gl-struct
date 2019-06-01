@@ -2,7 +2,6 @@
 #![feature(optin_builtin_traits)]
 #![feature(ptr_offset_from)]
 #![feature(untagged_unions)]
-#![feature(maybe_uninit)]
 #![feature(concat_idents)]
 #![feature(specialization)]
 #![feature(allocator_api)]

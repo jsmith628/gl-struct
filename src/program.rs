@@ -272,7 +272,7 @@ impl UniformLocation {
 
 #[derive(Clone, Copy)]
 pub enum Attribute<'a, A:GLSLType> {
-    Value(&'a AttributeValue<A>),
+    Value(&'a dyn AttributeValue<A>),
     Array(AttribArray<'a, A>)
 }
 
