@@ -1,0 +1,20 @@
+[package]
+name = "gl-struct"
+version = "0.1.0"
+authors = ["Joshua Smith <anvil775@gmail.com>"]
+
+[dependencies]
+bitflags = "1.0"
+gl = "0.12.0"
+macro-program = {path="../macro-program"}
+trait-arith = {path="../trait-arith"}
+
+[dev-dependencies]
+glfw = "0.27.0"
+rand = "0.5.5"
+rayon = "1.0.3"
+
+[features]
+default = []
+large_uniform_arrays = []
+extra_large_uniform_arrays = []
