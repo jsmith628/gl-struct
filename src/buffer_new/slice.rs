@@ -1,6 +1,7 @@
 use super::*;
 use crate::gl;
 
+use std::convert::TryInto;
 use std::slice::SliceIndex;
 
 #[derive(Clone, Copy)]
@@ -304,36 +305,36 @@ unsafe impl<'a,F:PixelFormatType,T:PixelType<F>,A:BufferAccess> PixelData<F> for
     #[inline] fn swap_bytes(&self) -> bool {T::swap_bytes()}
     #[inline] fn lsb_first(&self) -> bool {T::lsb_first()}
 
-    #[inline] fn alignment(&self) -> PixelRowAlignment { (align_of::<T>().min(8) as u8).into() }
+    #[inline] fn alignment(&self) -> PixelRowAlignment { (align_of::<T>().min(8) as u8).try_into().unwrap() }
 
     #[inline] fn format_type(&self) -> F {T::format_type()}
-    #[inline] fn len(&self) -> usize {BSlice::len(self)}
+    #[inline] fn count(&self) -> usize {BSlice::len(self)}
 
     #[inline]
     fn bind_pixel_buffer<'b>(&'b self, target:&'b mut BindingLocation<UninitBuf>) -> Option<Binding<'b,UninitBuf>> {
         Some(target.bind_slice(self))
     }
 
-    #[inline] unsafe fn pixels(&self) -> *const GLvoid {self.offset as *const GLvoid}
+    #[inline] fn pixels(&self) -> *const GLvoid {self.offset as *const GLvoid}
 }
 
 unsafe impl<'a,F:PixelFormatType,T:PixelType<F>,A:BufferAccess> PixelData<F> for BSliceMut<'a,[T],A> {
     #[inline] fn swap_bytes(&self) -> bool {T::swap_bytes()}
     #[inline] fn lsb_first(&self) -> bool {T::lsb_first()}
 
-    #[inline] fn alignment(&self) -> PixelRowAlignment { (align_of::<T>().min(8) as u8).into() }
+    #[inline] fn alignment(&self) -> PixelRowAlignment { (align_of::<T>().min(8) as u8).try_into().unwrap() }
 
     #[inline] fn format_type(&self) -> F {T::format_type()}
-    #[inline] fn len(&self) -> usize {BSliceMut::len(self)}
+    #[inline] fn count(&self) -> usize {BSliceMut::len(self)}
 
     #[inline]
     fn bind_pixel_buffer<'b>(&'b self, target:&'b mut BindingLocation<UninitBuf>) -> Option<Binding<'b,UninitBuf>> {
         Some(target.bind_slice_mut(self))
     }
 
-    #[inline] unsafe fn pixels(&self) -> *const GLvoid {self.offset as *const GLvoid}
+    #[inline] fn pixels(&self) -> *const GLvoid {self.offset as *const GLvoid}
 }
 
 unsafe impl<'a,F:PixelFormatType,T:PixelType<F>,A:BufferAccess> PixelDataMut<F> for BSliceMut<'a,[T],A> {
-    #[inline] unsafe fn pixels_mut(&mut self) -> *mut GLvoid {self.offset as *mut GLvoid}
+    #[inline] fn pixels_mut(&mut self) -> *mut GLvoid {self.offset as *mut GLvoid}
 }

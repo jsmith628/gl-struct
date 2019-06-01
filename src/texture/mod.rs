@@ -83,19 +83,6 @@ unsafe impl TexDim for [usize;3] {
     fn depth(&self) -> usize {self[2]}
 }
 
-
-unsafe fn apply_packing_settings<F:PixelFormatType,P:PixelData<F>>(pixels:&P) {
-    gl::PixelStorei(gl::PACK_SWAP_BYTES, pixels.swap_bytes() as GLint);
-    gl::PixelStorei(gl::PACK_LSB_FIRST, pixels.lsb_first() as GLint);
-    gl::PixelStorei(gl::PACK_ALIGNMENT, pixels.alignment().0 as GLint);
-}
-
-unsafe fn apply_unpacking_settings<F:PixelFormatType,P:PixelData<F>>(pixels:&P) {
-    gl::PixelStorei(gl::UNPACK_SWAP_BYTES, pixels.swap_bytes() as GLint);
-    gl::PixelStorei(gl::UNPACK_LSB_FIRST, pixels.lsb_first() as GLint);
-    gl::PixelStorei(gl::UNPACK_ALIGNMENT, pixels.alignment().0 as GLint);
-}
-
 pub unsafe trait Texture: Sized {
     type InternalFormat: InternalFormat<TypeFormat=Self::PixelFormat>;
     type PixelFormat: PixelFormatType;
@@ -179,7 +166,7 @@ impl<'a,T:Texture> SubTextureMut<'a,T> {
             let dim = T::Dim::dim();
             if cfg!(debug_assertions) {
                 let len = if dim == 3 {w*h*d} else if dim == 2 {w*h} else {w};
-                if len != pixels.len() as GLsizei {
+                if len != pixels.count() as GLsizei {
                     panic!("invalid number of pixels for dimensions ({},{},{})",w,h,d);
                 }
             }
