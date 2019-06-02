@@ -6,11 +6,13 @@ use super::Target;
 
 use std::convert::TryInto;
 
+pub use self::internal_format::*;
 pub use self::pixel_format::*;
 pub use self::pixel_data::*;
 
 mod pixel_format;
 mod pixel_data;
+mod internal_format;
 
 glenum! {
     pub enum TextureTarget {
@@ -83,7 +85,7 @@ unsafe impl TexDim for [usize;3] {
 }
 
 pub unsafe trait Texture: Sized {
-    type InternalFormat: InternalFormat<TypeFormat=Self::PixelFormat>;
+    type InternalFormat: InternalFormat<FormatType=Self::PixelFormat>;
     type PixelFormat: PixelFormatType;
     type Dim: TexDim;
 
@@ -93,38 +95,16 @@ pub unsafe trait Texture: Sized {
     fn dim(&self) -> Self::Dim;
 
     fn storage<P:PixelData<Self::PixelFormat>>(
-        _gl:&GL4,
-        raw:RawTex,
-        levels:usize,
-        internalformat:Self::InternalFormat,
-        dim:Self::Dim,
-        pixels:P
-    ) -> Self
-    {
-        unsafe {
-            let mut target = Self::target().as_loc();
-            let binding = target.bind(&raw);
-            match Self::Dim::dim() {
-                1 => gl::TexStorage1D(
-                    binding.target_id(),
-                    levels as GLint, internalformat.into() as GLuint,
-                    dim.width() as GLsizei
-                ),
-                2 => gl::TexStorage2D(
-                    binding.target_id(),
-                    levels as GLint, internalformat.into() as GLuint,
-                    dim.width() as GLsizei, dim.height() as GLsizei
-                ),
-                3 => gl::TexStorage3D(
-                    binding.target_id(),
-                    levels as GLint, internalformat.into() as GLuint,
-                    dim.width() as GLsizei, dim.height() as GLsizei, dim.depth() as GLsizei
-                ),
-                _ => panic!("{}D textures not supported", Self::Dim::dim())
-            };
-            ::std::mem::uninitialized()
-        }
-    }
+        gl:&GL4, raw:RawTex, internalformat:Self::InternalFormat, dim:Self::Dim, pixels:P
+    ) -> Self;
+
+    fn data<P:PixelData<Self::PixelFormat>>(
+        gl:&GL2, raw:RawTex, internalformat:Self::InternalFormat, dim:Self::Dim, pixels:P
+    ) -> Self;
+
+    fn from_pixels<P:PixelData<Self::PixelFormat>>(
+        gl:&GL2, internalformat:Self::InternalFormat, dim:Self::Dim, pixels:P
+    ) -> Self;
 
 }
 
