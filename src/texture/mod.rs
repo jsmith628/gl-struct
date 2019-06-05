@@ -91,20 +91,29 @@ pub unsafe trait Texture: Sized {
 
     fn target() -> TextureTarget;
     fn id(&self) -> GLuint;
-    fn format(&self) -> Self::InternalFormat;
     fn dim(&self) -> Self::Dim;
 
-    fn storage<P:PixelData<Self::PixelFormat>>(
-        gl:&GL4, raw:RawTex, internalformat:Self::InternalFormat, dim:Self::Dim, pixels:P
-    ) -> Self;
+    unsafe fn alloc(gl:&GL2, raw:RawTex, dim:Self::Dim) -> Self;
+    unsafe fn alloc_image(gl:&GL2, raw:RawTex, dim:Self::Dim) -> Self;
+    unsafe fn alloc_storage(gl:&GL4, raw:RawTex, dim:Self::Dim) -> Self where Self::InternalFormat:SizedInternalFormat;
 
-    fn data<P:PixelData<Self::PixelFormat>>(
-        gl:&GL2, raw:RawTex, internalformat:Self::InternalFormat, dim:Self::Dim, pixels:P
-    ) -> Self;
+    fn from_pixels<P:PixelData<Self::PixelFormat>>(gl:&GL2, dim:Self::Dim, pixels:P) -> Self;
+    fn image<P:PixelData<Self::PixelFormat>>(gl:&GL2, raw:RawTex, dim:Self::Dim, pixels:P) -> Self;
+    fn storage<P>(gl:&GL4, raw:RawTex, dim:Self::Dim, pixels:P) -> Self
+        where P:PixelData<Self::PixelFormat>, Self::InternalFormat:SizedInternalFormat;
+}
 
-    fn from_pixels<P:PixelData<Self::PixelFormat>>(
-        gl:&GL2, internalformat:Self::InternalFormat, dim:Self::Dim, pixels:P
-    ) -> Self;
+pub unsafe trait Image: Sized {
+    type InternalFormat: InternalFormat<FormatType=Self::PixelFormat>;
+    type PixelFormat: PixelFormatType;
+    type Dim: TexDim;
+
+    fn target() -> TextureTarget;
+    fn id(&self) -> GLuint;
+    fn level(&self) -> GLuint;
+    fn dim(&self) -> Self::Dim;
+
+    fn image<P:PixelData<Self::PixelFormat>>(pixels:P) -> Self;
 
 }
 
