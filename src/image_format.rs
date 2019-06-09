@@ -1,4 +1,5 @@
-use super::*;
+use crate::*;
+use texture::*;
 
 pub unsafe trait InternalFormat {
     type FormatType: PixelFormatType;

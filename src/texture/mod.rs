@@ -5,14 +5,16 @@ use crate::gl;
 use super::Target;
 
 use std::convert::TryInto;
+use std::marker::PhantomData;
+use std::ops::Range;
+use std::collections::HashMap;
 
-pub use self::internal_format::*;
+use image_format::*;
 pub use self::pixel_format::*;
 pub use self::pixel_data::*;
 
 mod pixel_format;
 mod pixel_data;
-mod internal_format;
 
 glenum! {
     pub enum TextureTarget {
@@ -28,6 +30,16 @@ glenum! {
         [Texture2DMultisample TEXTURE_2D_MULTISAMPLE "Texture 2D Multisample"],
         [Texture1DMultisampleArray TEXTURE_2D_MULTISAMPLE_ARRAY "Texture 2D Multisample Array"]
     }
+
+    pub enum TextureSwizzle {
+        [Red RED "Red Component"],
+        [Green GREEN "Green Component"],
+        [Blue BLUE "Blue Component"],
+        [Alpha ALPHA "Alpha Component"],
+        [Zero ZERO "Zero"],
+        [One ONE "One"]
+    }
+
 }
 
 impl TextureTarget {
@@ -58,30 +70,77 @@ gl_resource!{
 
 pub unsafe trait TexDim:Copy {
     fn dim() -> usize;
-    fn width(&self) -> usize;
-    fn height(&self) -> usize;
-    fn depth(&self) -> usize;
+    fn minimized(&self, level: GLuint) -> Self;
+
+    #[inline] fn width(&self) -> usize {1}
+    #[inline] fn height(&self) -> usize {1}
+    #[inline] fn depth(&self) -> usize {1}
+
 }
 
 unsafe impl TexDim for [usize;1] {
-    fn dim() -> usize {1}
-    fn width(&self) -> usize {self[0]}
-    fn height(&self) -> usize {0}
-    fn depth(&self) -> usize {0}
+    #[inline] fn dim() -> usize {1}
+    #[inline] fn width(&self) -> usize {self[0]}
+    #[inline] fn minimized(&self, level: GLuint) -> Self { [(self[0]/(1 << level)).max(1)] }
 }
 
 unsafe impl TexDim for [usize;2] {
-    fn dim() -> usize {2}
-    fn width(&self) -> usize {self[0]}
-    fn height(&self) -> usize {self[1]}
-    fn depth(&self) -> usize {0}
+    #[inline] fn dim() -> usize {2}
+    #[inline] fn width(&self) -> usize {self[0]}
+    #[inline] fn height(&self) -> usize {self[1]}
+    #[inline] fn minimized(&self, level: GLuint) -> Self {
+        let factor = 1 << level;
+        [(self[0] / factor).max(1), (self[1] / factor).max(1)]
+    }
 }
 
 unsafe impl TexDim for [usize;3] {
-    fn dim() -> usize {3}
-    fn width(&self) -> usize {self[0]}
-    fn height(&self) -> usize {self[1]}
-    fn depth(&self) -> usize {self[2]}
+    #[inline] fn dim() -> usize {3}
+    #[inline] fn width(&self) -> usize {self[0]}
+    #[inline] fn height(&self) -> usize {self[1]}
+    #[inline] fn depth(&self) -> usize {self[2]}
+    #[inline] fn minimized(&self, level: GLuint) -> Self {
+        let factor = 1 << level;
+        [(self[0] / factor).max(1), (self[1] / factor).max(1), (self[2] / factor).max(1)]
+    }
+}
+
+unsafe impl TexDim for ([usize;1], usize) {
+    #[inline] fn dim() -> usize {2}
+    #[inline] fn minimized(&self, level: GLuint) -> Self {(self.0.minimized(level), self.1)}
+    #[inline] fn width(&self) -> usize {self.0[0]}
+    #[inline] fn height(&self) -> usize {self.1}
+}
+
+unsafe impl TexDim for ([usize;2], usize) {
+    #[inline] fn dim() -> usize {3}
+    #[inline] fn minimized(&self, level: GLuint) -> Self {(self.0.minimized(level), self.1)}
+    #[inline] fn width(&self) -> usize {self.0[0]}
+    #[inline] fn height(&self) -> usize {self.0[1]}
+    #[inline] fn depth(&self) -> usize {self.1}
+}
+
+unsafe fn texture_storage<T:Texture>(
+    _gl:&GL4, tex: &mut RawTex, levels: GLuint, dim: T::Dim, sampling: Option<(GLsizei,GLboolean)>
+) where T::InternalFormat: SizedInternalFormat {
+    let mut target = T::target().as_loc();
+    let binding = target.bind(tex);
+    let fmt = T::InternalFormat::glenum();
+    let (w,h,d) = (dim.width() as GLsizei, dim.height() as GLsizei, dim.depth() as GLsizei);
+
+    match sampling {
+        Some((samples, fixed)) => match T::Dim::dim() {
+            2 => gl::TexStorage2DMultisample(binding.target_id(), samples, fmt, w, h, fixed),
+            3 => gl::TexStorage3DMultisample(binding.target_id(), samples, fmt, w, h, d, fixed),
+            _ => panic!("{}D Multisample textures not currently supported", T::Dim::dim())
+        },
+        None => match T::Dim::dim() {
+            1 => gl::TexStorage1D(binding.target_id(), levels as GLsizei, fmt, w),
+            2 => gl::TexStorage2D(binding.target_id(), levels as GLsizei, fmt, w, h),
+            3 => gl::TexStorage3D(binding.target_id(), levels as GLsizei, fmt, w, h, d),
+            _ => panic!("{}D Textures not currently supported", T::Dim::dim())
+        }
+    }
 }
 
 pub unsafe trait Texture: Sized {
@@ -89,18 +148,57 @@ pub unsafe trait Texture: Sized {
     type PixelFormat: PixelFormatType;
     type Dim: TexDim;
 
+    type BaseImage: Image<
+        Dim = <Self as Texture>::Dim,
+        PixelFormat = <Self as Texture>::PixelFormat,
+        InternalFormat = <Self as Texture>::InternalFormat,
+    >;
+
     fn target() -> TextureTarget;
     fn id(&self) -> GLuint;
     fn dim(&self) -> Self::Dim;
 
-    unsafe fn alloc(gl:&GL2, raw:RawTex, dim:Self::Dim) -> Self;
+    unsafe fn alloc(gl:&GL2, dim:Self::Dim) -> Self;
     unsafe fn alloc_image(gl:&GL2, raw:RawTex, dim:Self::Dim) -> Self;
     unsafe fn alloc_storage(gl:&GL4, raw:RawTex, dim:Self::Dim) -> Self where Self::InternalFormat:SizedInternalFormat;
 
-    fn from_pixels<P:PixelData<Self::PixelFormat>>(gl:&GL2, dim:Self::Dim, pixels:P) -> Self;
-    fn image<P:PixelData<Self::PixelFormat>>(gl:&GL2, raw:RawTex, dim:Self::Dim, pixels:P) -> Self;
-    fn storage<P>(gl:&GL4, raw:RawTex, dim:Self::Dim, pixels:P) -> Self
-        where P:PixelData<Self::PixelFormat>, Self::InternalFormat:SizedInternalFormat;
+    fn from_pixels<P:PixelData<Self::PixelFormat>+?Sized>(gl:&GL2, dim:Self::Dim, data:&P) -> Self;
+    fn image<P:PixelData<Self::PixelFormat>+?Sized>(gl:&GL2, raw:RawTex, dim:Self::Dim, data:&P) -> Self;
+    fn storage<P>(gl:&GL4, raw:RawTex, dim:Self::Dim, data:&P) -> Self
+        where P:PixelData<Self::PixelFormat>+?Sized, Self::InternalFormat:SizedInternalFormat;
+
+    fn base_image(&mut self) -> Self::BaseImage;
+}
+
+pub unsafe trait MipmappedTexture: Texture {
+
+    unsafe fn allocated_levels(&self) -> GLuint;
+    unsafe fn base_level(&self) -> GLuint;
+    unsafe fn max_level(&self) -> GLuint;
+
+    unsafe fn set_base_level(&mut self);
+    unsafe fn set_max_level(&mut self);
+
+    unsafe fn alloc_mipmaps(gl:&GL2, levels:GLuint, dim:Self::Dim) -> Self;
+    unsafe fn alloc_image_mipmaps(gl:&GL2, levels:GLuint, dim:Self::Dim) -> Self;
+    unsafe fn alloc_storage_mipmaps(gl:&GL2, levels:GLuint, dim:Self::Dim) -> Self;
+
+    fn from_mipmaps<P:PixelData<Self::PixelFormat>>(
+        gl:&GL2, levels:GLuint, dim:Self::Dim, base:P, mipmaps: Option<HashMap<GLuint, &P>>
+    ) -> Self;
+
+    fn image<P:PixelData<Self::PixelFormat>>(
+        gl:&GL2, raw:RawTex, levels:GLuint, dim:Self::Dim, base:P, mipmaps: Option<HashMap<GLuint, &P>>
+    ) -> Self;
+
+    fn storage<P>(
+        gl:&GL4, raw:RawTex, levels:GLuint, dim:Self::Dim, base:P, mipmaps: Option<HashMap<GLuint, &P>>
+    ) -> Self where P:PixelData<Self::PixelFormat>, Self::InternalFormat:SizedInternalFormat;
+
+    fn gen_mipmaps(&mut self, range: Range<GLuint>);
+    fn image_level(&mut self, level: GLuint) -> MipmapLevel<Self>;
+    fn image_level_range(&mut self, range: Range<GLuint>) -> Box<[MipmapLevel<Self>]>;
+
 }
 
 pub unsafe trait Image: Sized {
@@ -113,90 +211,78 @@ pub unsafe trait Image: Sized {
     fn level(&self) -> GLuint;
     fn dim(&self) -> Self::Dim;
 
-    fn image<P:PixelData<Self::PixelFormat>>(pixels:P) -> Self;
+    fn image<P:PixelData<Self::PixelFormat>+?Sized>(data:&P) -> Self;
+    fn sub_image<P:PixelData<Self::PixelFormat>+?Sized>(offset:Self::Dim, dim:Self::Dim, data:&P);
+
+    fn clear_image<P:PixelType<Self::PixelFormat>+?Sized>(data:&P);
+    fn clear_sub_image<P:PixelType<Self::PixelFormat>+?Sized>(offset:Self::Dim, dim:Self::Dim, data:&P);
+
+    fn get_image<P:PixelDataMut<Self::PixelFormat>+?Sized>(data: &mut P) -> Self;
+    fn get_sub_image<P:PixelDataMut<Self::PixelFormat>+?Sized>(offset:Self::Dim, dim:Self::Dim, data: &mut P) -> Self;
 
 }
 
-pub struct SubTexture<'a, T:Texture> {
-    tex: &'a T,
-    offset: T::Dim,
-    dim: T::Dim
-}
-
-pub struct SubTextureMut<'a, T:Texture> {
+pub struct MipmapLevel<'a, T:MipmappedTexture> {
     tex: &'a mut T,
-    offset: T::Dim,
-    dim: T::Dim
+    level: GLuint
 }
-
-impl<'a,T:Texture> SubTextureMut<'a,T> {
-    pub fn sub_image<P:PixelData<T::PixelFormat>>(&mut self, pixels:P) {
-        unsafe {
-
-            let mut target = T::target().as_loc();
-            let mut buf_target = buffer_new::BufferTarget::PixelPackBuffer.as_loc();
-
-            let binding = target.bind_raw(self.tex.id()).unwrap();
-            let buf_binding = pixels.bind_pixel_buffer(&mut buf_target);
-
-            let (fmt, ty) = pixels.format_type().format_type();
-            let (x,y,z) = (
-                self.offset.width() as GLsizei,
-                self.offset.height() as GLsizei,
-                self.offset.depth() as GLsizei
-            );
-            let (w,h,d) = (
-                self.dim.width() as GLsizei,
-                self.dim.height() as GLsizei,
-                self.dim.depth() as GLsizei
-            );
-
-            let dim = T::Dim::dim();
-            if cfg!(debug_assertions) {
-                let len = if dim == 3 {w*h*d} else if dim == 2 {w*h} else {w};
-                if len != pixels.count() as GLsizei {
-                    panic!("invalid number of pixels for dimensions ({},{},{})",w,h,d);
-                }
-            }
-
-            apply_packing_settings(&pixels);
-            match dim {
-                1 => gl::TexSubImage1D(
-                    binding.target_id(), 0, x, w,
-                    fmt.into(), ty as GLenum, pixels.pixels()
-                ),
-                2 => gl::TexSubImage2D(
-                    binding.target_id(), 0, x,y, w,h,
-                    fmt.into(), ty as GLenum, pixels.pixels()
-                ),
-                3 => gl::TexSubImage3D(
-                    binding.target_id(), 0, x,y,z, w,h,d,
-                    fmt.into(), ty as GLenum, pixels.pixels()
-                ),
-                _ => panic!("{}D textures not supported", T::Dim::dim())
-            };
-            drop(buf_binding);
-        }
-    }
-}
-
 
 pub struct Tex1D<F:InternalFormat> {
     raw: RawTex,
-    format: F,
-    dim: [usize;1]
+    dim: [usize;1],
+    fmt: PhantomData<F>
 }
 
-
+pub struct Tex1DArray<F:InternalFormat> {
+    raw: RawTex,
+    dim: (usize, [usize;1]),
+    fmt: PhantomData<F>
+}
 
 pub struct Tex2D<F:InternalFormat> {
     raw: RawTex,
-    format: F,
-    dim: [usize;2]
+    dim: [usize;2],
+    fmt: PhantomData<F>
+}
+
+pub struct TexCubemap<F:InternalFormat> {
+    raw: RawTex,
+    dim: [usize;2],
+    fmt: PhantomData<F>
+}
+
+pub struct TexRectangle<F:InternalFormat> {
+    raw: RawTex,
+    dim: [usize;2],
+    fmt: PhantomData<F>
+}
+
+pub struct Tex2DMultisample<F:InternalFormat> {
+    raw: RawTex,
+    dim: [usize;2],
+    fmt: PhantomData<F>
+}
+
+pub struct Tex2DArray<F:InternalFormat> {
+    raw: RawTex,
+    dim: (usize, [usize;2]),
+    fmt: PhantomData<F>
+}
+
+pub struct TexCubemapArray<F:InternalFormat> {
+    raw: RawTex,
+    dim: (usize, [usize;2]),
+    fmt: PhantomData<F>
+}
+
+pub struct Tex2DMultisampleArray<F:InternalFormat> {
+    raw: RawTex,
+    dim: (usize, [usize;2]),
+    fmt: PhantomData<F>
 }
 
 pub struct Tex3D<F:InternalFormat> {
     raw: RawTex,
-    format: F,
-    dim: [usize;3]
+    dim: [usize;3],
+    fmt: PhantomData<F>
 }

@@ -232,6 +232,7 @@ pub mod glsl;
 pub mod program;
 pub mod buffer;
 pub mod buffer_new;
+pub mod image_format;
 pub mod texture;
 
 pub trait Surface: {
