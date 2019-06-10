@@ -171,6 +171,8 @@ macro_rules! gl_resource{
         #[inline] fn is(id: gl::types::GLuint) -> bool { unsafe { gl::$gl(id) != gl::FALSE } }
     };
 
+    (@fun bind=$gl:ident) => {};
+
     (@fun gl=$GL:ident) => { type GL = $GL; };
     (@fun target=$Target:ident) => { type BindingTarget = $Target; };
 
@@ -190,7 +192,20 @@ macro_rules! gl_resource{
         }
     };
 
+    (@bind $ty:ident {$($tt:tt)*} bind=$gl:ident $($rest:tt)*) => { gl_resource!(@bind $ty {$($tt)* bind=$gl} $($rest)*); };
+    (@bind $ty:ident {$($tt:tt)*} target=$Target:ident $($rest:tt)*) => { gl_resource!(@bind $ty {target=$Target $($tt)*} $($rest)*); };
+    (@bind $ty:ident {$($tt:tt)*} $param:ident=$gl:ident $($rest:tt)*) => { gl_resource!(@bind $ty {$($tt)*} $($rest)*); };
+    (@bind $ty:ident {target=$Target:ident bind=$gl:ident}) => {
+        unsafe impl Target for $Target {
+            type Resource = $ty;
+            #[inline] unsafe fn bind(self, id:GLuint) {gl::$gl(self as GLenum, id)}
+        }
+    };
+
     ({$($mod:tt)*} struct $name:ident {$($fun:ident=$gl:ident),*}) => {
+
+        gl_resource!(@bind $name {} $($fun=$gl)*);
+
         #[repr(C)] $($mod)* struct $name(GLuint);
 
         unsafe impl $crate::Resource for $name {

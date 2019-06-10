@@ -52,17 +52,12 @@ impl TextureTarget {
     }
 }
 
-unsafe impl Target for TextureTarget {
-    type Resource = RawTex;
-    #[inline] unsafe fn bind(self, id:GLuint) {gl::BindTexture(self as GLenum, id)}
-}
-
-
 gl_resource!{
     pub struct RawTex {
         gl = GL2,
         target = TextureTarget,
         gen = GenTextures,
+        bind = BindTexture,
         is = IsTexture,
         delete = DeleteTextures
     }

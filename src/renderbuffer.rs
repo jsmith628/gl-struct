@@ -24,16 +24,12 @@ glenum! {
 
 }
 
-unsafe impl Target for RenderbufferTarget {
-    type Resource = RawRenderbuffer;
-    #[inline] unsafe fn bind(self, id:GLuint) {gl::BindRenderbuffer(self as GLenum, id)}
-}
-
 gl_resource!{
     pub struct RawRenderbuffer {
         gl = GL3,
         target = RenderbufferTarget,
         gen = GenRenderbuffers,
+        bind = BindRenderbuffer,
         is = IsRenderbuffer,
         delete = DeleteRenderbuffers
     }

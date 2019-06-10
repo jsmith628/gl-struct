@@ -31,11 +31,6 @@ glenum!{
     }
 }
 
-unsafe impl Target for BufferTarget {
-    type Resource = UninitBuf;
-    #[inline] unsafe fn bind(self, id:GLuint) {gl::BindBuffer(self as GLenum, id)}
-}
-
 impl BindingLocation<UninitBuf> {
     #[inline]
     pub fn bind_buf<'a,T:?Sized,A:BufferAccess>(&'a mut self, buf: &'a Buf<T,A>) -> Binding<'a,UninitBuf> {

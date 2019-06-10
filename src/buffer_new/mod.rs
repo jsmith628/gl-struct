@@ -30,6 +30,7 @@ gl_resource! {
         gl = GL2,
         target = BufferTarget,
         gen = GenBuffers,
+        bind = BindBuffer,
         is = IsBuffer,
         delete = DeleteBuffers
     }
