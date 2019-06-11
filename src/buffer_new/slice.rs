@@ -309,6 +309,7 @@ unsafe impl<'a,F:PixelFormatType,T:PixelType<F>,A:BufferAccess> PixelData<F> for
 
     #[inline] fn format_type(&self) -> F {T::format_type()}
     #[inline] fn count(&self) -> usize {BSlice::len(self)}
+    #[inline] fn size(&self) -> usize {BSlice::size(self)}
 
     #[inline]
     fn bind_pixel_buffer<'b>(&'b self, target:&'b mut BindingLocation<UninitBuf>) -> Option<Binding<'b,UninitBuf>> {
@@ -326,6 +327,7 @@ unsafe impl<'a,F:PixelFormatType,T:PixelType<F>,A:BufferAccess> PixelData<F> for
 
     #[inline] fn format_type(&self) -> F {T::format_type()}
     #[inline] fn count(&self) -> usize {BSliceMut::len(self)}
+    #[inline] fn size(&self) -> usize {BSliceMut::size(self)}
 
     #[inline]
     fn bind_pixel_buffer<'b>(&'b self, target:&'b mut BindingLocation<UninitBuf>) -> Option<Binding<'b,UninitBuf>> {

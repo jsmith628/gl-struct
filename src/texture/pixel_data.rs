@@ -44,7 +44,7 @@ impl Into<u8> for PixelRowAlignment {
     #[inline] fn into(self) -> u8 {self.0}
 }
 
-pub(super) unsafe fn apply_packing_settings<F:PixelFormatType,P:PixelData<F>>(pixels:&P) {
+pub(super) unsafe fn apply_packing_settings<F:PixelFormatType,P:PixelData<F>+?Sized>(pixels:&P) {
     gl::PixelStorei(gl::PACK_SWAP_BYTES, pixels.swap_bytes() as GLint);
     gl::PixelStorei(gl::PACK_LSB_FIRST, pixels.lsb_first() as GLint);
     gl::PixelStorei(gl::PACK_ALIGNMENT, pixels.alignment().0 as GLint);
@@ -55,7 +55,7 @@ pub(super) unsafe fn apply_packing_settings<F:PixelFormatType,P:PixelData<F>>(pi
     gl::PixelStorei(gl::PACK_SKIP_IMAGES, pixels.skip_images() as GLint);
 }
 
-pub(super) unsafe fn apply_unpacking_settings<F:PixelFormatType,P:PixelData<F>>(pixels:&P) {
+pub(super) unsafe fn apply_unpacking_settings<F:PixelFormatType,P:PixelData<F>+?Sized>(pixels:&P) {
     gl::PixelStorei(gl::UNPACK_SWAP_BYTES, pixels.swap_bytes() as GLint);
     gl::PixelStorei(gl::UNPACK_LSB_FIRST, pixels.lsb_first() as GLint);
     gl::PixelStorei(gl::UNPACK_ALIGNMENT, pixels.alignment().0 as GLint);
@@ -81,12 +81,13 @@ pub unsafe trait PixelData<F:PixelFormatType> {
 
     fn format_type(&self) -> F;
     fn count(&self) -> usize;
+    fn size(&self) -> usize;
 
     fn bind_pixel_buffer<'a>(&'a self, target:&'a mut BindingLocation<UninitBuf>) -> Option<Binding<'a,UninitBuf>>;
     fn pixels(&self) -> *const GLvoid;
 }
 
-pub unsafe trait PixelDataMut<F:PixelFormatType> {
+pub unsafe trait PixelDataMut<F:PixelFormatType>: PixelData<F> {
     fn pixels_mut(&mut self) -> *mut GLvoid;
 }
 
@@ -104,6 +105,7 @@ unsafe impl<F:PixelFormatType,T:PixelType<F>> PixelData<F> for [T] {
 
     #[inline] fn format_type(&self) -> F {T::format_type()}
     #[inline] fn count(&self) -> usize {self.len()}
+    #[inline] fn size(&self) -> usize {size_of_val(self)}
 
     #[inline]
     fn bind_pixel_buffer<'a>(&'a self, _target:&'a mut BindingLocation<UninitBuf>) -> Option<Binding<'a,UninitBuf>> {
