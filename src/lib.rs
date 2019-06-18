@@ -502,6 +502,12 @@ impl<R:Resource> BindingLocation<R> {
         }
     }
 
+    #[inline]
+    pub unsafe fn bind_unchecked<'a>(&'a mut self, id: GLuint) -> Binding<'a,R> {
+        self.target().bind(id);
+        Binding(self, id)
+    }
+
     ///
     ///A wrapper of glBind* for `R` using an owned resource
     ///

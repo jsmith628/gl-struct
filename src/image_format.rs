@@ -24,17 +24,19 @@ pub unsafe trait SizedInternalFormat: InternalFormat {
 
 pub unsafe trait CompressedInternalFormat: InternalFormat {}
 
-pub unsafe trait InternalFormatFloat: InternalFormat<FormatType = FloatFormatType> {}
-pub unsafe trait InternalFormatInt: InternalFormat<FormatType = IntFormatType> {}
-pub unsafe trait InternalFormatUInt: InternalFormat<FormatType = IntFormatType> {}
+pub unsafe trait InternalFormatFloat: InternalFormat<FormatType = FloatFormatType> + InternalFormatColor {}
+pub unsafe trait InternalFormatInt: InternalFormat<FormatType = IntFormatType> + InternalFormatColor {}
+pub unsafe trait InternalFormatUInt: InternalFormat<FormatType = IntFormatType> + InternalFormatColor {}
 pub unsafe trait InternalFormatDepth: InternalFormat<FormatType = DepthFormatType> {}
 pub unsafe trait InternalFormatStencil: InternalFormat<FormatType = StencilFormatType> {}
 pub unsafe trait InternalFormatDepthStencil: InternalFormat<FormatType = DepthStencilFormatType> {}
 
-pub unsafe trait InternalFormatRed: InternalFormat {}
-pub unsafe trait InternalFormatRG: InternalFormat {}
-pub unsafe trait InternalFormatRGB: InternalFormat {}
-pub unsafe trait InternalFormatRGBA: InternalFormat {}
+pub unsafe trait InternalFormatColor: InternalFormat {}
+
+pub unsafe trait InternalFormatRed: InternalFormatColor {}
+pub unsafe trait InternalFormatRG: InternalFormatColor {}
+pub unsafe trait InternalFormatRGB: InternalFormatColor {}
+pub unsafe trait InternalFormatRGBA: InternalFormatColor {}
 
 pub unsafe trait ViewCompatible<F:InternalFormat>: InternalFormat {}
 pub unsafe trait ImageCompatible<F:SizedInternalFormat>: SizedInternalFormat {}
@@ -64,18 +66,11 @@ macro_rules! internal_format {
         }
     };
 
-    (@sized $fmt:ident [$R:tt, $G:tt]) => {
-        unsafe impl SizedInternalFormat for $fmt {
-            #[inline] fn red_bits() -> u8 {$R}
-            #[inline] fn green_bits() -> u8 {$G}
-        }
-        unsafe impl InternalFormatRG for $fmt {}
-    };
-
     (@sized $fmt:ident [$R:tt]) => {
         unsafe impl SizedInternalFormat for $fmt {
             #[inline] fn red_bits() -> u8 {$R}
         }
+        unsafe impl InternalFormatColor for $fmt {}
         unsafe impl InternalFormatRed for $fmt {}
     };
 
@@ -84,6 +79,7 @@ macro_rules! internal_format {
             #[inline] fn red_bits() -> u8 {$R}
             #[inline] fn green_bits() -> u8 {$G}
         }
+        unsafe impl InternalFormatColor for $fmt {}
         unsafe impl InternalFormatRG for $fmt {}
     };
 
@@ -93,6 +89,7 @@ macro_rules! internal_format {
             #[inline] fn green_bits() -> u8 {$G}
             #[inline] fn blue_bits() -> u8 {$B}
         }
+        unsafe impl InternalFormatColor for $fmt {}
         unsafe impl InternalFormatRGB for $fmt {}
     };
 
@@ -103,6 +100,7 @@ macro_rules! internal_format {
             #[inline] fn blue_bits() -> u8 {$B}
             #[inline] fn alpha_bits() -> u8 {$A}
         }
+        unsafe impl InternalFormatColor for $fmt {}
         unsafe impl InternalFormatRGBA for $fmt {}
     };
 
@@ -242,12 +240,68 @@ internal_format! {
 }
 
 
+unsafe impl InternalFormatColor for RGB9_E5 {}
+unsafe impl InternalFormatRGB for RGB9_E5 {}
 unsafe impl SizedInternalFormat for RGB9_E5 {
     #[inline] fn red_bits() -> u8 {9}
     #[inline] fn green_bits() -> u8 {9}
     #[inline] fn blue_bits() -> u8 {9}
     #[inline] fn shared_bits() -> u8 {5}
 }
+
+unsafe impl InternalFormatColor for RED {}
+unsafe impl InternalFormatRed for RED {}
+unsafe impl InternalFormatColor for RG {}
+unsafe impl InternalFormatRG for RG {}
+unsafe impl InternalFormatColor for RGB {}
+unsafe impl InternalFormatRGB for RGB {}
+unsafe impl InternalFormatColor for RGBA {}
+unsafe impl InternalFormatRGBA for RGBA {}
+
+unsafe impl InternalFormatColor for COMPRESSED_RED {}
+unsafe impl InternalFormatRed for COMPRESSED_RED {}
+unsafe impl InternalFormatColor for COMPRESSED_RG {}
+unsafe impl InternalFormatRG for COMPRESSED_RG {}
+unsafe impl InternalFormatColor for COMPRESSED_RGB {}
+unsafe impl InternalFormatRGB for COMPRESSED_RGB {}
+unsafe impl InternalFormatColor for COMPRESSED_RGBA {}
+unsafe impl InternalFormatRGBA for COMPRESSED_RGBA {}
+
+unsafe impl InternalFormatColor for COMPRESSED_SRGB {}
+unsafe impl InternalFormatColor for COMPRESSED_SRGB_ALPHA {}
+
+unsafe impl InternalFormatColor for COMPRESSED_RED_RGTC1 {}
+unsafe impl InternalFormatRed for COMPRESSED_RED_RGTC1 {}
+unsafe impl InternalFormatColor for COMPRESSED_SIGNED_RED_RGTC1 {}
+unsafe impl InternalFormatRed for COMPRESSED_SIGNED_RED_RGTC1 {}
+unsafe impl InternalFormatColor for COMPRESSED_RG_RGTC2 {}
+unsafe impl InternalFormatRG for COMPRESSED_RG_RGTC2 {}
+unsafe impl InternalFormatColor for COMPRESSED_SIGNED_RG_RGTC2 {}
+unsafe impl InternalFormatRG for COMPRESSED_SIGNED_RG_RGTC2 {}
+unsafe impl InternalFormatColor for COMPRESSED_RGBA_BPTC_UNORM {}
+unsafe impl InternalFormatRGBA for COMPRESSED_RGBA_BPTC_UNORM {}
+unsafe impl InternalFormatColor for COMPRESSED_SRGB_ALPHA_BPTC_UNORM {}
+unsafe impl InternalFormatColor for COMPRESSED_RGB_BPTC_SIGNED_FLOAT {}
+unsafe impl InternalFormatRGB for COMPRESSED_RGB_BPTC_SIGNED_FLOAT {}
+unsafe impl InternalFormatColor for COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT {}
+unsafe impl InternalFormatRGB for COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT {}
+unsafe impl InternalFormatColor for COMPRESSED_RGB8_ETC2 {}
+unsafe impl InternalFormatRGB for COMPRESSED_RGB8_ETC2 {}
+unsafe impl InternalFormatColor for COMPRESSED_SRGB8_ETC2 {}
+unsafe impl InternalFormatColor for COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2 {}
+unsafe impl InternalFormatRGB for COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2 {}
+unsafe impl InternalFormatColor for COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2 {}
+unsafe impl InternalFormatColor for COMPRESSED_RGBA8_ETC2_EAC {}
+unsafe impl InternalFormatRGBA for COMPRESSED_RGBA8_ETC2_EAC {}
+unsafe impl InternalFormatColor for COMPRESSED_SRGB8_ALPHA8_ETC2_EAC {}
+unsafe impl InternalFormatColor for COMPRESSED_R11_EAC {}
+unsafe impl InternalFormatRed for COMPRESSED_R11_EAC {}
+unsafe impl InternalFormatColor for COMPRESSED_SIGNED_R11_EAC {}
+unsafe impl InternalFormatRed for COMPRESSED_SIGNED_R11_EAC {}
+unsafe impl InternalFormatColor for COMPRESSED_RG11_EAC {}
+unsafe impl InternalFormatRG for COMPRESSED_RG11_EAC {}
+unsafe impl InternalFormatColor for COMPRESSED_SIGNED_RG11_EAC {}
+unsafe impl InternalFormatRG for COMPRESSED_SIGNED_RG11_EAC {}
 
 macro_rules! compat_with {
     ($ty0:ident $($ty:ident)*; $trait:ident) => {
