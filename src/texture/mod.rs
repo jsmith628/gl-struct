@@ -218,22 +218,37 @@ pub unsafe trait Image: Sized {
 }
 
 macro_rules! impl_tex {
-    ($name:ident; $dim:ty; $target:ident) => {
+    ($name:ident; $target:ident; $kind:ident) => {
         unsafe impl<F:InternalFormat> Texture for $name<F> {
-
             type InternalFormat = F;
+            type Target = $target;
+
             type ClientFormat = F::ClientFormat;
-            type Dim = $dim;
+            type Dim = <$target as TextureTarget>::Dim;
+            type GL = <$target as TextureTarget>::GL;
 
-            const TARGET: TextureTarget = TextureTarget::$target;
-
-            #[inline] fn id(&self) -> GLuint {self.raw.id()}
             #[inline] fn dim(&self) -> Self::Dim {self.dim}
-            #[inline] unsafe fn from_raw(raw:RawTex, dim:Self::Dim) -> Self {
-                $name { raw: raw, dim: dim, fmt: PhantomData }
-            }
+            #[inline] fn raw(&self) -> &RawTex<Self::Target> {&self.raw}
 
+            #[inline] unsafe fn from_raw(raw:RawTex<Self::Target>, dim:Self::Dim) -> Self {
+                $name {raw: raw, dim: dim, fmt: PhantomData}
+            }
         }
+
+        impl_tex!(@$kind $name; $target);
+    };
+
+    (@mipmap $name:ident; $target:ident) => {
+        unsafe impl<F:InternalFormat> PixelTransfer for $name<F> {
+            type BaseImage = MipmapLevel<Self>;
+            #[inline] fn base_image(&mut self) -> MipmapLevel<Self> {self.level(0)}
+        }
+
+        unsafe impl<F:InternalFormat> MipmappedTexture for $name<F> {}
+    };
+
+    (@multisample $name:ident; $target:ident) => {
+        unsafe impl<F:InternalFormat> MultisampledTexture for $name<F> {}
     }
 }
 
@@ -242,73 +257,64 @@ pub struct Tex1D<F:InternalFormat> {
     dim: [usize;1],
     fmt: PhantomData<F>
 }
-
-unsafe impl<F:InternalFormat> Texture for Tex1D<F> {
-    type InternalFormat = F;
-    type Target = TEXTURE_1D;
-
-    type ClientFormat = F::ClientFormat;
-    type Dim = <TEXTURE_1D as TextureTarget>::Dim;
-    type GL = <TEXTURE_1D as TextureTarget>::GL;
-
-    #[inline] fn dim(&self) -> Self::Dim {self.dim}
-    #[inline] fn raw(&self) -> &RawTex<Self::Target> {&self.raw}
-
-    #[inline] unsafe fn from_raw(raw:RawTex<Self::Target>, dim:Self::Dim) -> Self {
-        Tex1D {raw: raw, dim: dim, fmt: PhantomData}
-    }
-}
+impl_tex!(Tex1D; TEXTURE_1D; mipmap);
 
 pub struct Tex1DArray<F:InternalFormat> {
     raw: RawTex<TEXTURE_1D_ARRAY>,
     dim: ([usize;1], usize),
     fmt: PhantomData<F>
 }
+impl_tex!(Tex1DArray; TEXTURE_1D_ARRAY; mipmap);
 
 pub struct Tex2D<F:InternalFormat> {
     raw: RawTex<TEXTURE_2D>,
     dim: [usize;2],
     fmt: PhantomData<F>
 }
+impl_tex!(Tex2D; TEXTURE_2D; mipmap);
 
-pub struct TexCubeMap<F:InternalFormat> {
-    raw: RawTex<TEXTURE_CUBE_MAP>,
-    dim: [usize;2],
-    fmt: PhantomData<F>
-}
-
-pub struct TexRectangle<F:InternalFormat> {
-    raw: RawTex<TEXTURE_RECTANGLE>,
-    dim: [usize;2],
-    fmt: PhantomData<F>
-}
+// pub struct TexCubeMap<F:InternalFormat> {
+//     raw: RawTex<TEXTURE_CUBE_MAP>,
+//     dim: [usize;2],
+//     fmt: PhantomData<F>
+// }
+//
+// pub struct TexRectangle<F:InternalFormat> {
+//     raw: RawTex<TEXTURE_RECTANGLE>,
+//     dim: [usize;2],
+//     fmt: PhantomData<F>
+// }
 
 pub struct Tex2DMultisample<F:InternalFormat> {
     raw: RawTex<TEXTURE_2D_MULTISAMPLE>,
     dim: [usize;2],
     fmt: PhantomData<F>
 }
+impl_tex!(Tex2DMultisample; TEXTURE_2D_MULTISAMPLE; multisample);
 
 pub struct Tex2DArray<F:InternalFormat> {
     raw: RawTex<TEXTURE_2D_ARRAY>,
     dim: ([usize;2], usize),
     fmt: PhantomData<F>
 }
+impl_tex!(Tex2DArray; TEXTURE_2D_ARRAY; mipmap);
 
-pub struct TexCubemapArray<F:InternalFormat> {
-    raw: RawTex<TEXTURE_CUBE_MAP_ARRAY>,
-    dim: (usize, [usize;2]),
-    fmt: PhantomData<F>
-}
+// pub struct TexCubemapArray<F:InternalFormat> {
+//     raw: RawTex<TEXTURE_CUBE_MAP_ARRAY>,
+//     dim: (usize, [usize;2]),
+//     fmt: PhantomData<F>
+// }
 
 pub struct Tex2DMultisampleArray<F:InternalFormat> {
     raw: RawTex<TEXTURE_2D_MULTISAMPLE_ARRAY>,
     dim: ([usize;2], usize),
     fmt: PhantomData<F>
 }
+impl_tex!(Tex2DMultisampleArray; TEXTURE_2D_MULTISAMPLE_ARRAY; multisample);
 
 pub struct Tex3D<F:InternalFormat> {
     raw: RawTex<TEXTURE_3D>,
     dim: [usize;3],
     fmt: PhantomData<F>
 }
+impl_tex!(Tex3D; TEXTURE_3D; mipmap);
