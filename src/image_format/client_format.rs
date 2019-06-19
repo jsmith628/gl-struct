@@ -120,15 +120,14 @@ impl From<IntType> for PixelType {
     #[inline] fn from(f:IntType) -> Self {(f as GLenum).try_into().unwrap()}
 }
 
-pub trait PixelFormatType: Copy+Clone+PartialEq+Eq+Hash+Debug {
+pub trait ClientFormat: Copy+Clone+PartialEq+Eq+Hash+Debug {
     type Format: PixelFormat;
-
     fn size(self) -> usize;
     unsafe fn format_type(self) -> (Self::Format, PixelType);
 }
 
 #[derive(Copy,Clone,PartialEq,Eq,Hash,Debug)]
-pub enum IntFormatType {
+pub enum ClientFormatInt {
     Integer(FormatInt, IntType),
     UShort4_4_4_4, UShort4_4_4_4Rev,
     UShort5_5_5_1, UShort1_5_5_5Rev,
@@ -136,9 +135,9 @@ pub enum IntFormatType {
     UInt10_10_10_2, UInt10_10_10_2Rev
 }
 
-display_from_debug!(IntFormatType);
+display_from_debug!(ClientFormatInt);
 
-impl PixelFormatType for IntFormatType {
+impl ClientFormat for ClientFormatInt {
     type Format = FormatInt;
 
     #[inline]
@@ -173,16 +172,16 @@ impl PixelFormatType for IntFormatType {
 }
 
 #[derive(Copy,Clone,PartialEq,Eq,Hash,Debug)]
-pub enum FloatFormatType {
+pub enum ClientFormatFloat {
     Float(FormatFloat, FloatType),
-    Fixed(IntFormatType),
+    Fixed(ClientFormatInt),
     UByte3_3_2, UByte2_3_3Rev,
     UShort5_6_5, UShort5_6_5Rev
 }
 
-display_from_debug!(FloatFormatType);
+display_from_debug!(ClientFormatFloat);
 
-impl PixelFormatType for FloatFormatType {
+impl ClientFormat for ClientFormatFloat {
     type Format = FormatFloat;
 
     #[inline]
@@ -209,14 +208,14 @@ impl PixelFormatType for FloatFormatType {
 }
 
 #[derive(Copy,Clone,PartialEq,Eq,Hash,Debug)]
-pub enum DepthFormatType {
+pub enum ClientFormatDepth {
     Fixed(IntType),
     Float(FloatType)
 }
 
-display_from_debug!(DepthFormatType);
+display_from_debug!(ClientFormatDepth);
 
-impl PixelFormatType for DepthFormatType {
+impl ClientFormat for ClientFormatDepth {
     type Format = FormatDepth;
 
     #[inline]
@@ -237,24 +236,24 @@ impl PixelFormatType for DepthFormatType {
 }
 
 #[derive(Copy,Clone,PartialEq,Eq,Hash,Debug)]
-pub struct StencilFormatType(pub IntType);
+pub struct ClientFormatStencil(pub IntType);
 
-display_from_debug!(StencilFormatType);
+display_from_debug!(ClientFormatStencil);
 
-impl PixelFormatType for StencilFormatType {
+impl ClientFormat for ClientFormatStencil {
     type Format = FormatStencil;
     #[inline] fn size(self) -> usize { self.0.size_of() }
     #[inline] unsafe fn format_type(self) -> (FormatStencil, PixelType) { (FormatStencil::STENCIL_INDEX, self.0.into()) }
 }
 
 #[derive(Copy,Clone,PartialEq,Eq,Hash,Debug)]
-pub enum DepthStencilFormatType {
-    DepthComponent(DepthFormatType),
-    StencilIndex(StencilFormatType),
+pub enum ClientFormatDepthStencil {
+    DepthComponent(ClientFormatDepth),
+    StencilIndex(ClientFormatStencil),
     UInt24_8
 }
 
-impl PixelFormatType for DepthStencilFormatType {
+impl ClientFormat for ClientFormatDepthStencil {
     type Format = FormatDepthStencil;
 
     #[inline]
@@ -276,4 +275,4 @@ impl PixelFormatType for DepthStencilFormatType {
     }
 }
 
-display_from_debug!(DepthStencilFormatType);
+display_from_debug!(ClientFormatDepthStencil);

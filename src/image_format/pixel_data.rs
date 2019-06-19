@@ -45,7 +45,7 @@ impl Into<u8> for PixelRowAlignment {
     #[inline] fn into(self) -> u8 {self.0}
 }
 
-pub(crate) unsafe fn apply_packing_settings<F:PixelFormatType,P:PixelData<F>+?Sized>(pixels:&P) {
+pub(crate) unsafe fn apply_packing_settings<F:ClientFormat,P:PixelData<F>+?Sized>(pixels:&P) {
     gl::PixelStorei(gl::PACK_SWAP_BYTES, pixels.swap_bytes() as GLint);
     gl::PixelStorei(gl::PACK_LSB_FIRST, pixels.lsb_first() as GLint);
     gl::PixelStorei(gl::PACK_ALIGNMENT, pixels.alignment().0 as GLint);
@@ -56,7 +56,7 @@ pub(crate) unsafe fn apply_packing_settings<F:PixelFormatType,P:PixelData<F>+?Si
     gl::PixelStorei(gl::PACK_SKIP_IMAGES, pixels.skip_images() as GLint);
 }
 
-pub(crate) unsafe fn apply_unpacking_settings<F:PixelFormatType,P:PixelData<F>+?Sized>(pixels:&P) {
+pub(crate) unsafe fn apply_unpacking_settings<F:ClientFormat,P:PixelData<F>+?Sized>(pixels:&P) {
     gl::PixelStorei(gl::UNPACK_SWAP_BYTES, pixels.swap_bytes() as GLint);
     gl::PixelStorei(gl::UNPACK_LSB_FIRST, pixels.lsb_first() as GLint);
     gl::PixelStorei(gl::UNPACK_ALIGNMENT, pixels.alignment().0 as GLint);
@@ -67,7 +67,7 @@ pub(crate) unsafe fn apply_unpacking_settings<F:PixelFormatType,P:PixelData<F>+?
     gl::PixelStorei(gl::UNPACK_SKIP_IMAGES, pixels.skip_images() as GLint);
 }
 
-pub unsafe trait PixelData<F:PixelFormatType> {
+pub unsafe trait PixelData<F:ClientFormat> {
 
     #[inline] fn swap_bytes(&self) -> bool {false}
     #[inline] fn lsb_first(&self) -> bool {false}
@@ -88,17 +88,17 @@ pub unsafe trait PixelData<F:PixelFormatType> {
     fn pixels(&self) -> *const GLvoid;
 }
 
-pub unsafe trait PixelDataMut<F:PixelFormatType>: PixelData<F> {
+pub unsafe trait PixelDataMut<F:ClientFormat>: PixelData<F> {
     fn pixels_mut(&mut self) -> *mut GLvoid;
 }
 
-pub unsafe trait PixelType<F: PixelFormatType>: Sized+Copy+Clone+PartialEq {
+pub unsafe trait PixelType<F: ClientFormat>: Sized+Copy+Clone+PartialEq {
     fn format_type() -> F;
     fn swap_bytes() -> bool;
     fn lsb_first() -> bool;
 }
 
-unsafe impl<F:PixelFormatType,T:PixelType<F>> PixelData<F> for [T] {
+unsafe impl<F:ClientFormat,T:PixelType<F>> PixelData<F> for [T] {
     #[inline] fn swap_bytes(&self) -> bool {T::swap_bytes()}
     #[inline] fn lsb_first(&self) -> bool {T::lsb_first()}
 
@@ -116,6 +116,6 @@ unsafe impl<F:PixelFormatType,T:PixelType<F>> PixelData<F> for [T] {
     #[inline] fn pixels(&self) -> *const GLvoid {&self[0] as *const T as *const GLvoid}
 }
 
-unsafe impl<F:PixelFormatType,T:PixelType<F>> PixelDataMut<F> for [T] {
+unsafe impl<F:ClientFormat,T:PixelType<F>> PixelDataMut<F> for [T] {
     #[inline] fn pixels_mut(&mut self) -> *mut GLvoid {&mut self[0] as *mut T as *mut GLvoid}
 }

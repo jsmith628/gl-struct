@@ -299,9 +299,9 @@ impl<'a,T:GPUCopy+?Sized,A:BufferAccess> BSlice<'a,T,A> {
 //Texture data transfer
 //
 
-use image_format::{PixelFormatType,PixelType,PixelData,PixelDataMut,PixelRowAlignment};
+use image_format::{ClientFormat,PixelType,PixelData,PixelDataMut,PixelRowAlignment};
 
-unsafe impl<'a,F:PixelFormatType,T:PixelType<F>,A:BufferAccess> PixelData<F> for BSlice<'a,[T],A> {
+unsafe impl<'a,F:ClientFormat,T:PixelType<F>,A:BufferAccess> PixelData<F> for BSlice<'a,[T],A> {
     #[inline] fn swap_bytes(&self) -> bool {T::swap_bytes()}
     #[inline] fn lsb_first(&self) -> bool {T::lsb_first()}
 
@@ -319,7 +319,7 @@ unsafe impl<'a,F:PixelFormatType,T:PixelType<F>,A:BufferAccess> PixelData<F> for
     #[inline] fn pixels(&self) -> *const GLvoid {self.offset as *const GLvoid}
 }
 
-unsafe impl<'a,F:PixelFormatType,T:PixelType<F>,A:BufferAccess> PixelData<F> for BSliceMut<'a,[T],A> {
+unsafe impl<'a,F:ClientFormat,T:PixelType<F>,A:BufferAccess> PixelData<F> for BSliceMut<'a,[T],A> {
     #[inline] fn swap_bytes(&self) -> bool {T::swap_bytes()}
     #[inline] fn lsb_first(&self) -> bool {T::lsb_first()}
 
@@ -337,6 +337,6 @@ unsafe impl<'a,F:PixelFormatType,T:PixelType<F>,A:BufferAccess> PixelData<F> for
     #[inline] fn pixels(&self) -> *const GLvoid {self.offset as *const GLvoid}
 }
 
-unsafe impl<'a,F:PixelFormatType,T:PixelType<F>,A:BufferAccess> PixelDataMut<F> for BSliceMut<'a,[T],A> {
+unsafe impl<'a,F:ClientFormat,T:PixelType<F>,A:BufferAccess> PixelDataMut<F> for BSliceMut<'a,[T],A> {
     #[inline] fn pixels_mut(&mut self) -> *mut GLvoid {self.offset as *mut GLvoid}
 }

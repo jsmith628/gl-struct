@@ -2,7 +2,7 @@ use crate::*;
 use super::*;
 
 pub unsafe trait InternalFormat {
-    type FormatType: PixelFormatType;
+    type FormatType: ClientFormat;
     fn glenum() -> GLenum;
 }
 
@@ -24,12 +24,12 @@ pub unsafe trait SizedInternalFormat: InternalFormat {
 
 pub unsafe trait CompressedInternalFormat: InternalFormat {}
 
-pub unsafe trait InternalFormatFloat: InternalFormat<FormatType = FloatFormatType> + InternalFormatColor {}
-pub unsafe trait InternalFormatInt: InternalFormat<FormatType = IntFormatType> + InternalFormatColor {}
-pub unsafe trait InternalFormatUInt: InternalFormat<FormatType = IntFormatType> + InternalFormatColor {}
-pub unsafe trait InternalFormatDepth: InternalFormat<FormatType = DepthFormatType> {}
-pub unsafe trait InternalFormatStencil: InternalFormat<FormatType = StencilFormatType> {}
-pub unsafe trait InternalFormatDepthStencil: InternalFormat<FormatType = DepthStencilFormatType> {}
+pub unsafe trait InternalFormatFloat: InternalFormat<FormatType = ClientFormatFloat> + InternalFormatColor {}
+pub unsafe trait InternalFormatInt: InternalFormat<FormatType = ClientFormatInt> + InternalFormatColor {}
+pub unsafe trait InternalFormatUInt: InternalFormat<FormatType = ClientFormatInt> + InternalFormatColor {}
+pub unsafe trait InternalFormatDepth: InternalFormat<FormatType = ClientFormatDepth> {}
+pub unsafe trait InternalFormatStencil: InternalFormat<FormatType = ClientFormatStencil> {}
+pub unsafe trait InternalFormatDepthStencil: InternalFormat<FormatType = ClientFormatDepthStencil> {}
 
 pub unsafe trait InternalFormatColor: InternalFormat {}
 
@@ -46,12 +46,12 @@ unsafe impl<F:SizedInternalFormat> ImageCompatible<F> for F {}
 
 macro_rules! internal_format {
 
-    (@fmt_ty InternalFormatFloat) => {FloatFormatType};
-    (@fmt_ty InternalFormatInt) => {IntFormatType};
-    (@fmt_ty InternalFormatUInt) => {IntFormatType};
-    (@fmt_ty InternalFormatDepth) => {DepthFormatType};
-    (@fmt_ty InternalFormatStencil) => {StencilFormatType};
-    (@fmt_ty InternalFormatDepthStencil) => {DepthStencilFormatType};
+    (@fmt_ty InternalFormatFloat) => {ClientFormatFloat};
+    (@fmt_ty InternalFormatInt) => {ClientFormatInt};
+    (@fmt_ty InternalFormatUInt) => {ClientFormatInt};
+    (@fmt_ty InternalFormatDepth) => {ClientFormatDepth};
+    (@fmt_ty InternalFormatStencil) => {ClientFormatStencil};
+    (@fmt_ty InternalFormatDepthStencil) => {ClientFormatDepthStencil};
 
     (@sized $fmt:ident ($D:tt)) => {
         unsafe impl SizedInternalFormat for $fmt {

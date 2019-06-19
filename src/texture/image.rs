@@ -37,7 +37,7 @@ glenum! {
 
 pub unsafe trait Image: Sized {
     type InternalFormat: InternalFormat<FormatType=Self::PixelFormat>;
-    type PixelFormat: PixelFormatType;
+    type PixelFormat: ClientFormat;
     type Dim: TexDim;
     type Target: TextureTarget;
 

@@ -164,7 +164,7 @@ type GLOf<T> = <<T as Texture>::Target as TextureTarget>::GL;
 
 pub unsafe trait Texture: Sized {
     type InternalFormat: InternalFormat<FormatType=Self::PixelFormat>;
-    type PixelFormat: PixelFormatType;
+    type PixelFormat: ClientFormat;
     type Target: TextureTarget;
 
     fn dim(&self) -> DimOf<Self>;
