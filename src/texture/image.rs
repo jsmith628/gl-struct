@@ -1,5 +1,6 @@
 
 use super::*;
+use image_format::pixel_data::{apply_packing_settings, apply_unpacking_settings};
 
 glenum! {
     pub enum TexLevelParameteriv {

@@ -1,5 +1,6 @@
 
 use super::*;
+
 use buffer_new::{UninitBuf};
 use std::mem::*;
 
@@ -44,7 +45,7 @@ impl Into<u8> for PixelRowAlignment {
     #[inline] fn into(self) -> u8 {self.0}
 }
 
-pub(super) unsafe fn apply_packing_settings<F:PixelFormatType,P:PixelData<F>+?Sized>(pixels:&P) {
+pub(crate) unsafe fn apply_packing_settings<F:PixelFormatType,P:PixelData<F>+?Sized>(pixels:&P) {
     gl::PixelStorei(gl::PACK_SWAP_BYTES, pixels.swap_bytes() as GLint);
     gl::PixelStorei(gl::PACK_LSB_FIRST, pixels.lsb_first() as GLint);
     gl::PixelStorei(gl::PACK_ALIGNMENT, pixels.alignment().0 as GLint);
@@ -55,7 +56,7 @@ pub(super) unsafe fn apply_packing_settings<F:PixelFormatType,P:PixelData<F>+?Si
     gl::PixelStorei(gl::PACK_SKIP_IMAGES, pixels.skip_images() as GLint);
 }
 
-pub(super) unsafe fn apply_unpacking_settings<F:PixelFormatType,P:PixelData<F>+?Sized>(pixels:&P) {
+pub(crate) unsafe fn apply_unpacking_settings<F:PixelFormatType,P:PixelData<F>+?Sized>(pixels:&P) {
     gl::PixelStorei(gl::UNPACK_SWAP_BYTES, pixels.swap_bytes() as GLint);
     gl::PixelStorei(gl::UNPACK_LSB_FIRST, pixels.lsb_first() as GLint);
     gl::PixelStorei(gl::UNPACK_ALIGNMENT, pixels.alignment().0 as GLint);

@@ -11,13 +11,9 @@ use std::ops::{Bound,RangeBounds};
 use std::collections::HashMap;
 use std::mem::{size_of, uninitialized};
 
-pub use self::pixel_format::*;
-pub use self::pixel_data::*;
 pub use self::image::*;
 pub use self::raw::*;
 
-pub mod pixel_format;
-pub mod pixel_data;
 mod image;
 mod raw;
 

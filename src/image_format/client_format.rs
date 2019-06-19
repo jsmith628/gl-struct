@@ -1,4 +1,5 @@
 use super::*;
+use std::convert::TryInto;
 
 glenum! {
     pub enum FormatDepth { DEPTH_COMPONENT }

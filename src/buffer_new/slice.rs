@@ -299,7 +299,7 @@ impl<'a,T:GPUCopy+?Sized,A:BufferAccess> BSlice<'a,T,A> {
 //Texture data transfer
 //
 
-use texture::{PixelFormatType,PixelType,PixelData,PixelDataMut,PixelRowAlignment};
+use image_format::{PixelFormatType,PixelType,PixelData,PixelDataMut,PixelRowAlignment};
 
 unsafe impl<'a,F:PixelFormatType,T:PixelType<F>,A:BufferAccess> PixelData<F> for BSlice<'a,[T],A> {
     #[inline] fn swap_bytes(&self) -> bool {T::swap_bytes()}
