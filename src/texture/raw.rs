@@ -49,22 +49,33 @@ pub unsafe trait TextureTarget: GLEnum + Default + Target<Resource=RawTex<Self>>
 
 }
 
-pub unsafe trait TexDim: Sized + Copy + Eq + Hash + Debug {
-    fn dim() -> usize;
-    fn minimized(&self, level: GLuint) -> Self;
-
-    #[inline] fn pixels(&self) -> usize {self.width() * self.height() * self.depth()}
-    #[inline] fn max_levels(&self) -> GLuint {
-        (0 as GLuint).leading_zeros() - (self.width().max(self.height().max(self.depth()))).leading_zeros()
-    }
-
-    #[inline] fn width(&self) -> usize {1}
-    #[inline] fn height(&self) -> usize {1}
-    #[inline] fn depth(&self) -> usize {1}
-
+target! {
+    [TEXTURE_1D "Texture 1D"]; GL1; [usize;1],
+    [TEXTURE_2D "Texture 2D"]; GL1; [usize;2],
+    [TEXTURE_3D "Texture 3D"]; GL1; [usize;3],
+    [TEXTURE_1D_ARRAY "Texture 1D Array"]; GL3; (<TEXTURE_1D as TextureTarget>::Dim, usize),
+    [TEXTURE_2D_ARRAY "Texture 2D Array"]; GL3; (<TEXTURE_2D as TextureTarget>::Dim, usize),
+    [TEXTURE_RECTANGLE "Texture Rectangle"]; GL3; <TEXTURE_2D as TextureTarget>::Dim,
+    [TEXTURE_BUFFER "Texture Buffer"]; GL3; usize,
+    [TEXTURE_CUBE_MAP "Texture Cube Map"]; GL1; <TEXTURE_2D as TextureTarget>::Dim,
+    [TEXTURE_CUBE_MAP_ARRAY "Texture Cube Map Array"]; GL4; <TEXTURE_2D_ARRAY as TextureTarget>::Dim,
+    [TEXTURE_2D_MULTISAMPLE "Texture 2D Multisample"]; GL3; <TEXTURE_2D as TextureTarget>::Dim,
+    [TEXTURE_2D_MULTISAMPLE_ARRAY "Texture 2D Multisample Array"]; GL3; <TEXTURE_2D_ARRAY as TextureTarget>::Dim
 }
 
 pub struct RawTex<T: TextureTarget>(GLuint, PhantomData<T>);
+
+pub type RawTex1D                 = RawTex<TEXTURE_1D>;
+pub type RawTex2D                 = RawTex<TEXTURE_2D>;
+pub type RawTex3D                 = RawTex<TEXTURE_3D>;
+pub type RawTex1DArray            = RawTex<TEXTURE_1D_ARRAY>;
+pub type RawTex2DArray            = RawTex<TEXTURE_2D_ARRAY>;
+pub type RawTexRectangle          = RawTex<TEXTURE_RECTANGLE>;
+pub type RawTexBuffer             = RawTex<TEXTURE_BUFFER>;
+pub type RawTexCubeMap            = RawTex<TEXTURE_CUBE_MAP>;
+pub type RawTexCubeMapArray       = RawTex<TEXTURE_CUBE_MAP_ARRAY>;
+pub type RawTex2DMultisample      = RawTex<TEXTURE_2D_MULTISAMPLE>;
+pub type RawTex2DMultisampleArray = RawTex<TEXTURE_2D_MULTISAMPLE_ARRAY>;
 
 unsafe impl<T: TextureTarget> Resource for RawTex<T> {
     type GL = T::GL;
@@ -126,18 +137,19 @@ impl<T: TextureTarget> Drop for RawTex<T> {
     #[inline] fn drop(&mut self) { unsafe { gl::DeleteTextures(1, self.0 as *mut GLuint) } }
 }
 
-target! {
-    [TEXTURE_1D "Texture 1D"]; GL1; [usize;1],
-    [TEXTURE_2D "Texture 2D"]; GL1; [usize;2],
-    [TEXTURE_3D "Texture 3D"]; GL1; [usize;3],
-    [TEXTURE_1D_ARRAY "Texture 1D Array"]; GL3; (<TEXTURE_1D as TextureTarget>::Dim, usize),
-    [TEXTURE_2D_ARRAY "Texture 2D Array"]; GL3; (<TEXTURE_2D as TextureTarget>::Dim, usize),
-    [TEXTURE_RECTANGLE "Texture Rectangle"]; GL3; <TEXTURE_2D as TextureTarget>::Dim,
-    [TEXTURE_BUFFER "Texture Buffer"]; GL3; usize,
-    [TEXTURE_CUBE_MAP "Texture Cube Map"]; GL1; <TEXTURE_2D as TextureTarget>::Dim,
-    [TEXTURE_CUBE_MAP_ARRAY "Texture Cube Map Array"]; GL4; <TEXTURE_2D_ARRAY as TextureTarget>::Dim,
-    [TEXTURE_2D_MULTISAMPLE "Texture 2D Multisample"]; GL3; <TEXTURE_2D as TextureTarget>::Dim,
-    [TEXTURE_2D_MULTISAMPLE_ARRAY "Texture 2D Multisample Array"]; GL3; <TEXTURE_2D_ARRAY as TextureTarget>::Dim
+pub unsafe trait TexDim: Sized + Copy + Eq + Hash + Debug {
+    fn dim() -> usize;
+    fn minimized(&self, level: GLuint) -> Self;
+
+    #[inline] fn pixels(&self) -> usize {self.width() * self.height() * self.depth()}
+    #[inline] fn max_levels(&self) -> GLuint {
+        (0 as GLuint).leading_zeros() - (self.width().max(self.height().max(self.depth()))).leading_zeros()
+    }
+
+    #[inline] fn width(&self) -> usize {1}
+    #[inline] fn height(&self) -> usize {1}
+    #[inline] fn depth(&self) -> usize {1}
+
 }
 
 unsafe impl TexDim for usize {
