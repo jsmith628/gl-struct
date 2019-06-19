@@ -38,8 +38,7 @@ pub unsafe trait Image: Sized {
     type InternalFormat: InternalFormat<FormatType=Self::PixelFormat>;
     type PixelFormat: PixelFormatType;
     type Dim: TexDim;
-
-    const TARGET: TextureTarget;
+    type Target: TextureTarget;
 
     fn id(&self) -> GLuint;
     fn level(&self) -> GLuint;
@@ -71,8 +70,8 @@ pub struct MipmapLevel<'a, T:Texture+PixelTransfer> {
 pub(super) fn get_level_parameter_iv<T:Texture>(tex:&T, level:GLuint, pname: TexLevelParameteriv) -> GLint {
     unsafe {
         let mut params = ::std::mem::uninitialized::<GLint>();
-        let mut target = T::TARGET.as_loc();
-        let binding = target.bind_raw(tex.id()).unwrap();
+        let mut target = T::Target::binding_location();
+        let binding = target.bind(tex.raw());
         gl::GetTexLevelParameteriv(
             binding.target_id(), level as GLint, pname as GLenum, &mut params as *mut GLint
         );
@@ -108,11 +107,10 @@ impl<'a, T:Texture+PixelTransfer> MipmapLevel<'a,T> {
 unsafe impl<'a, T:Texture+PixelTransfer> Image for MipmapLevel<'a, T> {
     type InternalFormat = T::InternalFormat;
     type PixelFormat = T::PixelFormat;
-    type Dim = T::Dim;
+    type Dim = DimOf<T>;
+    type Target = T::Target;
 
-    const TARGET: TextureTarget = T::TARGET;
-
-    #[inline] fn id(&self) -> GLuint {self.tex.id()}
+    #[inline] fn id(&self) -> GLuint {self.tex.raw().id()}
     #[inline] fn level(&self) -> GLuint {self.level}
     #[inline] fn dim(&self) -> Self::Dim { self.tex.dim().minimized(self.level)}
 
@@ -130,20 +128,21 @@ unsafe impl<'a, T:Texture+PixelTransfer> Image for MipmapLevel<'a, T> {
             let mut pixel_buf = BufferTarget::PixelUnpackBuffer.as_loc();
             let _buf = self.prepare_transfer(data, &mut pixel_buf);
 
-            let mut target = T::TARGET.as_loc();
-            let binding = target.bind_raw(self.id()).unwrap();
+            let mut target = T::Target::binding_location();
+            let binding = target.bind_unchecked(self.id());
             let level = self.level() as GLint;
 
             //TODO add error checking for dimensions
             let (x,y,z) = (offset.width() as GLsizei, offset.height() as GLsizei, offset.depth() as GLsizei);
             let (w,h,d) = (dim.width() as GLsizei, dim.height() as GLsizei, dim.depth() as GLsizei);
             let (fmt, ty) = data.format_type().format_type();
+            let coords = DimOf::<T>::dim();
 
-            match T::Dim::dim() {
+            match coords {
                 1 => gl::TexSubImage1D(binding.target_id(), level, x, w, fmt.into(), ty.into(), data.pixels()),
                 2 => gl::TexSubImage2D(binding.target_id(), level, x,y, w,h, fmt.into(), ty.into(), data.pixels()),
                 3 => gl::TexSubImage3D(binding.target_id(), level, x,y,z, w,h,d, fmt.into(), ty.into(), data.pixels()),
-                _ => panic!("{}D Textures not currently supported", T::Dim::dim())
+                _ => panic!("{}D Textures not currently supported", coords)
             }
         }
     }
@@ -172,7 +171,7 @@ unsafe impl<'a, T:Texture+PixelTransfer> Image for MipmapLevel<'a, T> {
             if gl::GetTextureImage::is_loaded() {
                 gl::GetTextureImage(self.id(), self.level() as GLint, fmt.into(), ty.into(), data.size() as GLsizei, data.pixels_mut());
             } else {
-                let mut target = T::TARGET.as_loc();
+                let mut target = T::Target::binding_location();
                 let binding = target.bind_raw(self.id()).unwrap();
                 gl::GetTexImage(binding.target_id(), self.level() as GLint, fmt.into(), ty.into(), data.pixels_mut());
             }
