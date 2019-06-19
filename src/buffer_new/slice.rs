@@ -311,12 +311,11 @@ unsafe impl<'a,F:ClientFormat,T:PixelType<F>,A:BufferAccess> PixelData<F> for BS
     #[inline] fn count(&self) -> usize {BSlice::len(self)}
     #[inline] fn size(&self) -> usize {BSlice::size(self)}
 
-    #[inline]
-    fn bind_pixel_buffer<'b>(&'b self, target:&'b mut BindingLocation<UninitBuf>) -> Option<Binding<'b,UninitBuf>> {
-        Some(target.bind_slice(self))
+    #[inline] fn pixels<'b>(
+        &'b self, target:&'b mut BindingLocation<UninitBuf>
+    ) -> (Option<Binding<'b,UninitBuf>>, *const GLvoid) {
+        (Some(target.bind_slice(self)), self.offset as *const GLvoid)
     }
-
-    #[inline] fn pixels(&self) -> *const GLvoid {self.offset as *const GLvoid}
 }
 
 unsafe impl<'a,F:ClientFormat,T:PixelType<F>,A:BufferAccess> PixelData<F> for BSliceMut<'a,[T],A> {
@@ -329,14 +328,17 @@ unsafe impl<'a,F:ClientFormat,T:PixelType<F>,A:BufferAccess> PixelData<F> for BS
     #[inline] fn count(&self) -> usize {BSliceMut::len(self)}
     #[inline] fn size(&self) -> usize {BSliceMut::size(self)}
 
-    #[inline]
-    fn bind_pixel_buffer<'b>(&'b self, target:&'b mut BindingLocation<UninitBuf>) -> Option<Binding<'b,UninitBuf>> {
-        Some(target.bind_slice_mut(self))
+    #[inline] fn pixels<'b>(
+        &'b self, target:&'b mut BindingLocation<UninitBuf>
+    ) -> (Option<Binding<'b,UninitBuf>>, *const GLvoid) {
+        (Some(target.bind_slice_mut(self)), self.offset as *const GLvoid)
     }
-
-    #[inline] fn pixels(&self) -> *const GLvoid {self.offset as *const GLvoid}
 }
 
 unsafe impl<'a,F:ClientFormat,T:PixelType<F>,A:BufferAccess> PixelDataMut<F> for BSliceMut<'a,[T],A> {
-    #[inline] fn pixels_mut(&mut self) -> *mut GLvoid {self.offset as *mut GLvoid}
+    #[inline] fn pixels_mut<'b>(
+        &'b mut self, target:&'b mut BindingLocation<UninitBuf>
+    ) -> (Option<Binding<'b,UninitBuf>>, *mut GLvoid) {
+        (Some(target.bind_slice_mut(self)), self.offset as *mut GLvoid)
+    }
 }

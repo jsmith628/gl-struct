@@ -227,22 +227,6 @@ impl<T:Texture+PixelTransfer> MipmapLevel<T> {
         get_level_parameter_iv(unsafe {&*self.tex}, self.level, pname)
     }
 
-    #[inline]
-    unsafe fn prepare_transfer<'b, P:PixelData<T::ClientFormat>+?Sized>(
-        &self, data:&'b P, loc: &'b mut BindingLocation<UninitBuf>
-    ) -> Option<Binding<'b, UninitBuf>> {
-        let dim = self.dim();
-        if data.count() != dim.pixels() {
-            panic!("Invalid pixel count");
-        } else {
-            match loc.target() {
-                BufferTarget::PixelUnpackBuffer => apply_unpacking_settings(data),
-                BufferTarget::PixelPackBuffer => apply_packing_settings(data),
-                _ => panic!("Invalid target for pixel buffer transfer")
-            }
-            data.bind_pixel_buffer(loc)
-        }
-    }
 }
 
 unsafe impl<T:Texture+PixelTransfer> Image for MipmapLevel<T> {
@@ -261,8 +245,10 @@ unsafe impl<T:Texture+PixelTransfer> Image for MipmapLevel<T> {
 
     fn sub_image<P:PixelData<Self::ClientFormat>+?Sized>(&mut self, offset:Self::Dim, dim:Self::Dim, data:&P) {
         unsafe {
+            //TODO index checking
+            apply_unpacking_settings(data);
             let mut pixel_buf = BufferTarget::PixelUnpackBuffer.as_loc();
-            let _buf = self.prepare_transfer(data, &mut pixel_buf);
+            let (_buf, ptr) = data.pixels(&mut pixel_buf);
 
             let mut target = T::Target::binding_location();
             let binding = target.bind(self.raw());
@@ -275,9 +261,9 @@ unsafe impl<T:Texture+PixelTransfer> Image for MipmapLevel<T> {
             let coords = T::Dim::dim();
 
             match coords {
-                1 => gl::TexSubImage1D(binding.target_id(), level, x, w, fmt.into(), ty.into(), data.pixels()),
-                2 => gl::TexSubImage2D(binding.target_id(), level, x,y, w,h, fmt.into(), ty.into(), data.pixels()),
-                3 => gl::TexSubImage3D(binding.target_id(), level, x,y,z, w,h,d, fmt.into(), ty.into(), data.pixels()),
+                1 => gl::TexSubImage1D(binding.target_id(), level, x, w, fmt.into(), ty.into(), ptr),
+                2 => gl::TexSubImage2D(binding.target_id(), level, x,y, w,h, fmt.into(), ty.into(), ptr),
+                3 => gl::TexSubImage3D(binding.target_id(), level, x,y,z, w,h,d, fmt.into(), ty.into(), ptr),
                 _ => panic!("{}D Textures not currently supported", coords)
             }
         }
@@ -302,13 +288,20 @@ unsafe impl<T:Texture+PixelTransfer> Image for MipmapLevel<T> {
 
     fn get_image<P:PixelDataMut<Self::ClientFormat>+?Sized>(&self, data: &mut P) {
         unsafe {
+            //TODO index checking
             let (fmt, ty) = data.format_type().format_type();
+            let size = data.size() as GLsizei;
+
+            apply_packing_settings(data);
+            let mut pixel_buf = BufferTarget::PixelUnpackBuffer.as_loc();
+            let (_buf, ptr) = data.pixels_mut(&mut pixel_buf);
+
             if gl::GetTextureImage::is_loaded() {
-                gl::GetTextureImage(self.raw().id(), self.level() as GLint, fmt.into(), ty.into(), data.size() as GLsizei, data.pixels_mut());
+                gl::GetTextureImage(self.raw().id(), self.level() as GLint, fmt.into(), ty.into(), size, ptr);
             } else {
                 let mut target = T::Target::binding_location();
                 let binding = target.bind(self.raw());
-                gl::GetTexImage(binding.target_id(), self.level() as GLint, fmt.into(), ty.into(), data.pixels_mut());
+                gl::GetTexImage(binding.target_id(), self.level() as GLint, fmt.into(), ty.into(), ptr);
             }
 
         }

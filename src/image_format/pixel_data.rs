@@ -84,12 +84,15 @@ pub unsafe trait PixelData<F:ClientFormat> {
     fn count(&self) -> usize;
     fn size(&self) -> usize;
 
-    fn bind_pixel_buffer<'a>(&'a self, target:&'a mut BindingLocation<UninitBuf>) -> Option<Binding<'a,UninitBuf>>;
-    fn pixels(&self) -> *const GLvoid;
+    fn pixels<'a>(
+        &'a self, target:&'a mut BindingLocation<UninitBuf>
+    ) -> (Option<Binding<'a,UninitBuf>>, *const GLvoid);
 }
 
 pub unsafe trait PixelDataMut<F:ClientFormat>: PixelData<F> {
-    fn pixels_mut(&mut self) -> *mut GLvoid;
+    fn pixels_mut<'a>(
+        &'a mut self, target:&'a mut BindingLocation<UninitBuf>
+    ) -> (Option<Binding<'a,UninitBuf>>, *mut GLvoid);
 }
 
 pub unsafe trait PixelType<F: ClientFormat>: Sized+Copy+Clone+PartialEq {
@@ -108,14 +111,17 @@ unsafe impl<F:ClientFormat,T:PixelType<F>> PixelData<F> for [T] {
     #[inline] fn count(&self) -> usize {self.len()}
     #[inline] fn size(&self) -> usize {size_of_val(self)}
 
-    #[inline]
-    fn bind_pixel_buffer<'a>(&'a self, _target:&'a mut BindingLocation<UninitBuf>) -> Option<Binding<'a,UninitBuf>> {
-        None
+    #[inline] fn pixels<'a>(
+        &'a self, _:&'a mut BindingLocation<UninitBuf>
+    ) -> (Option<Binding<'a,UninitBuf>>, *const GLvoid) {
+        (None, &self[0] as *const T as *const GLvoid)
     }
-
-    #[inline] fn pixels(&self) -> *const GLvoid {&self[0] as *const T as *const GLvoid}
 }
 
 unsafe impl<F:ClientFormat,T:PixelType<F>> PixelDataMut<F> for [T] {
-    #[inline] fn pixels_mut(&mut self) -> *mut GLvoid {&mut self[0] as *mut T as *mut GLvoid}
+    #[inline] fn pixels_mut<'a>(
+        &'a mut self, _:&'a mut BindingLocation<UninitBuf>
+    ) -> (Option<Binding<'a,UninitBuf>>, *mut GLvoid) {
+        (None, &mut self[0] as *mut T as *mut GLvoid)
+    }
 }

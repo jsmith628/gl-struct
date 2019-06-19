@@ -1,6 +1,5 @@
 
 use super::*;
-use gl::types::*;
 
 pub use self::internal_format::*;
 pub use self::client_format::*;

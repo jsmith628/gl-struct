@@ -3,7 +3,7 @@ use crate::gl;
 use crate::Target;
 
 use image_format::*;
-use buffer_new::{UninitBuf, BufferTarget};
+use buffer_new::BufferTarget;
 
 use std::convert::TryInto;
 use std::marker::PhantomData;

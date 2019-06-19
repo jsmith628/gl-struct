@@ -32,8 +32,8 @@ pub unsafe fn tex_image_data<T:Texture, P:PixelData<T::ClientFormat>+?Sized>(
 ) {
     let (fmt,ty) = data.format_type().format_type();
     let mut pixel_buf = BufferTarget::PixelUnpackBuffer.as_loc();
-    let _buf = data.bind_pixel_buffer(&mut pixel_buf);
-    tex_image::<T>(tex, level, dim, fmt.into(), ty.into(), data.pixels());
+    let (_buf, ptr) = data.pixels(&mut pixel_buf);
+    tex_image::<T>(tex, level, dim, fmt.into(), ty.into(), ptr);
     drop(_buf)
 }
 
