@@ -203,8 +203,8 @@ glenum! {
     }
 }
 
-pub struct MipmapLevel<'a, T:Texture+PixelTransfer> {
-    pub(super) tex: &'a mut T,
+pub struct MipmapLevel<T:Texture+PixelTransfer> {
+    pub(super) tex: *mut T,
     pub(super) level: GLuint
 }
 
@@ -221,10 +221,10 @@ pub(super) fn get_level_parameter_iv<T:Texture>(tex:&T, level:GLuint, pname: Tex
 
 }
 
-impl<'a, T:Texture+PixelTransfer> MipmapLevel<'a,T> {
+impl<T:Texture+PixelTransfer> MipmapLevel<T> {
 
     #[inline] pub fn get_parameter_iv(&self, pname: TexLevelParameteriv) -> GLint {
-        get_level_parameter_iv(self.tex, self.level, pname)
+        get_level_parameter_iv(unsafe {&*self.tex}, self.level, pname)
     }
 
     #[inline]
@@ -245,23 +245,18 @@ impl<'a, T:Texture+PixelTransfer> MipmapLevel<'a,T> {
     }
 }
 
-unsafe impl<'a, T:Texture+PixelTransfer> Image for MipmapLevel<'a, T> {
+unsafe impl<T:Texture+PixelTransfer> Image for MipmapLevel<T> {
     type InternalFormat = T::InternalFormat;
     type ClientFormat = T::ClientFormat;
     type Dim = T::Dim;
     type Target = T::Target;
 
-    #[inline] fn id(&self) -> GLuint {self.tex.raw().id()}
     #[inline] fn level(&self) -> GLuint {self.level}
-    #[inline] fn dim(&self) -> Self::Dim { self.tex.dim().minimized(self.level)}
+    #[inline] fn dim(&self) -> Self::Dim {  unsafe {&*self.tex}.dim().minimized(self.level)}
+    #[inline] fn raw(&self) -> &RawTex<T::Target> { unsafe { (&*self.tex).raw() } }
 
-    fn image<P:PixelData<Self::ClientFormat>+?Sized>(&mut self, data:&P) {
-        unsafe {
-            let mut pixel_buf = BufferTarget::PixelUnpackBuffer.as_loc();
-            let _buf = self.prepare_transfer(data, &mut pixel_buf);
-            let (fmt, ty) = data.format_type().format_type();
-            tex_image::<T>(self.id(),self.level(),self.dim(),fmt.into(),ty.into(),data.pixels());
-        }
+    #[inline] fn image<P:PixelData<Self::ClientFormat>+?Sized>(&mut self, data:&P) {
+        unsafe { tex_image_data::<T,P>(self.raw().id(),self.level(),self.dim(),data); }
     }
 
     fn sub_image<P:PixelData<Self::ClientFormat>+?Sized>(&mut self, offset:Self::Dim, dim:Self::Dim, data:&P) {
@@ -270,7 +265,7 @@ unsafe impl<'a, T:Texture+PixelTransfer> Image for MipmapLevel<'a, T> {
             let _buf = self.prepare_transfer(data, &mut pixel_buf);
 
             let mut target = T::Target::binding_location();
-            let binding = target.bind_unchecked(self.id());
+            let binding = target.bind(self.raw());
             let level = self.level() as GLint;
 
             //TODO add error checking for dimensions
@@ -292,7 +287,7 @@ unsafe impl<'a, T:Texture+PixelTransfer> Image for MipmapLevel<'a, T> {
         //TODO: provide some sort of fallback for if glClearTexImage isn't available
         unsafe {
             let (fmt, ty) = P::format_type().format_type();
-            gl::ClearTexImage(self.id(), self.level() as GLint, fmt.into(), ty.into(), &data as *const P as *const GLvoid);
+            gl::ClearTexImage(self.raw().id(), self.level() as GLint, fmt.into(), ty.into(), &data as *const P as *const GLvoid);
         }
     }
     fn clear_sub_image<P:PixelType<Self::ClientFormat>>(&mut self, offset:Self::Dim, dim:Self::Dim, data:P) {
@@ -301,19 +296,18 @@ unsafe impl<'a, T:Texture+PixelTransfer> Image for MipmapLevel<'a, T> {
             let (fmt, ty) = P::format_type().format_type();
             let (x,y,z) = (offset.width() as GLsizei, offset.height() as GLsizei, offset.depth() as GLsizei);
             let (w,h,d) = (dim.width() as GLsizei, dim.height() as GLsizei, dim.depth() as GLsizei);
-            gl::ClearTexSubImage(self.id(), self.level() as GLint, x,y,z, w,h,d, fmt.into(), ty.into(), &data as *const P as *const GLvoid);
+            gl::ClearTexSubImage(self.raw().id(), self.level() as GLint, x,y,z, w,h,d, fmt.into(), ty.into(), &data as *const P as *const GLvoid);
         }
     }
 
     fn get_image<P:PixelDataMut<Self::ClientFormat>+?Sized>(&self, data: &mut P) {
         unsafe {
             let (fmt, ty) = data.format_type().format_type();
-
             if gl::GetTextureImage::is_loaded() {
-                gl::GetTextureImage(self.id(), self.level() as GLint, fmt.into(), ty.into(), data.size() as GLsizei, data.pixels_mut());
+                gl::GetTextureImage(self.raw().id(), self.level() as GLint, fmt.into(), ty.into(), data.size() as GLsizei, data.pixels_mut());
             } else {
                 let mut target = T::Target::binding_location();
-                let binding = target.bind_raw(self.id()).unwrap();
+                let binding = target.bind(self.raw());
                 gl::GetTexImage(binding.target_id(), self.level() as GLint, fmt.into(), ty.into(), data.pixels_mut());
             }
 

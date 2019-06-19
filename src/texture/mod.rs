@@ -195,9 +195,9 @@ pub unsafe trait Image: Sized {
     type Dim: TexDim;
     type Target: TextureTarget;
 
-    fn id(&self) -> GLuint;
-    fn level(&self) -> GLuint;
+    fn raw(&self) -> &RawTex<Self::Target>;
     fn dim(&self) -> Self::Dim;
+    fn level(&self) -> GLuint;
 
     fn image<P:PixelData<Self::ClientFormat>+?Sized>(&mut self, data:&P);
     fn sub_image<P:PixelData<Self::ClientFormat>+?Sized>(&mut self, offset:Self::Dim, dim:Self::Dim, data:&P);
@@ -241,6 +241,22 @@ pub struct Tex1D<F:InternalFormat> {
     raw: RawTex<TEXTURE_1D>,
     dim: [usize;1],
     fmt: PhantomData<F>
+}
+
+unsafe impl<F:InternalFormat> Texture for Tex1D<F> {
+    type InternalFormat = F;
+    type Target = TEXTURE_1D;
+
+    type ClientFormat = F::ClientFormat;
+    type Dim = <TEXTURE_1D as TextureTarget>::Dim;
+    type GL = <TEXTURE_1D as TextureTarget>::GL;
+
+    #[inline] fn dim(&self) -> Self::Dim {self.dim}
+    #[inline] fn raw(&self) -> &RawTex<Self::Target> {&self.raw}
+
+    #[inline] unsafe fn from_raw(raw:RawTex<Self::Target>, dim:Self::Dim) -> Self {
+        Tex1D {raw: raw, dim: dim, fmt: PhantomData}
+    }
 }
 
 pub struct Tex1DArray<F:InternalFormat> {
