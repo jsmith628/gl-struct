@@ -36,8 +36,8 @@ glenum! {
 }
 
 pub unsafe trait Image: Sized {
-    type InternalFormat: InternalFormat<FormatType=Self::PixelFormat>;
-    type PixelFormat: ClientFormat;
+    type InternalFormat: InternalFormat<ClientFormat=Self::ClientFormat>;
+    type ClientFormat: ClientFormat;
     type Dim: TexDim;
     type Target: TextureTarget;
 
@@ -45,15 +45,15 @@ pub unsafe trait Image: Sized {
     fn level(&self) -> GLuint;
     fn dim(&self) -> Self::Dim;
 
-    fn image<P:PixelData<Self::PixelFormat>+?Sized>(&mut self, data:&P);
-    fn sub_image<P:PixelData<Self::PixelFormat>+?Sized>(&mut self, offset:Self::Dim, dim:Self::Dim, data:&P);
+    fn image<P:PixelData<Self::ClientFormat>+?Sized>(&mut self, data:&P);
+    fn sub_image<P:PixelData<Self::ClientFormat>+?Sized>(&mut self, offset:Self::Dim, dim:Self::Dim, data:&P);
 
-    fn clear_image<P:PixelType<Self::PixelFormat>>(&mut self, data:P);
-    fn clear_sub_image<P:PixelType<Self::PixelFormat>>(&mut self, offset:Self::Dim, dim:Self::Dim, data:P);
+    fn clear_image<P:PixelType<Self::ClientFormat>>(&mut self, data:P);
+    fn clear_sub_image<P:PixelType<Self::ClientFormat>>(&mut self, offset:Self::Dim, dim:Self::Dim, data:P);
 
-    fn get_image<P:PixelDataMut<Self::PixelFormat>+?Sized>(&self, data: &mut P);
+    fn get_image<P:PixelDataMut<Self::ClientFormat>+?Sized>(&self, data: &mut P);
 
-    fn into_box<P:PixelType<Self::PixelFormat>>(&self) -> Box<[P]> {
+    fn into_box<P:PixelType<Self::ClientFormat>>(&self) -> Box<[P]> {
         let size = size_of::<P>()*self.dim().pixels();
         let mut dest = Vec::with_capacity(size);
         unsafe { dest.set_len(size) };
@@ -88,7 +88,7 @@ impl<'a, T:Texture+PixelTransfer> MipmapLevel<'a,T> {
     }
 
     #[inline]
-    unsafe fn prepare_transfer<'b, P:PixelData<T::PixelFormat>+?Sized>(
+    unsafe fn prepare_transfer<'b, P:PixelData<T::ClientFormat>+?Sized>(
         &self, data:&'b P, loc: &'b mut BindingLocation<UninitBuf>
     ) -> Option<Binding<'b, UninitBuf>> {
         let dim = self.dim();
@@ -107,15 +107,15 @@ impl<'a, T:Texture+PixelTransfer> MipmapLevel<'a,T> {
 
 unsafe impl<'a, T:Texture+PixelTransfer> Image for MipmapLevel<'a, T> {
     type InternalFormat = T::InternalFormat;
-    type PixelFormat = T::PixelFormat;
-    type Dim = DimOf<T>;
+    type ClientFormat = T::ClientFormat;
+    type Dim = T::Dim;
     type Target = T::Target;
 
     #[inline] fn id(&self) -> GLuint {self.tex.raw().id()}
     #[inline] fn level(&self) -> GLuint {self.level}
     #[inline] fn dim(&self) -> Self::Dim { self.tex.dim().minimized(self.level)}
 
-    fn image<P:PixelData<Self::PixelFormat>+?Sized>(&mut self, data:&P) {
+    fn image<P:PixelData<Self::ClientFormat>+?Sized>(&mut self, data:&P) {
         unsafe {
             let mut pixel_buf = BufferTarget::PixelUnpackBuffer.as_loc();
             let _buf = self.prepare_transfer(data, &mut pixel_buf);
@@ -124,7 +124,7 @@ unsafe impl<'a, T:Texture+PixelTransfer> Image for MipmapLevel<'a, T> {
         }
     }
 
-    fn sub_image<P:PixelData<Self::PixelFormat>+?Sized>(&mut self, offset:Self::Dim, dim:Self::Dim, data:&P) {
+    fn sub_image<P:PixelData<Self::ClientFormat>+?Sized>(&mut self, offset:Self::Dim, dim:Self::Dim, data:&P) {
         unsafe {
             let mut pixel_buf = BufferTarget::PixelUnpackBuffer.as_loc();
             let _buf = self.prepare_transfer(data, &mut pixel_buf);
@@ -137,7 +137,7 @@ unsafe impl<'a, T:Texture+PixelTransfer> Image for MipmapLevel<'a, T> {
             let (x,y,z) = (offset.width() as GLsizei, offset.height() as GLsizei, offset.depth() as GLsizei);
             let (w,h,d) = (dim.width() as GLsizei, dim.height() as GLsizei, dim.depth() as GLsizei);
             let (fmt, ty) = data.format_type().format_type();
-            let coords = DimOf::<T>::dim();
+            let coords = T::Dim::dim();
 
             match coords {
                 1 => gl::TexSubImage1D(binding.target_id(), level, x, w, fmt.into(), ty.into(), data.pixels()),
@@ -148,14 +148,14 @@ unsafe impl<'a, T:Texture+PixelTransfer> Image for MipmapLevel<'a, T> {
         }
     }
 
-    fn clear_image<P:PixelType<Self::PixelFormat>>(&mut self, data:P) {
+    fn clear_image<P:PixelType<Self::ClientFormat>>(&mut self, data:P) {
         //TODO: provide some sort of fallback for if glClearTexImage isn't available
         unsafe {
             let (fmt, ty) = P::format_type().format_type();
             gl::ClearTexImage(self.id(), self.level() as GLint, fmt.into(), ty.into(), &data as *const P as *const GLvoid);
         }
     }
-    fn clear_sub_image<P:PixelType<Self::PixelFormat>>(&mut self, offset:Self::Dim, dim:Self::Dim, data:P) {
+    fn clear_sub_image<P:PixelType<Self::ClientFormat>>(&mut self, offset:Self::Dim, dim:Self::Dim, data:P) {
         //TODO: provide some sort of fallback for if glClearTexImage isn't available
         unsafe {
             let (fmt, ty) = P::format_type().format_type();
@@ -165,7 +165,7 @@ unsafe impl<'a, T:Texture+PixelTransfer> Image for MipmapLevel<'a, T> {
         }
     }
 
-    fn get_image<P:PixelDataMut<Self::PixelFormat>+?Sized>(&self, data: &mut P) {
+    fn get_image<P:PixelDataMut<Self::ClientFormat>+?Sized>(&self, data: &mut P) {
         unsafe {
             let (fmt, ty) = data.format_type().format_type();
 

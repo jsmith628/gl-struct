@@ -2,7 +2,7 @@ use crate::*;
 use super::*;
 
 pub unsafe trait InternalFormat {
-    type FormatType: ClientFormat;
+    type ClientFormat: ClientFormat;
     fn glenum() -> GLenum;
 }
 
@@ -24,12 +24,12 @@ pub unsafe trait SizedInternalFormat: InternalFormat {
 
 pub unsafe trait CompressedInternalFormat: InternalFormat {}
 
-pub unsafe trait InternalFormatFloat: InternalFormat<FormatType = ClientFormatFloat> + InternalFormatColor {}
-pub unsafe trait InternalFormatInt: InternalFormat<FormatType = ClientFormatInt> + InternalFormatColor {}
-pub unsafe trait InternalFormatUInt: InternalFormat<FormatType = ClientFormatInt> + InternalFormatColor {}
-pub unsafe trait InternalFormatDepth: InternalFormat<FormatType = ClientFormatDepth> {}
-pub unsafe trait InternalFormatStencil: InternalFormat<FormatType = ClientFormatStencil> {}
-pub unsafe trait InternalFormatDepthStencil: InternalFormat<FormatType = ClientFormatDepthStencil> {}
+pub unsafe trait InternalFormatFloat: InternalFormat<ClientFormat = ClientFormatFloat> + InternalFormatColor {}
+pub unsafe trait InternalFormatInt: InternalFormat<ClientFormat = ClientFormatInt> + InternalFormatColor {}
+pub unsafe trait InternalFormatUInt: InternalFormat<ClientFormat = ClientFormatInt> + InternalFormatColor {}
+pub unsafe trait InternalFormatDepth: InternalFormat<ClientFormat = ClientFormatDepth> {}
+pub unsafe trait InternalFormatStencil: InternalFormat<ClientFormat = ClientFormatStencil> {}
+pub unsafe trait InternalFormatDepthStencil: InternalFormat<ClientFormat = ClientFormatDepthStencil> {}
 
 pub unsafe trait InternalFormatColor: InternalFormat {}
 
@@ -123,7 +123,7 @@ macro_rules! internal_format {
         pub struct $fmt;
 
         unsafe impl InternalFormat for $fmt {
-            type FormatType = internal_format!(@fmt_ty $kind);
+            type ClientFormat = internal_format!(@fmt_ty $kind);
             #[inline] fn glenum() -> GLenum {gl::$fmt}
         }
 

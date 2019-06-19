@@ -29,13 +29,13 @@ glenum! {
 }
 
 unsafe fn tex_storage<T:Texture>(
-    _gl:&GL4, mut tex: RawTex<T::Target>, levels: GLuint, dim: DimOf<T>, sampling: Option<(GLuint,bool)>
+    _gl:&GL4, mut tex: RawTex<T::Target>, levels: GLuint, dim: T::Dim, sampling: Option<(GLuint,bool)>
 ) -> T where T::InternalFormat: SizedInternalFormat {
     let mut target = T::Target::binding_location();
     let binding = target.bind(&mut tex);
     let fmt = T::InternalFormat::glenum();
     let (w,h,d) = (dim.width() as GLsizei, dim.height() as GLsizei, dim.depth() as GLsizei);
-    let coords = DimOf::<T>::dim();
+    let coords = T::Dim::dim();
 
     match sampling {
         Some((samples, fixed)) => match coords {
@@ -55,8 +55,8 @@ unsafe fn tex_storage<T:Texture>(
     T::from_raw(tex, dim)
 }
 
-unsafe fn tex_image_data<T:Texture, P:PixelData<T::PixelFormat>+?Sized>(
-    tex: GLuint, level: GLuint, dim: DimOf<T>, data:&P
+unsafe fn tex_image_data<T:Texture, P:PixelData<T::ClientFormat>+?Sized>(
+    tex: GLuint, level: GLuint, dim: T::Dim, data:&P
 ) {
     let (fmt,ty) = data.format_type().format_type();
     let mut pixel_buf = BufferTarget::PixelUnpackBuffer.as_loc();
@@ -66,12 +66,12 @@ unsafe fn tex_image_data<T:Texture, P:PixelData<T::PixelFormat>+?Sized>(
 }
 
 #[inline]
-unsafe fn tex_image_null<T:Texture>(tex: GLuint, level: GLuint, dim: DimOf<T>) {
+unsafe fn tex_image_null<T:Texture>(tex: GLuint, level: GLuint, dim: T::Dim) {
     tex_image::<T>(tex, level, dim, 0, 0, ::std::ptr::null());
 }
 
 unsafe fn tex_image<T:Texture>(
-    tex: GLuint, level: GLuint, dim: DimOf<T>, fmt:GLenum, ty:GLenum, data:*const GLvoid
+    tex: GLuint, level: GLuint, dim: T::Dim, fmt:GLenum, ty:GLenum, data:*const GLvoid
 ) {
     //bind the texture
     let mut target = T::Target::binding_location();
@@ -80,7 +80,7 @@ unsafe fn tex_image<T:Texture>(
     //convert and rename params
     let int_fmt = T::InternalFormat::glenum() as GLint;
     let (w,h,d) = (dim.width() as GLsizei, dim.height() as GLsizei, dim.depth() as GLsizei);
-    let coords = DimOf::<T>::dim();
+    let coords = T::Dim::dim();
 
     //now, select the right function based on the dimensionality of the texture
     match coords {
@@ -92,13 +92,13 @@ unsafe fn tex_image<T:Texture>(
 }
 
 unsafe fn tex_image_multisample<T:Texture>(
-    tex: &mut RawTex<T::Target>, dim: DimOf<T>, samples: GLuint, fixed: bool
+    tex: &mut RawTex<T::Target>, dim: T::Dim, samples: GLuint, fixed: bool
 ) {
     let mut target = T::Target::binding_location();
     let binding = target.bind(tex);
     let int_fmt = T::InternalFormat::glenum();
     let (w,h,d) = (dim.width() as GLsizei, dim.height() as GLsizei, dim.depth() as GLsizei);
-    let coords = DimOf::<T>::dim();
+    let coords = T::Dim::dim();
 
     match coords {
         2 => gl::TexImage2DMultisample(binding.target_id(), samples as GLsizei, int_fmt, w, h, fixed as GLboolean),
@@ -146,32 +146,34 @@ macro_rules! if_sized {
         }
 
         impl<F,T> Helper<T> for F
-        where F:InternalFormat, T:Texture<InternalFormat=F,PixelFormat=F::FormatType>
+        where F:InternalFormat, T:Texture<InternalFormat=F,ClientFormat=F::ClientFormat>
         {
             #[inline] default fn $name<$($gen)*>($($param: $ty),*) -> $ret where $($rest)* {$($c1)*}
         }
 
         impl<F,T> Helper<T> for F
-        where F:SizedInternalFormat, T:Texture<InternalFormat=F,PixelFormat=F::FormatType>
+        where F:SizedInternalFormat, T:Texture<InternalFormat=F,ClientFormat=F::ClientFormat>
         {
             #[inline] fn $name<$($gen)*>($($param: $ty),*) -> $ret where $($rest)* {$($c2)*}
         }
     }
 }
 
-type DimOf<T> = <<T as Texture>::Target as TextureTarget>::Dim;
-type GLOf<T> = <<T as Texture>::Target as TextureTarget>::GL;
-
 pub unsafe trait Texture: Sized {
-    type InternalFormat: InternalFormat<FormatType=Self::PixelFormat>;
-    type PixelFormat: ClientFormat;
-    type Target: TextureTarget;
+    //the types that matter
+    type InternalFormat: InternalFormat<ClientFormat=Self::ClientFormat>;
+    type Target: TextureTarget<Dim=Self::Dim, GL=Self::GL>;
 
-    fn dim(&self) -> DimOf<Self>;
+    //the types that are effectively aliases
+    type ClientFormat: ClientFormat;
+    type Dim: TexDim;
+    type GL: GLProvider;
+
+    fn dim(&self) -> Self::Dim;
     fn raw(&self) -> &RawTex<Self::Target>;
     fn raw_mut(&mut self) -> &mut RawTex<Self::Target>;
 
-    unsafe fn from_raw(raw:RawTex<Self::Target>, dim:DimOf<Self>) -> Self;
+    unsafe fn from_raw(raw:RawTex<Self::Target>, dim:Self::Dim) -> Self;
 
     #[inline]
     fn immutable_storage(&self) -> bool {
@@ -179,11 +181,11 @@ pub unsafe trait Texture: Sized {
     }
 
     #[inline]
-    unsafe fn alloc(gl:&GLOf<Self>, dim:DimOf<Self>) -> Self {
+    unsafe fn alloc(gl:&Self::GL, dim:Self::Dim) -> Self {
         let raw = RawTex::gen(gl);
         if let Ok(gl4) = gl.try_as_gl4() {
             if_sized!(
-                helper()(_gl:&GL4,tex:RawTex<T::Target>,d:DimOf<T>) -> T
+                helper()(_gl:&GL4,tex:RawTex<T::Target>,d:T::Dim) -> T
                     {unsafe{T::image(tex, d)}}
                     {unsafe{T::storage(_gl, tex, d)}}
                 where
@@ -195,7 +197,7 @@ pub unsafe trait Texture: Sized {
     }
 
     #[inline]
-    unsafe fn image(mut raw:RawTex<Self::Target>, dim:DimOf<Self>) -> Self {
+    unsafe fn image(mut raw:RawTex<Self::Target>, dim:Self::Dim) -> Self {
         if Self::Target::multisample() {
             tex_image_multisample::<Self>(&mut raw, dim, 0, false)
         } else {
@@ -205,7 +207,7 @@ pub unsafe trait Texture: Sized {
     }
 
     #[inline]
-    unsafe fn storage(gl:&GL4, raw:RawTex<Self::Target>, dim:DimOf<Self>) -> Self
+    unsafe fn storage(gl:&GL4, raw:RawTex<Self::Target>, dim:Self::Dim) -> Self
         where Self::InternalFormat:SizedInternalFormat
     {
         let sampling = if Self::Target::multisample() {Some((0,false))} else {None};
@@ -217,8 +219,8 @@ pub unsafe trait Texture: Sized {
 pub unsafe trait PixelTransfer: Texture {
 
     type BaseImage: Image<
-        Dim = DimOf<Self>,
-        PixelFormat = <Self as Texture>::PixelFormat,
+        Dim = Self::Dim,
+        ClientFormat = <Self as Texture>::ClientFormat,
         InternalFormat = <Self as Texture>::InternalFormat,
     >;
 
@@ -274,14 +276,14 @@ pub unsafe trait PixelTransfer: Texture {
         }
     }
 
-    fn from_pixels<P:PixelData<Self::PixelFormat>+?Sized>(
-        gl:&GLOf<Self>, dim:DimOf<Self>, data:&P
+    fn from_pixels<P:PixelData<Self::ClientFormat>+?Sized>(
+        gl:&Self::GL, dim:Self::Dim, data:&P
     ) -> Self {
         let raw = RawTex::gen(gl);
         if let Ok(gl4) = gl.try_as_gl4() {
             if_sized!(
-                helper(P:PixelData<T::PixelFormat>+?Sized)(
-                    _gl:&GL4,tex:RawTex<T::Target>,d:DimOf<T>,p:&P
+                helper(P:PixelData<T::ClientFormat>+?Sized)(
+                    _gl:&GL4,tex:RawTex<T::Target>,d:T::Dim,p:&P
                 ) -> T
                     {T::image_from_pixels(tex, d, p)}
                     {T::storage_from_pixels(_gl, tex, d, p)}
@@ -294,15 +296,15 @@ pub unsafe trait PixelTransfer: Texture {
 
     }
 
-    fn image_from_pixels<P:PixelData<Self::PixelFormat>+?Sized>(raw:RawTex<Self::Target>, dim:DimOf<Self>, data:&P) -> Self {
+    fn image_from_pixels<P:PixelData<Self::ClientFormat>+?Sized>(raw:RawTex<Self::Target>, dim:Self::Dim, data:&P) -> Self {
         unsafe {
             tex_image_data::<Self, _>(raw.id(), 0, dim, data);
             Self::from_raw(raw, dim)
         }
     }
 
-    fn storage_from_pixels<P>(gl:&GL4, raw:RawTex<Self::Target>, dim:DimOf<Self>, data:&P) -> Self
-        where P:PixelData<Self::PixelFormat>+?Sized, Self::InternalFormat:SizedInternalFormat
+    fn storage_from_pixels<P>(gl:&GL4, raw:RawTex<Self::Target>, dim:Self::Dim, data:&P) -> Self
+        where P:PixelData<Self::ClientFormat>+?Sized, Self::InternalFormat:SizedInternalFormat
     {
         let mut tex = unsafe { Self::storage(gl, raw, dim) };
         tex.base_image().image(data);
@@ -349,11 +351,11 @@ pub unsafe trait MipmappedTexture: PixelTransfer {
     }
 
     #[inline]
-    unsafe fn alloc_mipmaps(gl:&GLOf<Self>, levels:GLuint, dim:DimOf<Self>) -> Self {
+    unsafe fn alloc_mipmaps(gl:&Self::GL, levels:GLuint, dim:Self::Dim) -> Self {
         let raw = RawTex::gen(gl);
         if let Ok(gl4) = gl.try_as_gl4() {
             if_sized!(
-                helper()(_gl:&GL4,tex:RawTex<T::Target>,l:GLuint,d:DimOf<T>) -> T
+                helper()(_gl:&GL4,tex:RawTex<T::Target>,l:GLuint,d:T::Dim) -> T
                     {unsafe{T::image_mipmaps(tex, l, d)}}
                     {unsafe{T::storage_mipmaps(_gl, tex, l, d)}}
                 where T:MipmappedTexture
@@ -365,7 +367,7 @@ pub unsafe trait MipmappedTexture: PixelTransfer {
     }
 
     #[inline]
-    unsafe fn image_mipmaps(raw:RawTex<Self::Target>, levels:GLuint, dim:DimOf<Self>) -> Self {
+    unsafe fn image_mipmaps(raw:RawTex<Self::Target>, levels:GLuint, dim:Self::Dim) -> Self {
         let mut tex = Self::image(raw, dim);
         tex.set_max_level(levels);
         // tex.gen_mipmaps(0..levels);
@@ -373,19 +375,19 @@ pub unsafe trait MipmappedTexture: PixelTransfer {
     }
 
     #[inline]
-    unsafe fn storage_mipmaps(gl:&GL4, raw:RawTex<Self::Target>, levels:GLuint, dim:DimOf<Self>) -> Self
+    unsafe fn storage_mipmaps(gl:&GL4, raw:RawTex<Self::Target>, levels:GLuint, dim:Self::Dim) -> Self
     where Self::InternalFormat: SizedInternalFormat{
         tex_storage(gl, raw, levels, dim, None)
     }
 
-    fn from_mipmaps<P:PixelData<Self::PixelFormat>+?Sized>(
-        gl:&GLOf<Self>, levels:GLuint, dim:DimOf<Self>, base:&P, mipmaps: Option<HashMap<GLuint, &P>>
+    fn from_mipmaps<P:PixelData<Self::ClientFormat>+?Sized>(
+        gl:&Self::GL, levels:GLuint, dim:Self::Dim, base:&P, mipmaps: Option<HashMap<GLuint, &P>>
     ) -> Self {
         let raw = RawTex::gen(gl);
         if let Ok(gl4) = gl.try_as_gl4() {
             if_sized!(
-                helper(P:PixelData<T::PixelFormat>+?Sized)(
-                    _gl:&GL4, tex:RawTex<T::Target>, l:GLuint, d:DimOf<T>, b:&P, m: Option<HashMap<GLuint, &P>>
+                helper(P:PixelData<T::ClientFormat>+?Sized)(
+                    _gl:&GL4, tex:RawTex<T::Target>, l:GLuint, d:T::Dim, b:&P, m: Option<HashMap<GLuint, &P>>
                 ) -> T
                     {T::image_from_mipmaps(tex, l, d, b, m)}
                     {T::storage_from_mipmaps(_gl, tex, l, d, b, m)}
@@ -397,8 +399,8 @@ pub unsafe trait MipmappedTexture: PixelTransfer {
         }
     }
 
-    fn image_from_mipmaps<P:PixelData<Self::PixelFormat>+?Sized>(
-        raw:RawTex<Self::Target>, levels:GLuint, dim:DimOf<Self>, base:&P, mipmaps: Option<HashMap<GLuint, &P>>
+    fn image_from_mipmaps<P:PixelData<Self::ClientFormat>+?Sized>(
+        raw:RawTex<Self::Target>, levels:GLuint, dim:Self::Dim, base:&P, mipmaps: Option<HashMap<GLuint, &P>>
     ) -> Self {
         let mut tex = Self::image_from_pixels(raw, dim, base);
         tex.set_max_level(levels);
@@ -414,8 +416,8 @@ pub unsafe trait MipmappedTexture: PixelTransfer {
     }
 
     fn storage_from_mipmaps<P>(
-        gl:&GL4, raw:RawTex<Self::Target>, levels:GLuint, dim:DimOf<Self>, base:&P, mipmaps: Option<HashMap<GLuint, &P>>
-    ) -> Self where P:PixelData<Self::PixelFormat>+?Sized, Self::InternalFormat:SizedInternalFormat {
+        gl:&GL4, raw:RawTex<Self::Target>, levels:GLuint, dim:Self::Dim, base:&P, mipmaps: Option<HashMap<GLuint, &P>>
+    ) -> Self where P:PixelData<Self::ClientFormat>+?Sized, Self::InternalFormat:SizedInternalFormat {
         let mut tex = unsafe { Self::storage_mipmaps(gl, raw, levels, dim) };
         tex.set_max_level(levels);
         tex.level(0).image(base);
@@ -489,12 +491,12 @@ pub unsafe trait MultisampledTexture: Texture {
 
     #[inline]
     unsafe fn alloc_multisample(
-        gl:&GLOf<Self>, samples:GLuint, dim:DimOf<Self>, fixed_sample_locations: bool
+        gl:&Self::GL, samples:GLuint, dim:Self::Dim, fixed_sample_locations: bool
     ) -> Self {
         let raw = RawTex::gen(gl);
         if let Ok(gl4) = gl.try_as_gl4() {
             if_sized!(
-                helper()(_gl:&GL4,tex:RawTex<T::Target>,s:GLuint,d:DimOf<T>,f:bool) -> T
+                helper()(_gl:&GL4,tex:RawTex<T::Target>,s:GLuint,d:T::Dim,f:bool) -> T
                     {unsafe{T::image_multisample(tex, s, d, f)}}
                     {unsafe{T::storage_multisample(_gl, tex, s, d, f)}}
                 where T:MultisampledTexture
@@ -506,14 +508,14 @@ pub unsafe trait MultisampledTexture: Texture {
     }
 
     #[inline]
-    unsafe fn image_multisample(mut raw:RawTex<Self::Target>, samples:GLuint, dim:DimOf<Self>, fixed_sample_locations: bool) -> Self {
+    unsafe fn image_multisample(mut raw:RawTex<Self::Target>, samples:GLuint, dim:Self::Dim, fixed_sample_locations: bool) -> Self {
         tex_image_multisample::<Self>(&mut raw, dim, samples, fixed_sample_locations);
         Self::from_raw(raw, dim)
     }
 
     #[inline]
     unsafe fn storage_multisample(
-        gl:&GL4, raw:RawTex<Self::Target>, samples:GLuint, dim:DimOf<Self>, fixed_sample_locations: bool
+        gl:&GL4, raw:RawTex<Self::Target>, samples:GLuint, dim:Self::Dim, fixed_sample_locations: bool
     ) -> Self
     where <Self as Texture>::InternalFormat: SizedInternalFormat
     {
@@ -527,7 +529,7 @@ macro_rules! impl_tex {
         unsafe impl<F:InternalFormat> Texture for $name<F> {
 
             type InternalFormat = F;
-            type PixelFormat = F::FormatType;
+            type ClientFormat = F::ClientFormat;
             type Dim = $dim;
 
             const TARGET: TextureTarget = TextureTarget::$target;
