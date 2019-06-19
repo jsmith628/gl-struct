@@ -1,3 +1,174 @@
+use super::*;
+
+
+fn clamp_range<T:MipmappedTexture, R:RangeBounds<GLuint>>(t:&T, r:&R) -> (GLuint, GLuint) {
+    (
+        match r.start_bound() {
+            Bound::Included(m) => *m,
+            Bound::Excluded(m) => *m + 1,
+            Bound::Unbounded => 0
+        },
+        match r.end_bound() {
+            Bound::Included(m) => *m,
+            Bound::Excluded(m) => *m - 1,
+            Bound::Unbounded => t.dim().max_levels()
+        }
+    )
+}
+
+pub unsafe trait MipmappedTexture: PixelTransfer {
+
+    #[inline] fn immutable_levels(&self) -> GLuint {unsafe{get_tex_parameter_iv(self, gl::TEXTURE_IMMUTABLE_LEVELS) as GLuint}}
+    #[inline] fn base_level(&self) -> GLuint {unsafe{get_tex_parameter_iv(self, gl::TEXTURE_BASE_LEVEL) as GLuint}}
+    #[inline] fn max_level(&self) -> GLuint {unsafe{get_tex_parameter_iv(self, gl::TEXTURE_MAX_LEVEL) as GLuint}}
+
+    #[inline] fn set_base_level(&mut self, level: GLuint) {
+        if cfg!(debug_assertions) && level > self.max_level() { panic!("Base level higher than current max level"); }
+        unsafe { tex_parameter_iv(self, gl::TEXTURE_BASE_LEVEL, &(level as GLint) as *const GLint) }
+    }
+
+    #[inline] fn set_max_level(&mut self, level: GLuint) {
+        if cfg!(debug_assertions) {
+            if level < self.base_level() { panic!("Max level lower than max level"); }
+            if self.immutable_storage() && level >= self.immutable_levels() {
+                panic!("Base level higher than allocated immutable storage");
+            }
+        }
+        unsafe { tex_parameter_iv(self, gl::TEXTURE_MAX_LEVEL, &(level as GLint) as *const GLint) }
+    }
+
+    #[inline]
+    unsafe fn alloc_mipmaps(gl:&Self::GL, levels:GLuint, dim:Self::Dim) -> Self {
+        let raw = RawTex::gen(gl);
+        if let Ok(gl4) = gl.try_as_gl4() {
+            if_sized!(
+                helper()(_gl:&GL4,tex:RawTex<T::Target>,l:GLuint,d:T::Dim) -> T
+                    {unsafe{T::image_mipmaps(tex, l, d)}}
+                    {unsafe{T::storage_mipmaps(_gl, tex, l, d)}}
+                where T:MipmappedTexture
+            );
+            Self::InternalFormat::helper(&gl4, raw, levels, dim)
+        } else {
+            Self::image_mipmaps(raw, levels, dim)
+        }
+    }
+
+    #[inline]
+    unsafe fn image_mipmaps(raw:RawTex<Self::Target>, levels:GLuint, dim:Self::Dim) -> Self {
+        let mut tex = Self::image(raw, dim);
+        tex.set_max_level(levels);
+        // tex.gen_mipmaps(0..levels);
+        tex
+    }
+
+    #[inline]
+    unsafe fn storage_mipmaps(gl:&GL4, raw:RawTex<Self::Target>, levels:GLuint, dim:Self::Dim) -> Self
+    where Self::InternalFormat: SizedInternalFormat{
+        tex_storage(gl, raw, levels, dim, None)
+    }
+
+    fn from_mipmaps<P:PixelData<Self::ClientFormat>+?Sized>(
+        gl:&Self::GL, levels:GLuint, dim:Self::Dim, base:&P, mipmaps: Option<HashMap<GLuint, &P>>
+    ) -> Self {
+        let raw = RawTex::gen(gl);
+        if let Ok(gl4) = gl.try_as_gl4() {
+            if_sized!(
+                helper(P:PixelData<T::ClientFormat>+?Sized)(
+                    _gl:&GL4, tex:RawTex<T::Target>, l:GLuint, d:T::Dim, b:&P, m: Option<HashMap<GLuint, &P>>
+                ) -> T
+                    {T::image_from_mipmaps(tex, l, d, b, m)}
+                    {T::storage_from_mipmaps(_gl, tex, l, d, b, m)}
+                where T:MipmappedTexture
+            );
+            Self::InternalFormat::helper(&gl4, raw, levels, dim, base, mipmaps)
+        } else {
+            Self::image_from_mipmaps(raw, levels, dim, base, mipmaps)
+        }
+    }
+
+    fn image_from_mipmaps<P:PixelData<Self::ClientFormat>+?Sized>(
+        raw:RawTex<Self::Target>, levels:GLuint, dim:Self::Dim, base:&P, mipmaps: Option<HashMap<GLuint, &P>>
+    ) -> Self {
+        let mut tex = Self::image_from_pixels(raw, dim, base);
+        tex.set_max_level(levels);
+        match mipmaps {
+            None => tex.gen_mipmaps(0..levels),
+            Some(map) => {
+                for (level, pixels) in map.into_iter() {
+                    tex.level(level).image(pixels);
+                }
+            }
+        }
+        tex
+    }
+
+    fn storage_from_mipmaps<P>(
+        gl:&GL4, raw:RawTex<Self::Target>, levels:GLuint, dim:Self::Dim, base:&P, mipmaps: Option<HashMap<GLuint, &P>>
+    ) -> Self where P:PixelData<Self::ClientFormat>+?Sized, Self::InternalFormat:SizedInternalFormat {
+        let mut tex = unsafe { Self::storage_mipmaps(gl, raw, levels, dim) };
+        tex.set_max_level(levels);
+        tex.level(0).image(base);
+        match mipmaps {
+            None => tex.gen_mipmaps(0..levels),
+            Some(map) => {
+                let mut levels = Vec::with_capacity(map.len());
+                for (level, pixels) in map.into_iter() {
+                    //load the mipmap image
+                    tex.level(level).image(pixels);
+
+                    //insert the level and sort
+                    let mut i = levels.len();
+                    levels.push(level);
+                    while i>0 {
+                        if levels[i-1] > levels[i] { levels.swap(i-1, i) }
+                        i -= 1;
+                    }
+                }
+
+                //generate the empty levels
+                for i in 0..levels.len()-1 {
+                    if levels[i]+1 < levels[i+1] {
+                        tex.gen_mipmaps(levels[i] .. levels[i+1]);
+                    }
+                }
+            }
+        }
+        tex
+    }
+
+    fn gen_mipmaps<R:RangeBounds<GLuint>>(&mut self, range: R) {
+
+        let (min, max) = clamp_range(self, &range);
+        if max >= min {
+            return;
+        } else {
+            let (prev_base, prev_max) = (self.base_level(), self.max_level());
+            self.set_base_level(min);
+            self.set_max_level(max);
+
+            unsafe {
+                let mut target = <Self as Texture>::Target::binding_location();
+                let binding = target.bind(self.raw_mut());
+                gl::GenerateMipmap(binding.target_id());
+            }
+
+            self.set_base_level(prev_base);
+            self.set_max_level(prev_max);
+        }
+
+    }
+
+    #[inline] fn level(&mut self, level: GLuint) -> MipmapLevel<Self> {MipmapLevel{tex:self, level:level}}
+    #[inline] fn level_range<R:RangeBounds<GLuint>>(&mut self, range: R) -> Box<[MipmapLevel<Self>]> {
+        let (min, max) = clamp_range(self, &range);
+        unsafe {
+            let ptr = self as *mut Self;
+            (min..=max).map(|i| (&mut *ptr).level(i)).collect::<Box<[_]>>()
+        }
+    }
+
+}
+
 
 use super::*;
 use image_format::pixel_data::{apply_packing_settings, apply_unpacking_settings};
@@ -33,34 +204,6 @@ glenum! {
         [BufferOffset TEXTURE_BUFFER_OFFSET "Buffer Offset"],
         [BufferSize TEXTURE_BUFFER_SIZE "Buffer Size"]
     }
-}
-
-pub unsafe trait Image: Sized {
-    type InternalFormat: InternalFormat<ClientFormat=Self::ClientFormat>;
-    type ClientFormat: ClientFormat;
-    type Dim: TexDim;
-    type Target: TextureTarget;
-
-    fn id(&self) -> GLuint;
-    fn level(&self) -> GLuint;
-    fn dim(&self) -> Self::Dim;
-
-    fn image<P:PixelData<Self::ClientFormat>+?Sized>(&mut self, data:&P);
-    fn sub_image<P:PixelData<Self::ClientFormat>+?Sized>(&mut self, offset:Self::Dim, dim:Self::Dim, data:&P);
-
-    fn clear_image<P:PixelType<Self::ClientFormat>>(&mut self, data:P);
-    fn clear_sub_image<P:PixelType<Self::ClientFormat>>(&mut self, offset:Self::Dim, dim:Self::Dim, data:P);
-
-    fn get_image<P:PixelDataMut<Self::ClientFormat>+?Sized>(&self, data: &mut P);
-
-    fn into_box<P:PixelType<Self::ClientFormat>>(&self) -> Box<[P]> {
-        let size = size_of::<P>()*self.dim().pixels();
-        let mut dest = Vec::with_capacity(size);
-        unsafe { dest.set_len(size) };
-        self.get_image(dest.as_mut_slice());
-        dest.into_boxed_slice()
-    }
-
 }
 
 pub struct MipmapLevel<'a, T:Texture+PixelTransfer> {

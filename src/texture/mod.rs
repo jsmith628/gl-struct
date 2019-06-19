@@ -11,11 +11,16 @@ use std::ops::{Bound,RangeBounds};
 use std::collections::HashMap;
 use std::mem::{size_of, uninitialized};
 
-pub use self::image::*;
-pub use self::raw::*;
+use self::helper_methods::*;
+#[macro_use] mod helper_methods;
 
-mod image;
+pub use self::raw::*;
+pub use self::mipmapped::*;
+pub use self::multisampled::*;
+
 mod raw;
+mod mipmapped;
+mod multisampled;
 
 glenum! {
     pub enum TextureSwizzle {
@@ -25,137 +30,6 @@ glenum! {
         [Alpha ALPHA "Alpha Component"],
         [Zero ZERO "Zero"],
         [One ONE "One"]
-    }
-}
-
-unsafe fn tex_storage<T:Texture>(
-    _gl:&GL4, mut tex: RawTex<T::Target>, levels: GLuint, dim: T::Dim, sampling: Option<(GLuint,bool)>
-) -> T where T::InternalFormat: SizedInternalFormat {
-    let mut target = T::Target::binding_location();
-    let binding = target.bind(&mut tex);
-    let fmt = T::InternalFormat::glenum();
-    let (w,h,d) = (dim.width() as GLsizei, dim.height() as GLsizei, dim.depth() as GLsizei);
-    let coords = T::Dim::dim();
-
-    match sampling {
-        Some((samples, fixed)) => match coords {
-            2 => gl::TexStorage2DMultisample(binding.target_id(), samples as GLsizei, fmt, w, h, fixed as GLboolean),
-            3 => gl::TexStorage3DMultisample(binding.target_id(), samples as GLsizei, fmt, w, h, d, fixed as GLboolean),
-            _ => panic!("{}D Multisample textures not currently supported", coords)
-        },
-        None => match coords {
-            1 => gl::TexStorage1D(binding.target_id(), levels as GLsizei, fmt, w),
-            2 => gl::TexStorage2D(binding.target_id(), levels as GLsizei, fmt, w, h),
-            3 => gl::TexStorage3D(binding.target_id(), levels as GLsizei, fmt, w, h, d),
-            _ => panic!("{}D Textures not currently supported", coords)
-        }
-    }
-    drop(binding);
-
-    T::from_raw(tex, dim)
-}
-
-unsafe fn tex_image_data<T:Texture, P:PixelData<T::ClientFormat>+?Sized>(
-    tex: GLuint, level: GLuint, dim: T::Dim, data:&P
-) {
-    let (fmt,ty) = data.format_type().format_type();
-    let mut pixel_buf = BufferTarget::PixelUnpackBuffer.as_loc();
-    let _buf = data.bind_pixel_buffer(&mut pixel_buf);
-    tex_image::<T>(tex, level, dim, fmt.into(), ty.into(), data.pixels());
-    drop(_buf)
-}
-
-#[inline]
-unsafe fn tex_image_null<T:Texture>(tex: GLuint, level: GLuint, dim: T::Dim) {
-    tex_image::<T>(tex, level, dim, 0, 0, ::std::ptr::null());
-}
-
-unsafe fn tex_image<T:Texture>(
-    tex: GLuint, level: GLuint, dim: T::Dim, fmt:GLenum, ty:GLenum, data:*const GLvoid
-) {
-    //bind the texture
-    let mut target = T::Target::binding_location();
-    let binding = target.bind_unchecked(tex);
-
-    //convert and rename params
-    let int_fmt = T::InternalFormat::glenum() as GLint;
-    let (w,h,d) = (dim.width() as GLsizei, dim.height() as GLsizei, dim.depth() as GLsizei);
-    let coords = T::Dim::dim();
-
-    //now, select the right function based on the dimensionality of the texture
-    match coords {
-        1 => gl::TexImage1D(binding.target_id(), level as GLint, int_fmt, w, 0, fmt, ty, data),
-        2 => gl::TexImage2D(binding.target_id(), level as GLint, int_fmt, w, h, 0, fmt, ty, data),
-        3 => gl::TexImage3D(binding.target_id(), level as GLint, int_fmt, w, h, d, 0, fmt, ty, data),
-        _ => panic!("{}D Textures not currently supported", coords)
-    }
-}
-
-unsafe fn tex_image_multisample<T:Texture>(
-    tex: &mut RawTex<T::Target>, dim: T::Dim, samples: GLuint, fixed: bool
-) {
-    let mut target = T::Target::binding_location();
-    let binding = target.bind(tex);
-    let int_fmt = T::InternalFormat::glenum();
-    let (w,h,d) = (dim.width() as GLsizei, dim.height() as GLsizei, dim.depth() as GLsizei);
-    let coords = T::Dim::dim();
-
-    match coords {
-        2 => gl::TexImage2DMultisample(binding.target_id(), samples as GLsizei, int_fmt, w, h, fixed as GLboolean),
-        3 => gl::TexImage3DMultisample(binding.target_id(), samples as GLsizei, int_fmt, w, h, d, fixed as GLboolean),
-        _ => panic!("{}D Multisample Textures not currently supported", coords)
-    }
-}
-
-unsafe fn tex_parameter_iv<T:Texture>(tex:&mut T, pname:GLenum, params: *const GLint) {
-    if gl::TextureParameteriv::is_loaded() {
-        gl::TextureParameteriv(tex.raw_mut().id(), pname, params);
-    } else {
-        let mut target = T::Target::binding_location();
-        let binding = target.bind(tex.raw_mut());
-        gl::TexParameteriv(binding.target_id(), pname, params);
-    }
-}
-
-unsafe fn get_tex_parameter_iv<T:Texture>(tex:&T, pname:GLenum) -> GLint {
-    let mut param = ::std::mem::uninitialized();
-    if gl::GetTextureParameteriv::is_loaded() {
-        gl::GetTextureParameteriv(tex.raw().id(), pname, &mut param as *mut GLint);
-    } else {
-        let mut target = T::Target::binding_location();
-        let binding = target.bind(tex.raw());
-        gl::GetTexParameteriv(binding.target_id(), pname, &mut param as *mut GLint);
-    }
-    param
-}
-
-#[inline]
-unsafe fn get_swizzle_param<T:Texture>(tex:&T, pname:GLenum) -> TextureSwizzle {
-    (get_tex_parameter_iv(tex, pname) as GLenum).try_into().unwrap()
-}
-
-#[inline]
-unsafe fn swizzle_param<T:Texture>(tex:&mut T, pname:GLenum, param:TextureSwizzle) {
-    tex_parameter_iv(tex, pname, &mut (param as GLint) as *mut GLint)
-}
-
-macro_rules! if_sized {
-    ($name:ident($($gen:tt)*)($($param:ident: $ty:ty),*) -> $ret:ty {$($c1:tt)*} {$($c2:tt)*} where $($rest:tt)* ) => {
-        trait Helper<T:Texture>: InternalFormat {
-            fn $name<$($gen)*>($($param: $ty),*) -> $ret where $($rest)*;
-        }
-
-        impl<F,T> Helper<T> for F
-        where F:InternalFormat, T:Texture<InternalFormat=F,ClientFormat=F::ClientFormat>
-        {
-            #[inline] default fn $name<$($gen)*>($($param: $ty),*) -> $ret where $($rest)* {$($c1)*}
-        }
-
-        impl<F,T> Helper<T> for F
-        where F:SizedInternalFormat, T:Texture<InternalFormat=F,ClientFormat=F::ClientFormat>
-        {
-            #[inline] fn $name<$($gen)*>($($param: $ty),*) -> $ret where $($rest)* {$($c2)*}
-        }
     }
 }
 
@@ -314,212 +188,30 @@ pub unsafe trait PixelTransfer: Texture {
     fn base_image(&mut self) -> Self::BaseImage;
 }
 
-fn clamp_range<T:MipmappedTexture, R:RangeBounds<GLuint>>(t:&T, r:&R) -> (GLuint, GLuint) {
-    (
-        match r.start_bound() {
-            Bound::Included(m) => *m,
-            Bound::Excluded(m) => *m + 1,
-            Bound::Unbounded => 0
-        },
-        match r.end_bound() {
-            Bound::Included(m) => *m,
-            Bound::Excluded(m) => *m - 1,
-            Bound::Unbounded => t.dim().max_levels()
-        }
-    )
-}
+pub unsafe trait Image: Sized {
+    type InternalFormat: InternalFormat<ClientFormat=Self::ClientFormat>;
+    type ClientFormat: ClientFormat;
+    type Dim: TexDim;
+    type Target: TextureTarget;
 
-pub unsafe trait MipmappedTexture: PixelTransfer {
+    fn id(&self) -> GLuint;
+    fn level(&self) -> GLuint;
+    fn dim(&self) -> Self::Dim;
 
-    #[inline] fn immutable_levels(&self) -> GLuint {unsafe{get_tex_parameter_iv(self, gl::TEXTURE_IMMUTABLE_LEVELS) as GLuint}}
-    #[inline] fn base_level(&self) -> GLuint {unsafe{get_tex_parameter_iv(self, gl::TEXTURE_BASE_LEVEL) as GLuint}}
-    #[inline] fn max_level(&self) -> GLuint {unsafe{get_tex_parameter_iv(self, gl::TEXTURE_MAX_LEVEL) as GLuint}}
+    fn image<P:PixelData<Self::ClientFormat>+?Sized>(&mut self, data:&P);
+    fn sub_image<P:PixelData<Self::ClientFormat>+?Sized>(&mut self, offset:Self::Dim, dim:Self::Dim, data:&P);
 
-    #[inline] fn set_base_level(&mut self, level: GLuint) {
-        if cfg!(debug_assertions) && level > self.max_level() { panic!("Base level higher than current max level"); }
-        unsafe { tex_parameter_iv(self, gl::TEXTURE_BASE_LEVEL, &(level as GLint) as *const GLint) }
-    }
+    fn clear_image<P:PixelType<Self::ClientFormat>>(&mut self, data:P);
+    fn clear_sub_image<P:PixelType<Self::ClientFormat>>(&mut self, offset:Self::Dim, dim:Self::Dim, data:P);
 
-    #[inline] fn set_max_level(&mut self, level: GLuint) {
-        if cfg!(debug_assertions) {
-            if level < self.base_level() { panic!("Max level lower than max level"); }
-            if self.immutable_storage() && level >= self.immutable_levels() {
-                panic!("Base level higher than allocated immutable storage");
-            }
-        }
-        unsafe { tex_parameter_iv(self, gl::TEXTURE_MAX_LEVEL, &(level as GLint) as *const GLint) }
-    }
+    fn get_image<P:PixelDataMut<Self::ClientFormat>+?Sized>(&self, data: &mut P);
 
-    #[inline]
-    unsafe fn alloc_mipmaps(gl:&Self::GL, levels:GLuint, dim:Self::Dim) -> Self {
-        let raw = RawTex::gen(gl);
-        if let Ok(gl4) = gl.try_as_gl4() {
-            if_sized!(
-                helper()(_gl:&GL4,tex:RawTex<T::Target>,l:GLuint,d:T::Dim) -> T
-                    {unsafe{T::image_mipmaps(tex, l, d)}}
-                    {unsafe{T::storage_mipmaps(_gl, tex, l, d)}}
-                where T:MipmappedTexture
-            );
-            Self::InternalFormat::helper(&gl4, raw, levels, dim)
-        } else {
-            Self::image_mipmaps(raw, levels, dim)
-        }
-    }
-
-    #[inline]
-    unsafe fn image_mipmaps(raw:RawTex<Self::Target>, levels:GLuint, dim:Self::Dim) -> Self {
-        let mut tex = Self::image(raw, dim);
-        tex.set_max_level(levels);
-        // tex.gen_mipmaps(0..levels);
-        tex
-    }
-
-    #[inline]
-    unsafe fn storage_mipmaps(gl:&GL4, raw:RawTex<Self::Target>, levels:GLuint, dim:Self::Dim) -> Self
-    where Self::InternalFormat: SizedInternalFormat{
-        tex_storage(gl, raw, levels, dim, None)
-    }
-
-    fn from_mipmaps<P:PixelData<Self::ClientFormat>+?Sized>(
-        gl:&Self::GL, levels:GLuint, dim:Self::Dim, base:&P, mipmaps: Option<HashMap<GLuint, &P>>
-    ) -> Self {
-        let raw = RawTex::gen(gl);
-        if let Ok(gl4) = gl.try_as_gl4() {
-            if_sized!(
-                helper(P:PixelData<T::ClientFormat>+?Sized)(
-                    _gl:&GL4, tex:RawTex<T::Target>, l:GLuint, d:T::Dim, b:&P, m: Option<HashMap<GLuint, &P>>
-                ) -> T
-                    {T::image_from_mipmaps(tex, l, d, b, m)}
-                    {T::storage_from_mipmaps(_gl, tex, l, d, b, m)}
-                where T:MipmappedTexture
-            );
-            Self::InternalFormat::helper(&gl4, raw, levels, dim, base, mipmaps)
-        } else {
-            Self::image_from_mipmaps(raw, levels, dim, base, mipmaps)
-        }
-    }
-
-    fn image_from_mipmaps<P:PixelData<Self::ClientFormat>+?Sized>(
-        raw:RawTex<Self::Target>, levels:GLuint, dim:Self::Dim, base:&P, mipmaps: Option<HashMap<GLuint, &P>>
-    ) -> Self {
-        let mut tex = Self::image_from_pixels(raw, dim, base);
-        tex.set_max_level(levels);
-        match mipmaps {
-            None => tex.gen_mipmaps(0..levels),
-            Some(map) => {
-                for (level, pixels) in map.into_iter() {
-                    tex.level(level).image(pixels);
-                }
-            }
-        }
-        tex
-    }
-
-    fn storage_from_mipmaps<P>(
-        gl:&GL4, raw:RawTex<Self::Target>, levels:GLuint, dim:Self::Dim, base:&P, mipmaps: Option<HashMap<GLuint, &P>>
-    ) -> Self where P:PixelData<Self::ClientFormat>+?Sized, Self::InternalFormat:SizedInternalFormat {
-        let mut tex = unsafe { Self::storage_mipmaps(gl, raw, levels, dim) };
-        tex.set_max_level(levels);
-        tex.level(0).image(base);
-        match mipmaps {
-            None => tex.gen_mipmaps(0..levels),
-            Some(map) => {
-                let mut levels = Vec::with_capacity(map.len());
-                for (level, pixels) in map.into_iter() {
-                    //load the mipmap image
-                    tex.level(level).image(pixels);
-
-                    //insert the level and sort
-                    let mut i = levels.len();
-                    levels.push(level);
-                    while i>0 {
-                        if levels[i-1] > levels[i] { levels.swap(i-1, i) }
-                        i -= 1;
-                    }
-                }
-
-                //generate the empty levels
-                for i in 0..levels.len()-1 {
-                    if levels[i]+1 < levels[i+1] {
-                        tex.gen_mipmaps(levels[i] .. levels[i+1]);
-                    }
-                }
-            }
-        }
-        tex
-    }
-
-    fn gen_mipmaps<R:RangeBounds<GLuint>>(&mut self, range: R) {
-
-        let (min, max) = clamp_range(self, &range);
-        if max >= min {
-            return;
-        } else {
-            let (prev_base, prev_max) = (self.base_level(), self.max_level());
-            self.set_base_level(min);
-            self.set_max_level(max);
-
-            unsafe {
-                let mut target = <Self as Texture>::Target::binding_location();
-                let binding = target.bind(self.raw_mut());
-                gl::GenerateMipmap(binding.target_id());
-            }
-
-            self.set_base_level(prev_base);
-            self.set_max_level(prev_max);
-        }
-
-    }
-
-    #[inline] fn level(&mut self, level: GLuint) -> MipmapLevel<Self> {MipmapLevel{tex:self, level:level}}
-    #[inline] fn level_range<R:RangeBounds<GLuint>>(&mut self, range: R) -> Box<[MipmapLevel<Self>]> {
-        let (min, max) = clamp_range(self, &range);
-        unsafe {
-            let ptr = self as *mut Self;
-            (min..=max).map(|i| (&mut *ptr).level(i)).collect::<Box<[_]>>()
-        }
-    }
-
-}
-
-pub unsafe trait MultisampledTexture: Texture {
-
-    #[inline] fn samples(&self) -> GLuint { get_level_parameter_iv(self, 0, TexLevelParameteriv::Samples) as GLuint }
-    #[inline] fn fixed_sample_locations(&self) -> bool {
-        get_level_parameter_iv(self, 0, TexLevelParameteriv::FixedSampleLocations) != 0
-    }
-
-    #[inline]
-    unsafe fn alloc_multisample(
-        gl:&Self::GL, samples:GLuint, dim:Self::Dim, fixed_sample_locations: bool
-    ) -> Self {
-        let raw = RawTex::gen(gl);
-        if let Ok(gl4) = gl.try_as_gl4() {
-            if_sized!(
-                helper()(_gl:&GL4,tex:RawTex<T::Target>,s:GLuint,d:T::Dim,f:bool) -> T
-                    {unsafe{T::image_multisample(tex, s, d, f)}}
-                    {unsafe{T::storage_multisample(_gl, tex, s, d, f)}}
-                where T:MultisampledTexture
-            );
-            Self::InternalFormat::helper(&gl4, raw, samples, dim, fixed_sample_locations)
-        } else {
-            Self::image_multisample(raw, samples, dim, fixed_sample_locations)
-        }
-    }
-
-    #[inline]
-    unsafe fn image_multisample(mut raw:RawTex<Self::Target>, samples:GLuint, dim:Self::Dim, fixed_sample_locations: bool) -> Self {
-        tex_image_multisample::<Self>(&mut raw, dim, samples, fixed_sample_locations);
-        Self::from_raw(raw, dim)
-    }
-
-    #[inline]
-    unsafe fn storage_multisample(
-        gl:&GL4, raw:RawTex<Self::Target>, samples:GLuint, dim:Self::Dim, fixed_sample_locations: bool
-    ) -> Self
-    where <Self as Texture>::InternalFormat: SizedInternalFormat
-    {
-        tex_storage::<Self>(gl, raw, 1, dim, Some((samples, fixed_sample_locations)))
+    fn into_box<P:PixelType<Self::ClientFormat>>(&self) -> Box<[P]> {
+        let size = size_of::<P>()*self.dim().pixels();
+        let mut dest = Vec::with_capacity(size);
+        unsafe { dest.set_len(size) };
+        self.get_image(dest.as_mut_slice());
+        dest.into_boxed_slice()
     }
 
 }
