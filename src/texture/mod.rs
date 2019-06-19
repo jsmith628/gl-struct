@@ -54,6 +54,7 @@ unsafe fn tex_storage<T:Texture>(
             _ => panic!("{}D Textures not currently supported", coords)
         }
     }
+    drop(binding);
 
     T::from_raw(tex, dim)
 }
@@ -163,6 +164,7 @@ macro_rules! if_sized {
 }
 
 type DimOf<T> = <<T as Texture>::Target as TextureTarget>::Dim;
+type GLOf<T> = <<T as Texture>::Target as TextureTarget>::GL;
 
 pub unsafe trait Texture: Sized {
     type InternalFormat: InternalFormat<FormatType=Self::PixelFormat>;
@@ -181,9 +183,9 @@ pub unsafe trait Texture: Sized {
     }
 
     #[inline]
-    unsafe fn alloc(gl:&GL2, dim:DimOf<Self>) -> Self {
+    unsafe fn alloc(gl:&GLOf<Self>, dim:DimOf<Self>) -> Self {
         let raw = RawTex::gen(gl);
-        if let Ok(gl4) = gl.upgrade().and_then(|gl3| gl3.upgrade()) {
+        if let Ok(gl4) = gl.try_as_gl4() {
             if_sized!(
                 helper()(_gl:&GL4,tex:RawTex<T::Target>,d:DimOf<T>) -> T
                     {unsafe{T::image(tex, d)}}
@@ -276,9 +278,11 @@ pub unsafe trait PixelTransfer: Texture {
         }
     }
 
-    fn from_pixels<P:PixelData<Self::PixelFormat>+?Sized>(gl:&GL2, dim:DimOf<Self>, data:&P) -> Self {
+    fn from_pixels<P:PixelData<Self::PixelFormat>+?Sized>(
+        gl:&GLOf<Self>, dim:DimOf<Self>, data:&P
+    ) -> Self {
         let raw = RawTex::gen(gl);
-        if let Ok(gl4) = gl.upgrade().and_then(|gl3| gl3.upgrade()) {
+        if let Ok(gl4) = gl.try_as_gl4() {
             if_sized!(
                 helper(P:PixelData<T::PixelFormat>+?Sized)(
                     _gl:&GL4,tex:RawTex<T::Target>,d:DimOf<T>,p:&P
@@ -349,9 +353,9 @@ pub unsafe trait MipmappedTexture: PixelTransfer {
     }
 
     #[inline]
-    unsafe fn alloc_mipmaps(gl:&GL2, levels:GLuint, dim:DimOf<Self>) -> Self {
+    unsafe fn alloc_mipmaps(gl:&GLOf<Self>, levels:GLuint, dim:DimOf<Self>) -> Self {
         let raw = RawTex::gen(gl);
-        if let Ok(gl4) = gl.upgrade().and_then(|gl3| gl3.upgrade()) {
+        if let Ok(gl4) = gl.try_as_gl4() {
             if_sized!(
                 helper()(_gl:&GL4,tex:RawTex<T::Target>,l:GLuint,d:DimOf<T>) -> T
                     {unsafe{T::image_mipmaps(tex, l, d)}}
@@ -379,10 +383,10 @@ pub unsafe trait MipmappedTexture: PixelTransfer {
     }
 
     fn from_mipmaps<P:PixelData<Self::PixelFormat>+?Sized>(
-        gl:&GL2, levels:GLuint, dim:DimOf<Self>, base:&P, mipmaps: Option<HashMap<GLuint, &P>>
+        gl:&GLOf<Self>, levels:GLuint, dim:DimOf<Self>, base:&P, mipmaps: Option<HashMap<GLuint, &P>>
     ) -> Self {
         let raw = RawTex::gen(gl);
-        if let Ok(gl4) = gl.upgrade().and_then(|gl3| gl3.upgrade()) {
+        if let Ok(gl4) = gl.try_as_gl4() {
             if_sized!(
                 helper(P:PixelData<T::PixelFormat>+?Sized)(
                     _gl:&GL4, tex:RawTex<T::Target>, l:GLuint, d:DimOf<T>, b:&P, m: Option<HashMap<GLuint, &P>>
@@ -488,9 +492,11 @@ pub unsafe trait MultisampledTexture: Texture {
     }
 
     #[inline]
-    unsafe fn alloc_multisample(gl:&GL2, samples:GLuint, dim:DimOf<Self>, fixed_sample_locations: bool) -> Self {
+    unsafe fn alloc_multisample(
+        gl:&GLOf<Self>, samples:GLuint, dim:DimOf<Self>, fixed_sample_locations: bool
+    ) -> Self {
         let raw = RawTex::gen(gl);
-        if let Ok(gl4) = gl.upgrade().and_then(|gl3| gl3.upgrade()) {
+        if let Ok(gl4) = gl.try_as_gl4() {
             if_sized!(
                 helper()(_gl:&GL4,tex:RawTex<T::Target>,s:GLuint,d:DimOf<T>,f:bool) -> T
                     {unsafe{T::image_multisample(tex, s, d, f)}}

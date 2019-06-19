@@ -55,7 +55,7 @@ pub struct Shader {
 
 impl Shader {
 
-    pub fn create(_gl: &GLProvider, src: &str, ty: ShaderType) -> Result<Self, GLError> {
+    pub fn create(_gl: &GL1, src: &str, ty: ShaderType) -> Result<Self, GLError> {
         unsafe {
             //create the shader
             let s = Shader {id: gl::CreateShader(ty.into()), ty: ty};
@@ -113,7 +113,7 @@ pub struct ProgramID {
 
 impl ProgramID {
 
-    pub fn from_source(_gl: &GLProvider, shaders: Vec<(&str, ShaderType)>) -> Result<Self, GLError> {
+    pub fn from_source(_gl: &GL1, shaders: Vec<(&str, ShaderType)>) -> Result<Self, GLError> {
         let mut list = Vec::with_capacity(shaders.len());
         for (src, ty) in shaders.iter() {
             list.push(Shader::create(_gl, src, *ty)?);
@@ -121,7 +121,7 @@ impl ProgramID {
         Self::from_shaders(_gl, list)
     }
 
-    pub fn from_shaders(_gl: &GLProvider, shaders: Vec<Shader>) -> Result<Self, GLError> {
+    pub fn from_shaders(_gl: &GL1, shaders: Vec<Shader>) -> Result<Self, GLError> {
 
         unsafe {
             //create the program
@@ -192,7 +192,7 @@ impl Drop for ProgramID {
 }
 
 pub unsafe trait Program: Sized {
-    fn init(context: &GLProvider) -> Result<Self, GLError>;
+    fn init(context: &GL1) -> Result<Self, GLError>;
 }
 
 pub unsafe trait ShaderProgram: Program {}

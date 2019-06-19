@@ -14,7 +14,7 @@ macro_rules! target {
                 }
             }
 
-            impl From<$name> for GLenum { #[inline(always)] fn from(target:$name) -> GLenum {gl::$name} }
+            impl From<$name> for GLenum { #[inline(always)] fn from(_:$name) -> GLenum {gl::$name} }
             impl TryFrom<GLenum> for $name {
                 type Error = GLError;
                 #[inline(always)] fn try_from(val:GLenum) -> Result<Self,GLError> {
@@ -33,7 +33,7 @@ macro_rules! target {
 }
 
 pub unsafe trait TextureTarget: GLEnum + Default + Target<Resource=RawTex<Self>> {
-    type GL;
+    type GL: GLProvider;
     type Dim: TexDim;
 
     #[inline] fn glenum() -> GLenum {Self::default().into()}
@@ -81,24 +81,27 @@ unsafe impl<T: TextureTarget> Resource for RawTex<T> {
 
     #[inline] fn gen_resources(_gl: &Self::GL, count: GLuint) -> Box<[Self]> {
         let mut raw = Vec::with_capacity(count as usize);
-        if count > 0 {
-            unsafe {
+        unsafe {
+            if count > 0 {
                 raw.set_len(count as usize);
                 gl::GenTextures(count as GLsizei, &mut raw[0] as *mut GLuint);
             }
+            ::std::mem::transmute(raw.into_boxed_slice())
         }
-        ::std::mem::transmute(raw.into_boxed_slice())
     }
 
     fn is(id: GLuint) -> bool {
-        //check if it is even a texture
-        if gl::IsTexture(id)!=0 {
-            //now, check if it is of the particular type
-            //TODO: implement
-            true
-        } else {
-            false
+        unsafe {
+            //check if it is even a texture
+            if gl::IsTexture(id)!=0 {
+                //now, check if it is of the particular type
+                //TODO: implement
+                true
+            } else {
+                false
+            }
         }
+
     }
 
     #[inline(always)] unsafe fn from_raw(id:GLuint) -> Option<Self> {
@@ -120,18 +123,18 @@ unsafe impl<T: TextureTarget> Resource for RawTex<T> {
 }
 
 impl<T: TextureTarget> Drop for RawTex<T> {
-    #[inline] fn drop(&mut self) { gl::DeleteTextures(1, self.0 as *mut GLuint) }
+    #[inline] fn drop(&mut self) { unsafe { gl::DeleteTextures(1, self.0 as *mut GLuint) } }
 }
 
 target! {
-    [TEXTURE_1D "Texture 1D"]; GLProvider; [usize;1],
-    [TEXTURE_2D "Texture 2D"]; GLProvider; [usize;2],
-    [TEXTURE_3D "Texture 3D"]; GLProvider; [usize;3],
+    [TEXTURE_1D "Texture 1D"]; GL1; [usize;1],
+    [TEXTURE_2D "Texture 2D"]; GL1; [usize;2],
+    [TEXTURE_3D "Texture 3D"]; GL1; [usize;3],
     [TEXTURE_1D_ARRAY "Texture 1D Array"]; GL3; (<TEXTURE_1D as TextureTarget>::Dim, usize),
     [TEXTURE_2D_ARRAY "Texture 2D Array"]; GL3; (<TEXTURE_2D as TextureTarget>::Dim, usize),
     [TEXTURE_RECTANGLE "Texture Rectangle"]; GL3; <TEXTURE_2D as TextureTarget>::Dim,
     [TEXTURE_BUFFER "Texture Buffer"]; GL3; usize,
-    [TEXTURE_CUBE_MAP "Texture Cube Map"]; GLProvider; <TEXTURE_2D as TextureTarget>::Dim,
+    [TEXTURE_CUBE_MAP "Texture Cube Map"]; GL1; <TEXTURE_2D as TextureTarget>::Dim,
     [TEXTURE_CUBE_MAP_ARRAY "Texture Cube Map Array"]; GL4; <TEXTURE_2D_ARRAY as TextureTarget>::Dim,
     [TEXTURE_2D_MULTISAMPLE "Texture 2D Multisample"]; GL3; <TEXTURE_2D as TextureTarget>::Dim,
     [TEXTURE_2D_MULTISAMPLE_ARRAY "Texture 2D Multisample Array"]; GL3; <TEXTURE_2D_ARRAY as TextureTarget>::Dim

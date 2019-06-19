@@ -106,27 +106,32 @@ pub trait Surface: {
     fn make_current(&mut self) -> &mut Context;
 }
 
-pub struct GLProvider { _private: () }
+pub trait GLProvider {
+    fn try_as_gl1(&self) -> Result<&GL1,GLError>;
+    fn try_as_gl2(&self) -> Result<&GL2,GLError>;
+    fn try_as_gl3(&self) -> Result<&GL3,GLError>;
+    fn try_as_gl4(&self) -> Result<&GL4,GLError>;
+}
+
+pub struct GL1 { _private: () }
 pub struct GL2 { _private: () }
 pub struct GL3 { _private: () }
 pub struct GL4 { _private: () }
 
-impl GLProvider {
+impl GL1 {
 
-    // #[inline] pub(crate) fn unchecked() -> &'static Self { &GLProvider { _private: () }  }
-
-    pub fn get_current() -> Result<GLProvider, ()> {
+    pub fn get_current() -> Result<Self, ()> {
         //if glFinish isn't loaded, we can pretty safely assume nothing has
         if gl::Finish::is_loaded() {
-            Ok(GLProvider{ _private: () })
+            Ok(GL1{ _private: () })
         } else {
             Err(())
         }
     }
 
-    pub unsafe fn load<F: FnMut(&'static str) -> *const GLvoid>(proc_addr: F) -> GLProvider {
+    pub unsafe fn load<F: FnMut(&'static str) -> *const GLvoid>(proc_addr: F) -> GL1 {
         gl::load_with(proc_addr);
-        GLProvider{ _private: () }
+        GL1{ _private: () }
     }
 
     #[inline] pub fn upgrade(&self) -> Result<&GL2, GLError> {
@@ -141,12 +146,14 @@ impl GLProvider {
 }
 
 impl GL2 {
+    #[inline] pub fn as_gl1(&self) -> &GL1 {&GL1{_private:()}}
     #[inline] pub fn upgrade(&self) -> Result<&GL3, GLError> {
         check_loaded!(MapBuffer, UnmapBuffer; &GL3{_private:()} )
     }
 }
 
 impl GL3 {
+    #[inline] pub fn as_gl1(&self) -> &GL1 {&GL1{_private:()}}
     #[inline] pub fn as_gl2(&self) -> &GL2 {&GL2{_private:()}}
     #[inline] pub fn upgrade(&self) -> Result<&GL4, GLError> {
         check_loaded!(BufferStorage, MapBufferRange; &GL4{_private:()} )
@@ -154,8 +161,37 @@ impl GL3 {
 }
 
 impl GL4 {
+    #[inline] pub fn as_gl1(&self) -> &GL1 {&GL1{_private:()}}
     #[inline] pub fn as_gl2(&self) -> &GL2 {&GL2{_private:()}}
     #[inline] pub fn as_gl3(&self) -> &GL3 {&GL3{_private:()}}
+}
+
+impl GLProvider for GL1 {
+    #[inline] fn try_as_gl1(&self) -> Result<&GL1,GLError> {Ok(self)}
+    #[inline] fn try_as_gl2(&self) -> Result<&GL2,GLError> {self.upgrade()}
+    #[inline] fn try_as_gl3(&self) -> Result<&GL3,GLError> {self.try_as_gl2().and_then(|gl| gl.upgrade())}
+    #[inline] fn try_as_gl4(&self) -> Result<&GL4,GLError> {self.try_as_gl3().and_then(|gl| gl.upgrade())}
+}
+
+impl GLProvider for GL2 {
+    #[inline] fn try_as_gl1(&self) -> Result<&GL1,GLError> {Ok(self.as_gl1())}
+    #[inline] fn try_as_gl2(&self) -> Result<&GL2,GLError> {Ok(self)}
+    #[inline] fn try_as_gl3(&self) -> Result<&GL3,GLError> {self.upgrade()}
+    #[inline] fn try_as_gl4(&self) -> Result<&GL4,GLError> {self.try_as_gl3().and_then(|gl| gl.upgrade())}
+}
+
+impl GLProvider for GL3 {
+    #[inline] fn try_as_gl1(&self) -> Result<&GL1,GLError> {Ok(self.as_gl1())}
+    #[inline] fn try_as_gl2(&self) -> Result<&GL2,GLError> {Ok(self.as_gl2())}
+    #[inline] fn try_as_gl3(&self) -> Result<&GL3,GLError> {Ok(self)}
+    #[inline] fn try_as_gl4(&self) -> Result<&GL4,GLError> {self.upgrade()}
+}
+
+impl GLProvider for GL4 {
+    #[inline] fn try_as_gl1(&self) -> Result<&GL1,GLError> {Ok(self.as_gl1())}
+    #[inline] fn try_as_gl2(&self) -> Result<&GL2,GLError> {Ok(self.as_gl2())}
+    #[inline] fn try_as_gl3(&self) -> Result<&GL3,GLError> {Ok(self.as_gl3())}
+    #[inline] fn try_as_gl4(&self) -> Result<&GL4,GLError> {Ok(self)}
 }
 
 ///
@@ -168,7 +204,7 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn init(_gl: &GLProvider) -> Context {
+    pub fn init(_gl: &GL1) -> Context {
         Context {}
     }
 }

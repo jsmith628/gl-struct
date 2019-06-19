@@ -273,14 +273,14 @@ impl<T:?Sized, A:BufferAccess> Buffer<T, A> {
     #[inline] pub fn buffer_size(&self) -> usize { self.capacity as usize }
     #[inline] pub fn usage_hint(&self) -> BufferUsage { self.usage }
 
-    #[inline] pub fn gl_provider(&self) -> GLProvider { GLProvider::get_current().unwrap() }
+    #[inline] pub fn gl_provider(&self) -> GL1 { GL1::get_current().unwrap() }
 
     #[inline]
-    unsafe fn _from_box(_gl: &GLProvider, data: Box<T>) -> Self {
+    unsafe fn _from_box(_gl: &GL1, data: Box<T>) -> Self {
         Self::_from_box_with_hint(_gl, BufferUsage::default(), data)
     }
 
-    unsafe fn _from_box_with_hint(_gl: &GLProvider, hint: BufferUsage, data: Box<T>) -> Self {
+    unsafe fn _from_box_with_hint(_gl: &GL1, hint: BufferUsage, data: Box<T>) -> Self {
         //generate a buffer handle using openGL
         let mut buf = Self::gen();
 
@@ -342,21 +342,21 @@ impl<T:?Sized, A:BufferAccess> Buffer<T, A> {
 impl<T:Sized, A:BufferAccess> Buffer<T, A> {
 
     #[inline]
-    pub unsafe fn uninitialized(_gl: &GLProvider) -> Self {
+    pub unsafe fn uninitialized(_gl: &GL1) -> Self {
         Self::uninitialized_with_hint(_gl, BufferUsage::default())
     }
 
     #[inline]
-    pub unsafe fn uninitialized_with_hint(_gl: &GLProvider, hint: BufferUsage) -> Self {
+    pub unsafe fn uninitialized_with_hint(_gl: &GL1, hint: BufferUsage) -> Self {
         Self::allocate(size_of::<T>(), hint)
     }
 
     #[inline]
-    unsafe fn _new(_gl: &GLProvider, data: T) -> Self {
+    unsafe fn _new(_gl: &GL1, data: T) -> Self {
         Self::_with_hint(_gl, BufferUsage::default(), data)
     }
 
-    unsafe fn _with_hint(_gl: &GLProvider, hint: BufferUsage, data: T) -> Self {
+    unsafe fn _with_hint(_gl: &GL1, hint: BufferUsage, data: T) -> Self {
         //gen our buffer handle and stuff
         let mut buf = Self::gen();
 
@@ -375,12 +375,12 @@ impl<T:Sized, A:BufferAccess> Buffer<T, A> {
 
 impl<T:Sized, A:BufferAccess> Buffer<[T], A> {
     #[inline]
-    pub unsafe fn uninitialized(_gl: &GLProvider, count: usize) -> Self {
+    pub unsafe fn uninitialized(_gl: &GL1, count: usize) -> Self {
         Self::uninitialized_with_hint(_gl, BufferUsage::default(), count)
     }
 
     #[inline]
-    pub unsafe fn uninitialized_with_hint(_gl: &GLProvider, hint: BufferUsage, count: usize) -> Self {
+    pub unsafe fn uninitialized_with_hint(_gl: &GL1, hint: BufferUsage, count: usize) -> Self {
         let mut buf = Self::allocate(size_of::<T>() * count, hint);
         buf.repr.bytes[1] = count;
         buf
@@ -394,57 +394,57 @@ impl<T:Sized, A:BufferAccess> Buffer<[T], A> {
 //hence, we don't let anyone create an immutable or unreadable buffer with a non-GPUCopy type
 
 impl<T:?Sized, A:ReadAccess+WriteAccess> Buffer<T,A> {
-    #[inline] pub fn from_box(gl: &GLProvider, data: Box<T>) -> Self {unsafe { Self::_from_box(gl, data) } }
-    #[inline] pub fn from_box_with_hint(gl: &GLProvider, hint: BufferUsage, data: Box<T>) -> Self {
+    #[inline] pub fn from_box(gl: &GL1, data: Box<T>) -> Self {unsafe { Self::_from_box(gl, data) } }
+    #[inline] pub fn from_box_with_hint(gl: &GL1, hint: BufferUsage, data: Box<T>) -> Self {
         unsafe { Self::_from_box_with_hint(gl, hint, data) }
     }
 }
 
 impl<T:Sized, A:ReadAccess+WriteAccess> Buffer<T, A> {
-    #[inline] pub fn new(gl: &GLProvider, data: T) -> Self { unsafe { Self::_new(gl, data) } }
-    #[inline] pub fn with_hint(gl: &GLProvider, hint: BufferUsage, data: T) -> Self {
+    #[inline] pub fn new(gl: &GL1, data: T) -> Self { unsafe { Self::_new(gl, data) } }
+    #[inline] pub fn with_hint(gl: &GL1, hint: BufferUsage, data: T) -> Self {
         unsafe { Self::_with_hint(gl, hint, data) }
     }
 }
 
 impl<T:GPUCopy+?Sized> Buffer<T,CopyOnly> {
-    #[inline] pub fn immut_from(gl: &GLProvider, data: Box<T>) -> Self { unsafe { Self::_from_box(gl, data) } }
-    #[inline] pub fn immut_from_with_hint(gl: &GLProvider, hint: BufferUsage, data: Box<T>) -> Self {
+    #[inline] pub fn immut_from(gl: &GL1, data: Box<T>) -> Self { unsafe { Self::_from_box(gl, data) } }
+    #[inline] pub fn immut_from_with_hint(gl: &GL1, hint: BufferUsage, data: Box<T>) -> Self {
         unsafe { Self::_from_box_with_hint(gl, hint, data)}
     }
 }
 
 impl<T:GPUCopy+Sized> Buffer<T,CopyOnly> {
-    #[inline] pub fn new_immut(gl: &GLProvider, data: T) -> Self { unsafe { Self::_new(gl, data) } }
-    #[inline] pub fn immut_with_hint(gl: &GLProvider, hint: BufferUsage, data: T) -> Self {
+    #[inline] pub fn new_immut(gl: &GL1, data: T) -> Self { unsafe { Self::_new(gl, data) } }
+    #[inline] pub fn immut_with_hint(gl: &GL1, hint: BufferUsage, data: T) -> Self {
         unsafe { Self::_with_hint(gl, hint, data) }
     }
 }
 
 impl<T:GPUCopy+?Sized> Buffer<T,Read> {
-    #[inline] pub fn readonly_from(gl: &GLProvider, data: Box<T>) -> Self { unsafe { Self::_from_box(gl, data) } }
-    #[inline] pub fn readonly_from_with_hint(gl: &GLProvider, hint: BufferUsage, data: Box<T>) -> Self {
+    #[inline] pub fn readonly_from(gl: &GL1, data: Box<T>) -> Self { unsafe { Self::_from_box(gl, data) } }
+    #[inline] pub fn readonly_from_with_hint(gl: &GL1, hint: BufferUsage, data: Box<T>) -> Self {
         unsafe { Self::_from_box_with_hint(gl, hint, data)}
     }
 }
 
 impl<T:GPUCopy+Sized> Buffer<T,Read> {
-    #[inline] pub fn new_readonly(gl: &GLProvider, data: T) -> Self { unsafe { Self::_new(gl, data) } }
-    #[inline] pub fn readonly_with_hint(gl: &GLProvider, hint: BufferUsage, data: T) -> Self {
+    #[inline] pub fn new_readonly(gl: &GL1, data: T) -> Self { unsafe { Self::_new(gl, data) } }
+    #[inline] pub fn readonly_with_hint(gl: &GL1, hint: BufferUsage, data: T) -> Self {
         unsafe { Self::_with_hint(gl, hint, data) }
     }
 }
 
 impl<T:GPUCopy+?Sized> Buffer<T,Write> {
-    #[inline] pub fn writeonly_from(gl: &GLProvider, data: Box<T>) -> Self { unsafe { Self::_from_box(gl, data) } }
-    #[inline] pub fn writeonly_from_with_hint(gl: &GLProvider, hint: BufferUsage, data: Box<T>) -> Self {
+    #[inline] pub fn writeonly_from(gl: &GL1, data: Box<T>) -> Self { unsafe { Self::_from_box(gl, data) } }
+    #[inline] pub fn writeonly_from_with_hint(gl: &GL1, hint: BufferUsage, data: Box<T>) -> Self {
         unsafe { Self::_from_box_with_hint(gl, hint, data) }
     }
 }
 
 impl<T:GPUCopy+Sized> Buffer<T,Write> {
-    #[inline] pub fn new_writeonly(gl: &GLProvider, data: T) -> Self { unsafe { Self::_new(gl, data) } }
-    #[inline] pub fn writeonly_with_hint(gl: &GLProvider, hint: BufferUsage, data: T) -> Self {
+    #[inline] pub fn new_writeonly(gl: &GL1, data: T) -> Self { unsafe { Self::_new(gl, data) } }
+    #[inline] pub fn writeonly_with_hint(gl: &GL1, hint: BufferUsage, data: T) -> Self {
         unsafe { Self::_with_hint(gl, hint, data) }
     }
 }
