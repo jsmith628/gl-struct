@@ -1,5 +1,6 @@
-use super::*;
 
+use super::*;
+use image_format::pixel_data::{apply_packing_settings, apply_unpacking_settings};
 
 fn clamp_range<T:MipmappedTexture, R:RangeBounds<GLuint>>(t:&T, r:&R) -> (GLuint, GLuint) {
     (
@@ -168,10 +169,6 @@ pub unsafe trait MipmappedTexture: PixelTransfer {
     }
 
 }
-
-
-use super::*;
-use image_format::pixel_data::{apply_packing_settings, apply_unpacking_settings};
 
 glenum! {
     pub enum TexLevelParameteriv {

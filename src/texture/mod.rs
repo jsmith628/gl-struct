@@ -15,10 +15,12 @@ use self::helper_methods::*;
 #[macro_use] mod helper_methods;
 
 pub use self::raw::*;
+pub use self::dim::*;
 pub use self::mipmapped::*;
 pub use self::multisampled::*;
 
 mod raw;
+mod dim;
 mod mipmapped;
 mod multisampled;
 
@@ -71,7 +73,7 @@ pub unsafe trait Texture: Sized {
 
     #[inline]
     unsafe fn image(mut raw:RawTex<Self::Target>, dim:Self::Dim) -> Self {
-        if Self::Target::multisample() {
+        if Self::Target::multisampled() {
             tex_image_multisample::<Self>(&mut raw, dim, 0, false)
         } else {
             tex_image_null::<Self>(raw.id(), 0, dim)
@@ -83,7 +85,7 @@ pub unsafe trait Texture: Sized {
     unsafe fn storage(gl:&GL4, raw:RawTex<Self::Target>, dim:Self::Dim) -> Self
         where Self::InternalFormat:SizedInternalFormat
     {
-        let sampling = if Self::Target::multisample() {Some((0,false))} else {None};
+        let sampling = if Self::Target::multisampled() {Some((0,false))} else {None};
         tex_storage::<Self>(gl, raw, 1, dim, sampling)
     }
 
