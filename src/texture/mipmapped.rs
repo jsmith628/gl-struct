@@ -148,7 +148,7 @@ pub unsafe trait MipmappedTexture: PixelTransfer {
 
             unsafe {
                 let mut target = <Self as Texture>::Target::binding_location();
-                let binding = target.bind(self.raw_mut());
+                let binding = target.bind(self.raw());
                 gl::GenerateMipmap(binding.target_id());
             }
 

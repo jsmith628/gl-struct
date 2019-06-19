@@ -81,10 +81,10 @@ pub unsafe fn tex_image_multisample<T:Texture>(
 
 pub unsafe fn tex_parameter_iv<T:Texture>(tex:&mut T, pname:GLenum, params: *const GLint) {
     if gl::TextureParameteriv::is_loaded() {
-        gl::TextureParameteriv(tex.raw_mut().id(), pname, params);
+        gl::TextureParameteriv(tex.raw().id(), pname, params);
     } else {
         let mut target = T::Target::binding_location();
-        let binding = target.bind(tex.raw_mut());
+        let binding = target.bind(tex.raw());
         gl::TexParameteriv(binding.target_id(), pname, params);
     }
 }

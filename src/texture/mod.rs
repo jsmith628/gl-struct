@@ -45,7 +45,6 @@ pub unsafe trait Texture: Sized {
 
     fn dim(&self) -> Self::Dim;
     fn raw(&self) -> &RawTex<Self::Target>;
-    fn raw_mut(&mut self) -> &mut RawTex<Self::Target>;
 
     unsafe fn from_raw(raw:RawTex<Self::Target>, dim:Self::Dim) -> Self;
 
@@ -113,10 +112,10 @@ pub unsafe trait PixelTransfer: Texture {
         unsafe {
             let mut swizzle = [red as GLint, green as GLint, blue as GLint, alpha as GLint];
             if gl::TextureParameteriv::is_loaded() {
-                gl::TextureParameteriv(self.raw_mut().id(), gl::TEXTURE_SWIZZLE_RGBA, &mut swizzle[0] as *mut GLint);
+                gl::TextureParameteriv(self.raw().id(), gl::TEXTURE_SWIZZLE_RGBA, &mut swizzle[0] as *mut GLint);
             } else {
                 let mut target = Self::Target::binding_location();
-                let binding = target.bind(self.raw_mut());
+                let binding = target.bind(self.raw());
                 gl::TexParameteriv(binding.target_id(), gl::TEXTURE_SWIZZLE_RGBA, &mut swizzle[0] as *mut GLint);
             }
         }
