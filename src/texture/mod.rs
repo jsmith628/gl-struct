@@ -18,11 +18,13 @@ pub use self::raw::*;
 pub use self::dim::*;
 pub use self::mipmapped::*;
 pub use self::multisampled::*;
+pub use self::rectangle::*;
 
 mod raw;
 mod dim;
 mod mipmapped;
 mod multisampled;
+mod rectangle;
 
 glenum! {
     pub enum TextureSwizzle {
@@ -259,13 +261,6 @@ pub struct Tex1D<F:InternalFormat> {
 }
 impl_tex!(Tex1D; TEXTURE_1D; mipmap);
 
-pub struct Tex1DArray<F:InternalFormat> {
-    raw: RawTex<TEXTURE_1D_ARRAY>,
-    dim: ([usize;1], usize),
-    fmt: PhantomData<F>
-}
-impl_tex!(Tex1DArray; TEXTURE_1D_ARRAY; mipmap);
-
 pub struct Tex2D<F:InternalFormat> {
     raw: RawTex<TEXTURE_2D>,
     dim: [usize;2],
@@ -273,24 +268,19 @@ pub struct Tex2D<F:InternalFormat> {
 }
 impl_tex!(Tex2D; TEXTURE_2D; mipmap);
 
-// pub struct TexCubeMap<F:InternalFormat> {
-//     raw: RawTex<TEXTURE_CUBE_MAP>,
-//     dim: [usize;2],
-//     fmt: PhantomData<F>
-// }
-//
-// pub struct TexRectangle<F:InternalFormat> {
-//     raw: RawTex<TEXTURE_RECTANGLE>,
-//     dim: [usize;2],
-//     fmt: PhantomData<F>
-// }
-
-pub struct Tex2DMultisample<F:InternalFormat> {
-    raw: RawTex<TEXTURE_2D_MULTISAMPLE>,
-    dim: [usize;2],
+pub struct Tex3D<F:InternalFormat> {
+    raw: RawTex<TEXTURE_3D>,
+    dim: [usize;3],
     fmt: PhantomData<F>
 }
-impl_tex!(Tex2DMultisample; TEXTURE_2D_MULTISAMPLE; multisample);
+impl_tex!(Tex3D; TEXTURE_3D; mipmap);
+
+pub struct Tex1DArray<F:InternalFormat> {
+    raw: RawTex<TEXTURE_1D_ARRAY>,
+    dim: ([usize;1], usize),
+    fmt: PhantomData<F>
+}
+impl_tex!(Tex1DArray; TEXTURE_1D_ARRAY; mipmap);
 
 pub struct Tex2DArray<F:InternalFormat> {
     raw: RawTex<TEXTURE_2D_ARRAY>,
@@ -299,11 +289,12 @@ pub struct Tex2DArray<F:InternalFormat> {
 }
 impl_tex!(Tex2DArray; TEXTURE_2D_ARRAY; mipmap);
 
-// pub struct TexCubemapArray<F:InternalFormat> {
-//     raw: RawTex<TEXTURE_CUBE_MAP_ARRAY>,
-//     dim: (usize, [usize;2]),
-//     fmt: PhantomData<F>
-// }
+pub struct Tex2DMultisample<F:InternalFormat> {
+    raw: RawTex<TEXTURE_2D_MULTISAMPLE>,
+    dim: [usize;2],
+    fmt: PhantomData<F>
+}
+impl_tex!(Tex2DMultisample; TEXTURE_2D_MULTISAMPLE; multisample);
 
 pub struct Tex2DMultisampleArray<F:InternalFormat> {
     raw: RawTex<TEXTURE_2D_MULTISAMPLE_ARRAY>,
@@ -312,9 +303,15 @@ pub struct Tex2DMultisampleArray<F:InternalFormat> {
 }
 impl_tex!(Tex2DMultisampleArray; TEXTURE_2D_MULTISAMPLE_ARRAY; multisample);
 
-pub struct Tex3D<F:InternalFormat> {
-    raw: RawTex<TEXTURE_3D>,
-    dim: [usize;3],
-    fmt: PhantomData<F>
-}
-impl_tex!(Tex3D; TEXTURE_3D; mipmap);
+// pub struct TexCubeMap<F:InternalFormat> {
+//     raw: RawTex<TEXTURE_CUBE_MAP>,
+//     dim: [usize;2],
+//     fmt: PhantomData<F>
+// }
+//
+
+// pub struct TexCubemapArray<F:InternalFormat> {
+//     raw: RawTex<TEXTURE_CUBE_MAP_ARRAY>,
+//     dim: (usize, [usize;2]),
+//     fmt: PhantomData<F>
+// }
