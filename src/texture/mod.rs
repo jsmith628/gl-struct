@@ -37,6 +37,40 @@ glenum! {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub struct TextureUnitID(GLuint);
+
+impl GLEnum for TextureUnitID {}
+
+impl From<TextureUnitID> for GLuint {
+    fn from(unit:TextureUnitID) -> GLuint {unit.0}
+}
+
+impl TryFrom<GLuint> for TextureUnitID {
+    type Error = GLError;
+    fn try_from(unit:GLuint) -> Result<Self, GLError> {
+        unsafe {
+            if !gl::GetIntegerv::is_loaded() {
+                Err(GLError::FunctionNotLoaded("glGetIntegerv"))
+            } else {
+                let mut units = ::std::mem::uninitialized();
+                gl::GetIntegerv(gl::MAX_COMBINED_TEXTURE_IMAGE_UNITS, &mut units as *mut GLint);
+                if unit >= units as GLuint {
+                    Err(GLError::InvalidEnum(unit, "Texture Unit ID".to_string()))
+                } else {
+                    Ok(TextureUnitID(unit))
+                }
+            }
+        }
+    }
+}
+
+impl ::std::fmt::Display for TextureUnitID {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        write!(f, "Texture Unit #{}", {self.0})
+    }
+}
+
 pub unsafe trait Texture: Sized {
     //the types that matter
     type InternalFormat: InternalFormat<ClientFormat=Self::ClientFormat>;

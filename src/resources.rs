@@ -54,7 +54,7 @@ macro_rules! gl_resource{
     (@bind $ty:ident {target=$Target:ident bind=$gl:ident}) => {
         unsafe impl Target for $Target {
             type Resource = $ty;
-            #[inline] unsafe fn bind(self, id:GLuint) {gl::$gl(self as GLenum, id)}
+            #[inline] unsafe fn bind(self, id:GLuint) {gl::$gl(self.into(), id)}
         }
     };
 

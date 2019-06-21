@@ -100,6 +100,7 @@ pub mod buffer_new;
 pub mod image_format;
 pub mod texture;
 pub mod renderbuffer;
+pub mod sampler;
 
 pub trait Surface: {
     fn is_active(&self) -> bool;
