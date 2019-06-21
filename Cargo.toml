@@ -4,8 +4,8 @@ version = "0.1.0"
 authors = ["Joshua Smith <anvil775@gmail.com>"]
 
 [dependencies]
-bitflags = "1.0"
-gl = "0.12.0"
+bitflags = "1.1"
+gl = "0.12"
 macro-program = {path="../macro-program"}
 trait-arith = {path="../trait-arith"}
 
