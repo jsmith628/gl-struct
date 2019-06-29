@@ -227,6 +227,11 @@ glenum! {
         [Half HALF_FLOAT "Half"],
         [Float FLOAT "FLoat"]
     }
+
+    pub enum VertexWinding {
+        [CCW CCW "Counter-Clockwise"],
+        [CW CW "Clockwise"]
+    }
 }
 
 impl IntType {
@@ -252,9 +257,9 @@ impl FloatType {
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum GLError {
-    ShaderCompilation(GLenum, ShaderType, String),
-    ProgramLinking(GLenum, String),
-    ProgramValidation(GLenum, String),
+    ShaderCompilation(GLuint, ShaderType, String),
+    ProgramLinking(GLuint, String),
+    ProgramValidation(GLuint, String),
     InvalidEnum(GLenum, String),
     InvalidOperation(String),
     InvalidBits(GLbitfield, String),
