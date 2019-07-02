@@ -91,6 +91,10 @@ impl Deref for Program {
 
 impl Program {
 
+    fn from_raw(raw: RawProgram) -> Self {
+        Program {raw: raw}
+    }
+
     pub fn from_source(gl:&GL2, src: &[(ShaderType, &[&str])]) -> Result<Self, GLError> {
 
         //compile the shader source code
@@ -116,12 +120,10 @@ impl Program {
         result.map(
             |_| {
                 for s in shaders.iter() { unsafe { gl::DetachShader(raw.id(), s.id()); } }
-                Program {raw: raw}
+                Self::from_raw(raw)
             }
         )
-
     }
-
 
 }
 
