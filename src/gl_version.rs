@@ -24,12 +24,13 @@ fn get_integerv(param: GLenum) -> GLint {
 }
 
 #[inline(always)] fn upgrade_to<Test:GL+?Sized, Version:GL+Sized>(gl: &Test) -> Result<Version,GLError> {
-    let version = (Version::MAJOR_VERSION, Version::MINOR_VERSION);
+    let target: Version = unsafe { ::std::mem::zeroed() };
+    let version = (target.major_version(), target.minor_version());
     if
-        (Test::MAJOR_VERSION, Test::MINOR_VERSION) <= version ||
-        (gl.major_version(), gl.minor_version()) <= version
+        (gl.major_version(), gl.minor_version()) <= version ||
+        (gl.get_major_version(), gl.get_minor_version()) <= version
     {
-        Ok(unsafe { ::std::mem::zeroed() } )
+        Ok(target)
     } else {
         Err(GLError::Version(version.0, version.1))
     }
@@ -37,11 +38,11 @@ fn get_integerv(param: GLenum) -> GLint {
 
 pub unsafe trait GL {
 
-    const MAJOR_VERSION: GLuint;
-    const MINOR_VERSION: GLuint;
+    fn major_version(&self) -> GLuint;
+    fn minor_version(&self) -> GLuint;
 
-    #[inline] fn major_version(&self) -> GLuint { get_integerv(gl::MAJOR_VERSION) as GLuint }
-    #[inline] fn minor_version(&self) -> GLuint { get_integerv(gl::MINOR_VERSION) as GLuint }
+    #[inline] fn get_major_version(&self) -> GLuint { get_integerv(gl::MAJOR_VERSION) as GLuint }
+    #[inline] fn get_minor_version(&self) -> GLuint { get_integerv(gl::MINOR_VERSION) as GLuint }
 
     #[inline(always)] fn as_gl10(&self) -> GL10 {GL10 {_private:()}}
 
@@ -69,7 +70,13 @@ pub unsafe trait GL {
 
 }
 
-pub unsafe trait GL2: GL {
+pub unsafe trait Supports<V:GL>: GL {}
+unsafe impl<G:GL> Supports<G> for G {}
+
+pub unsafe trait GL2:
+    Supports<GL10> + Supports<GL11> + Supports<GL12> + Supports<GL13> + Supports<GL14> +
+    Supports<GL15> + Supports<GL20>
+{
     #[inline(always)] fn as_gl11(&self) -> GL11 {GL11 {_private:()}}
     #[inline(always)] fn as_gl12(&self) -> GL12 {GL12 {_private:()}}
     #[inline(always)] fn as_gl13(&self) -> GL13 {GL13 {_private:()}}
@@ -77,12 +84,12 @@ pub unsafe trait GL2: GL {
     #[inline(always)] fn as_gl15(&self) -> GL15 {GL15 {_private:()}}
 }
 
-pub unsafe trait GL3: GL2 {
+pub unsafe trait GL3: GL2 + Supports<GL21> + Supports<GL30> {
     #[inline(always)] fn as_gl20(&self) -> GL20 {GL20 {_private:()}}
     #[inline(always)] fn as_gl21(&self) -> GL21 {GL21 {_private:()}}
 }
 
-pub unsafe trait GL4: GL3 {
+pub unsafe trait GL4: GL3 + Supports<GL31> + Supports<GL32> + Supports<GL33> + Supports<GL40> {
     #[inline(always)] fn as_gl30(&self) -> GL30 {GL30 {_private:()}}
     #[inline(always)] fn as_gl31(&self) -> GL31 {GL31 {_private:()}}
     #[inline(always)] fn as_gl32(&self) -> GL32 {GL32 {_private:()}}
@@ -95,23 +102,28 @@ macro_rules! version_struct {
     (@major $gl:ident 3) => { unsafe impl GL3 for $gl {} version_struct!(@major $gl 2); };
     (@major $gl:ident 4) => { unsafe impl GL4 for $gl {} version_struct!(@major $gl 3); };
 
-    ($($gl:ident $maj:tt $min:tt),*) => {
-        $(
-            #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)] pub struct $gl { _private: () }
-            unsafe impl GL for $gl {
-                const MAJOR_VERSION: GLuint = $maj;
-                const MINOR_VERSION: GLuint = $min;
-            }
-            version_struct!(@major $gl $maj);
-        )*
-    }
+    ({$($prev:ident)*} $gl:ident $maj:tt $min:tt , $($rest:tt)*) => {
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)] pub struct $gl { _private: () }
+        unsafe impl GL for $gl {
+            #[inline(always)] fn major_version(&self) -> GLuint {$maj}
+            #[inline(always)] fn minor_version(&self) -> GLuint {$min}
+        }
+
+        $(unsafe impl Supports<$prev> for $gl {})*
+
+        version_struct!(@major $gl $maj);
+
+        version_struct!({$($prev)* $gl} $($rest)*);
+    };
+
+    ({$($prev:ident)*} ) => {}
 }
 
-version_struct!{
+version_struct!{ {}
     GL10 1 0, GL11 1 1, GL12 1 2, GL13 1 3, GL14 1 4, GL15 1 5,
     GL20 2 0, GL21 2 1,
     GL30 3 0, GL31 3 1, GL32 3 2, GL33 3 3,
-    GL40 4 0, GL41 4 1, GL42 4 2, GL43 4 3, GL44 4 4, GL45 4 5, GL46 4 6
+    GL40 4 0, GL41 4 1, GL42 4 2, GL43 4 3, GL44 4 4, GL45 4 5, GL46 4 6,
 }
 
 //TODO: add actual checking of if functions are loaded

@@ -23,6 +23,9 @@ fn main() {
         gl::GetIntegerv(gl::MAX_COMBINED_TEXTURE_IMAGE_UNITS, &mut dest);
         println!("texture units = {}", dest);
 
+        gl::GetIntegerv(gl::MAX_IMAGE_UNITS, &mut dest);
+        println!("image units = {}", dest);
+
         gl::GetIntegerv(gl::MAX_UNIFORM_BUFFER_BINDINGS, &mut dest);
         println!("uniform buffer bindings = {}", dest);
 
