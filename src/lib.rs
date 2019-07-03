@@ -11,7 +11,6 @@
 #![feature(unsize)]
 #![feature(coerce_unsized)]
 #![feature(const_fn)]
-#![feature(type_alias_enum_variants)]
 #![recursion_limit="8192"]
 
 pub extern crate gl;
@@ -68,25 +67,13 @@ macro_rules! impl_tuple {
     };
 }
 
-macro_rules! check_loaded {
-    ($gl_fun0:ident, $($gl_fun:ident),+; $expr:expr) => {
-        check_loaded!($gl_fun0; check_loaded!($($gl_fun),+; $expr)).map_or_else(|e| Err(e), |ok| ok)
-    };
-
-    ($gl_fun:ident; $expr:expr) => {
-        if $crate::gl::$gl_fun::is_loaded() {
-            Ok($expr)
-        } else {
-            Err($crate::GLError::FunctionNotLoaded(concat!("gl", stringify!($gl_fun))))
-        }
-    }
-}
-
 pub use resources::*;
 pub use gl_enum::*;
+pub use gl_version::*;
 
 #[macro_use] mod resources;
 #[macro_use] mod gl_enum;
+#[macro_use] pub mod gl_version;
 
 pub use program::*;
 pub use glsl::*;
@@ -96,7 +83,6 @@ pub use buffer::*;
 
 pub mod program;
 pub mod buffer;
-pub mod buffer_new;
 pub mod image_format;
 pub mod texture;
 pub mod renderbuffer;
@@ -105,94 +91,6 @@ pub mod sampler;
 pub trait Surface: {
     fn is_active(&self) -> bool;
     fn make_current(&mut self) -> &mut Context;
-}
-
-pub trait GLProvider {
-    fn try_as_gl1(&self) -> Result<&GL1,GLError>;
-    fn try_as_gl2(&self) -> Result<&GL2,GLError>;
-    fn try_as_gl3(&self) -> Result<&GL3,GLError>;
-    fn try_as_gl4(&self) -> Result<&GL4,GLError>;
-}
-
-pub struct GL1 { _private: () }
-pub struct GL2 { _private: () }
-pub struct GL3 { _private: () }
-pub struct GL4 { _private: () }
-
-impl GL1 {
-
-    pub fn get_current() -> Result<Self, ()> {
-        //if glFinish isn't loaded, we can pretty safely assume nothing has
-        if gl::Finish::is_loaded() {
-            Ok(GL1{ _private: () })
-        } else {
-            Err(())
-        }
-    }
-
-    pub unsafe fn load<F: FnMut(&'static str) -> *const GLvoid>(proc_addr: F) -> GL1 {
-        gl::load_with(proc_addr);
-        GL1{ _private: () }
-    }
-
-    #[inline] pub fn upgrade(&self) -> Result<&GL2, GLError> {
-        check_loaded!(
-            GenBuffers, BindBuffer, DeleteBuffers, GetBufferParameteriv,
-            BufferData, BufferSubData, GetBufferSubData, CopyBufferSubData,
-            MapBuffer, UnmapBuffer;
-            &GL2{_private:()}
-        )
-    }
-
-}
-
-impl GL2 {
-    #[inline] pub fn as_gl1(&self) -> &GL1 {&GL1{_private:()}}
-    #[inline] pub fn upgrade(&self) -> Result<&GL3, GLError> {
-        check_loaded!(MapBuffer, UnmapBuffer; &GL3{_private:()} )
-    }
-}
-
-impl GL3 {
-    #[inline] pub fn as_gl1(&self) -> &GL1 {&GL1{_private:()}}
-    #[inline] pub fn as_gl2(&self) -> &GL2 {&GL2{_private:()}}
-    #[inline] pub fn upgrade(&self) -> Result<&GL4, GLError> {
-        check_loaded!(BufferStorage, MapBufferRange; &GL4{_private:()} )
-    }
-}
-
-impl GL4 {
-    #[inline] pub fn as_gl1(&self) -> &GL1 {&GL1{_private:()}}
-    #[inline] pub fn as_gl2(&self) -> &GL2 {&GL2{_private:()}}
-    #[inline] pub fn as_gl3(&self) -> &GL3 {&GL3{_private:()}}
-}
-
-impl GLProvider for GL1 {
-    #[inline] fn try_as_gl1(&self) -> Result<&GL1,GLError> {Ok(self)}
-    #[inline] fn try_as_gl2(&self) -> Result<&GL2,GLError> {self.upgrade()}
-    #[inline] fn try_as_gl3(&self) -> Result<&GL3,GLError> {self.try_as_gl2().and_then(|gl| gl.upgrade())}
-    #[inline] fn try_as_gl4(&self) -> Result<&GL4,GLError> {self.try_as_gl3().and_then(|gl| gl.upgrade())}
-}
-
-impl GLProvider for GL2 {
-    #[inline] fn try_as_gl1(&self) -> Result<&GL1,GLError> {Ok(self.as_gl1())}
-    #[inline] fn try_as_gl2(&self) -> Result<&GL2,GLError> {Ok(self)}
-    #[inline] fn try_as_gl3(&self) -> Result<&GL3,GLError> {self.upgrade()}
-    #[inline] fn try_as_gl4(&self) -> Result<&GL4,GLError> {self.try_as_gl3().and_then(|gl| gl.upgrade())}
-}
-
-impl GLProvider for GL3 {
-    #[inline] fn try_as_gl1(&self) -> Result<&GL1,GLError> {Ok(self.as_gl1())}
-    #[inline] fn try_as_gl2(&self) -> Result<&GL2,GLError> {Ok(self.as_gl2())}
-    #[inline] fn try_as_gl3(&self) -> Result<&GL3,GLError> {Ok(self)}
-    #[inline] fn try_as_gl4(&self) -> Result<&GL4,GLError> {self.upgrade()}
-}
-
-impl GLProvider for GL4 {
-    #[inline] fn try_as_gl1(&self) -> Result<&GL1,GLError> {Ok(self.as_gl1())}
-    #[inline] fn try_as_gl2(&self) -> Result<&GL2,GLError> {Ok(self.as_gl2())}
-    #[inline] fn try_as_gl3(&self) -> Result<&GL3,GLError> {Ok(self.as_gl3())}
-    #[inline] fn try_as_gl4(&self) -> Result<&GL4,GLError> {Ok(self)}
 }
 
 ///
@@ -205,7 +103,7 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn init(_gl: &GL1) -> Context {
+    pub fn init<Version:GL>(_gl: &Version) -> Context {
         Context {}
     }
 }
@@ -264,7 +162,8 @@ pub enum GLError {
     InvalidOperation(String),
     InvalidBits(GLbitfield, String),
     BufferCopySizeError(usize, usize),
-    FunctionNotLoaded(&'static str)
+    FunctionNotLoaded(&'static str),
+    Version(GLuint, GLuint)
 }
 
 display_from_debug!(GLError);
@@ -279,6 +178,7 @@ impl Debug for GLError {
             GLError::InvalidOperation(msg) => write!(f, "Invalid operation: {}", msg),
             GLError::InvalidBits(id, ty) => write!(f, "Invalid bitfield: {:b} are not valid flags for {}", id, ty),
             GLError::FunctionNotLoaded(name) => write!(f, "{} not loaded", name),
+            GLError::Version(maj, min) => write!(f, "OpenGL version {}.{} not supported", maj, min),
             GLError::BufferCopySizeError(s, cap) =>
                 write!(f, "Invalid Buffer Copy: Source size {} smaller than Destination capacity {}.
                 (If you are using an array, try slicing first.)", s, cap),

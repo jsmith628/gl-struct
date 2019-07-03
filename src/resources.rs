@@ -112,7 +112,7 @@ macro_rules! gl_resource{
 pub unsafe trait Resource:Sized {
 
     ///The OpenGL version type that guarrantees that the functions required for initialization are loaded
-    type GL: GLProvider;
+    type GL: GL;
     type BindingTarget: Target<Resource=Self>;
 
     ///

@@ -26,7 +26,7 @@ glenum! {
 
 gl_resource!{
     pub struct RawRenderbuffer {
-        gl = GL3,
+        gl = GL30,
         target = RenderbufferTarget,
         gen = GenRenderbuffers,
         bind = BindRenderbuffer,

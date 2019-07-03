@@ -47,7 +47,7 @@ glenum! {
 
 gl_resource!{
     pub struct Sampler {
-        gl = GL3,
+        gl = GL33,
         target = TextureUnitID,
         gen = GenSamplers,
         bind = BindSampler,

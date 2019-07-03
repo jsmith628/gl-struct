@@ -12,14 +12,14 @@ pub unsafe trait MultisampledTexture: Texture {
         gl:&Self::GL, samples:GLuint, dim:Self::Dim, fixed_sample_locations: bool
     ) -> Self {
         let raw = RawTex::gen(gl);
-        if let Ok(gl4) = gl.try_as_gl4() {
+        if let Ok(gl43) = gl.try_as_gl43() {
             if_sized!(
-                helper()(_gl:&GL4,tex:RawTex<T::Target>,s:GLuint,d:T::Dim,f:bool) -> T
+                helper()(_gl:&GL43,tex:RawTex<T::Target>,s:GLuint,d:T::Dim,f:bool) -> T
                     {unsafe{T::image_multisample(tex, s, d, f)}}
                     {unsafe{T::storage_multisample(_gl, tex, s, d, f)}}
                 where T:MultisampledTexture
             );
-            Self::InternalFormat::helper(&gl4, raw, samples, dim, fixed_sample_locations)
+            Self::InternalFormat::helper(&gl43, raw, samples, dim, fixed_sample_locations)
         } else {
             Self::image_multisample(raw, samples, dim, fixed_sample_locations)
         }
@@ -33,7 +33,7 @@ pub unsafe trait MultisampledTexture: Texture {
 
     #[inline]
     unsafe fn storage_multisample(
-        gl:&GL4, raw:RawTex<Self::Target>, samples:GLuint, dim:Self::Dim, fixed_sample_locations: bool
+        gl:&GL43, raw:RawTex<Self::Target>, samples:GLuint, dim:Self::Dim, fixed_sample_locations: bool
     ) -> Self
     where <Self as Texture>::InternalFormat: SizedInternalFormat
     {

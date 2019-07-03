@@ -1,7 +1,7 @@
 
 use super::*;
 
-use buffer_new::{UninitBuf};
+use buffer::{UninitBuf};
 use std::mem::*;
 
 #[derive(Copy,Clone,PartialEq,Eq,Hash)]

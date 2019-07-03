@@ -1,7 +1,7 @@
 use super::*;
 
 pub unsafe fn tex_storage<T:Texture>(
-    _gl:&GL4, mut tex: RawTex<T::Target>, levels: GLuint, dim: T::Dim, sampling: Option<(GLuint,bool)>
+    _gl:&GL43, mut tex: RawTex<T::Target>, levels: GLuint, dim: T::Dim, sampling: Option<(GLuint,bool)>
 ) -> T where T::InternalFormat: SizedInternalFormat {
     let mut target = T::Target::binding_location();
     let binding = target.bind(&mut tex);

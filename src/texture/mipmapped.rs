@@ -41,14 +41,14 @@ pub unsafe trait MipmappedTexture: PixelTransfer {
     #[inline]
     unsafe fn alloc_mipmaps(gl:&Self::GL, levels:GLuint, dim:Self::Dim) -> Self {
         let raw = RawTex::gen(gl);
-        if let Ok(gl4) = gl.try_as_gl4() {
+        if let Ok(gl43) = gl.try_as_gl43() {
             if_sized!(
-                helper()(_gl:&GL4,tex:RawTex<T::Target>,l:GLuint,d:T::Dim) -> T
+                helper()(_gl:&GL43,tex:RawTex<T::Target>,l:GLuint,d:T::Dim) -> T
                     {unsafe{T::image_mipmaps(tex, l, d)}}
                     {unsafe{T::storage_mipmaps(_gl, tex, l, d)}}
                 where T:MipmappedTexture
             );
-            Self::InternalFormat::helper(&gl4, raw, levels, dim)
+            Self::InternalFormat::helper(&gl43, raw, levels, dim)
         } else {
             Self::image_mipmaps(raw, levels, dim)
         }
@@ -63,7 +63,7 @@ pub unsafe trait MipmappedTexture: PixelTransfer {
     }
 
     #[inline]
-    unsafe fn storage_mipmaps(gl:&GL4, raw:RawTex<Self::Target>, levels:GLuint, dim:Self::Dim) -> Self
+    unsafe fn storage_mipmaps(gl:&GL43, raw:RawTex<Self::Target>, levels:GLuint, dim:Self::Dim) -> Self
     where Self::InternalFormat: SizedInternalFormat{
         tex_storage(gl, raw, levels, dim, None)
     }
@@ -72,16 +72,16 @@ pub unsafe trait MipmappedTexture: PixelTransfer {
         gl:&Self::GL, levels:GLuint, dim:Self::Dim, base:&P, mipmaps: Option<HashMap<GLuint, &P>>
     ) -> Self {
         let raw = RawTex::gen(gl);
-        if let Ok(gl4) = gl.try_as_gl4() {
+        if let Ok(gl43) = gl.try_as_gl43() {
             if_sized!(
                 helper(P:PixelData<T::ClientFormat>+?Sized)(
-                    _gl:&GL4, tex:RawTex<T::Target>, l:GLuint, d:T::Dim, b:&P, m: Option<HashMap<GLuint, &P>>
+                    _gl:&GL43, tex:RawTex<T::Target>, l:GLuint, d:T::Dim, b:&P, m: Option<HashMap<GLuint, &P>>
                 ) -> T
                     {T::image_from_mipmaps(tex, l, d, b, m)}
                     {T::storage_from_mipmaps(_gl, tex, l, d, b, m)}
                 where T:MipmappedTexture
             );
-            Self::InternalFormat::helper(&gl4, raw, levels, dim, base, mipmaps)
+            Self::InternalFormat::helper(&gl43, raw, levels, dim, base, mipmaps)
         } else {
             Self::image_from_mipmaps(raw, levels, dim, base, mipmaps)
         }
@@ -104,7 +104,7 @@ pub unsafe trait MipmappedTexture: PixelTransfer {
     }
 
     fn storage_from_mipmaps<P>(
-        gl:&GL4, raw:RawTex<Self::Target>, levels:GLuint, dim:Self::Dim, base:&P, mipmaps: Option<HashMap<GLuint, &P>>
+        gl:&GL43, raw:RawTex<Self::Target>, levels:GLuint, dim:Self::Dim, base:&P, mipmaps: Option<HashMap<GLuint, &P>>
     ) -> Self where P:PixelData<Self::ClientFormat>+?Sized, Self::InternalFormat:SizedInternalFormat {
         let mut tex = unsafe { Self::storage_mipmaps(gl, raw, levels, dim) };
         tex.set_max_level(levels);

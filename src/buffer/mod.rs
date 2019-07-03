@@ -1,7 +1,7 @@
 
 use crate::gl;
 use crate::gl::types::*;
-use crate::{GL2, GL4, GLError};
+use crate::{GL, GL15, GL44, GLError};
 use crate::{Resource, Target, Binding, BindingLocation};
 
 use std::alloc::{GlobalAlloc, Layout, System};
@@ -27,7 +27,7 @@ mod attrib_array;
 gl_resource! {
 
     pub struct UninitBuf {
-        gl = GL2,
+        gl = GL15,
         target = BufferTarget,
         gen = GenBuffers,
         bind = BindBuffer,
@@ -93,32 +93,32 @@ impl<T:?Sized, A:BufferAccess> Buf<T,A> {
     }
 
     #[inline]
-    pub unsafe fn storage_raw(_gl: &GL4, uninit: UninitBuf, data: *const T) -> Self {
+    pub unsafe fn storage_raw(_gl: &GL44, uninit: UninitBuf, data: *const T) -> Self {
         Self::_upload(uninit, data,
             |tar, len, ptr| gl::BufferStorage(tar, len, ptr, StorageFlags::from_access::<A>().bits())
         )
     }
 
     #[inline]
-    pub unsafe fn data_raw(gl: &GL2, uninit: UninitBuf, data: *const T) -> Self {
+    pub unsafe fn data_raw(gl: &GL15, uninit: UninitBuf, data: *const T) -> Self {
         Self::data_raw_hint(gl, uninit, data, A::default_usage())
     }
 
     #[inline]
-    pub unsafe fn data_raw_hint(_gl: &GL2, uninit: UninitBuf, data: *const T, usage: BufferUsage) -> Self {
+    pub unsafe fn data_raw_hint(_gl: &GL15, uninit: UninitBuf, data: *const T, usage: BufferUsage) -> Self {
         Self::_upload(uninit, data, |tar, len, ptr| gl::BufferData(tar, len, ptr, usage as GLenum))
     }
 
     #[inline]
-    pub unsafe fn from_raw(gl: &GL2, data: *const T) -> Self {
+    pub unsafe fn from_raw(gl: &GL15, data: *const T) -> Self {
         Self::raw_with_hint(gl, data, A::default_usage())
     }
 
     #[inline]
-    pub unsafe fn raw_with_hint(gl: &GL2, data: *const T, usage: BufferUsage) -> Self {
+    pub unsafe fn raw_with_hint(gl: &GL15, data: *const T, usage: BufferUsage) -> Self {
         let uninit = UninitBuf::gen(gl);
-        if let Ok(gl4) = gl.upgrade().and_then(|gl3| gl3.upgrade()) {
-            Self::storage_raw(gl4, uninit, data)
+        if let Ok(gl4) = gl.try_as_gl44() {
+            Self::storage_raw(&gl4, uninit, data)
         } else {
             Self::data_raw_hint(gl, uninit, data, usage)
         }
@@ -171,44 +171,44 @@ fn move_copy<T:?Sized, U, F:FnOnce(*mut T)->U>(data: Box<T>, f:F) -> U {
 //
 
 impl<T:GPUCopy+?Sized, A:BufferAccess> Buf<T,A> {
-    #[inline] pub fn storage(gl: &GL4, uninit: UninitBuf, data: &T) -> Self {
+    #[inline] pub fn storage(gl: &GL44, uninit: UninitBuf, data: &T) -> Self {
         unsafe { Self::storage_raw(gl, uninit, data as *const T) }
     }
-    #[inline] pub fn data(gl: &GL2, uninit: UninitBuf, data: &T) -> Self {
+    #[inline] pub fn data(gl: &GL15, uninit: UninitBuf, data: &T) -> Self {
         unsafe { Self::data_raw(gl, uninit, data as *const T) }
     }
-    #[inline] pub fn data_hint(gl: &GL2, uninit: UninitBuf, data: &T, usage: BufferUsage) -> Self {
+    #[inline] pub fn data_hint(gl: &GL15, uninit: UninitBuf, data: &T, usage: BufferUsage) -> Self {
         unsafe { Self::data_raw_hint(gl, uninit, data as *const T, usage) }
     }
-    #[inline] pub fn from_ref(gl: &GL2, data: &T) -> Self {
+    #[inline] pub fn from_ref(gl: &GL15, data: &T) -> Self {
         unsafe { Self::from_raw(gl, data as *const T) }
     }
-    #[inline] pub fn from_ref_with_hint(gl: &GL2, data: &T, usage: BufferUsage) -> Self {
+    #[inline] pub fn from_ref_with_hint(gl: &GL15, data: &T, usage: BufferUsage) -> Self {
         unsafe { Self::raw_with_hint(gl, data as *const T, usage) }
     }
 }
 
 impl<T:GPUCopy+?Sized> Buf<T,CopyOnly> {
-    #[inline] pub fn new_immut(gl: &GL2, data: &T) -> Self { Self::from_ref(gl, data) }
-    #[inline] pub fn immut_with_hint(gl: &GL2, data: &T, usage: BufferUsage) -> Self {
+    #[inline] pub fn new_immut(gl: &GL15, data: &T) -> Self { Self::from_ref(gl, data) }
+    #[inline] pub fn immut_with_hint(gl: &GL15, data: &T, usage: BufferUsage) -> Self {
         Self::from_ref_with_hint(gl, data, usage)
     }
 }
 impl<T:GPUCopy+?Sized> Buf<T,Read> {
-    #[inline] pub fn new_readonly(gl: &GL2, data: &T) -> Self { Self::from_ref(gl, data) }
-    #[inline] pub fn readonly_with_hint(gl: &GL2, data: &T, usage: BufferUsage) -> Self {
+    #[inline] pub fn new_readonly(gl: &GL15, data: &T) -> Self { Self::from_ref(gl, data) }
+    #[inline] pub fn readonly_with_hint(gl: &GL15, data: &T, usage: BufferUsage) -> Self {
         Self::from_ref_with_hint(gl, data, usage)
     }
 }
 impl<T:GPUCopy+?Sized> Buf<T,Write> {
-    #[inline] pub fn new_writeonly(gl: &GL2, data: &T) -> Self { Self::from_ref(gl, data) }
-    #[inline] pub fn writeonly_with_hint(gl: &GL2, data: &T, usage: BufferUsage) -> Self {
+    #[inline] pub fn new_writeonly(gl: &GL15, data: &T) -> Self { Self::from_ref(gl, data) }
+    #[inline] pub fn writeonly_with_hint(gl: &GL15, data: &T, usage: BufferUsage) -> Self {
         Self::from_ref_with_hint(gl, data, usage)
     }
 }
 impl<T:GPUCopy+?Sized> Buf<T,ReadWrite> {
-    #[inline] pub fn new_readwrite(gl: &GL2, data: &T) -> Self { Self::from_ref(gl, data) }
-    #[inline] pub fn readwriter_with_hint(gl: &GL2, data: &T, usage: BufferUsage) -> Self {
+    #[inline] pub fn new_readwrite(gl: &GL15, data: &T) -> Self { Self::from_ref(gl, data) }
+    #[inline] pub fn readwriter_with_hint(gl: &GL15, data: &T, usage: BufferUsage) -> Self {
         Self::from_ref_with_hint(gl, data, usage)
     }
 }
@@ -218,44 +218,44 @@ impl<T:GPUCopy+?Sized> Buf<T,ReadWrite> {
 //
 
 impl<T:?Sized, A:BufferAccess> Buf<T,A> {
-    #[inline] pub fn storage_from_box(gl: &GL4, uninit: UninitBuf, data: Box<T>) -> Self {
+    #[inline] pub fn storage_from_box(gl: &GL44, uninit: UninitBuf, data: Box<T>) -> Self {
         move_copy(data, |ptr| unsafe{Self::storage_raw(gl, uninit, ptr)})
     }
-    #[inline] pub fn data_from_box(gl: &GL2, uninit: UninitBuf, data: Box<T>) -> Self {
+    #[inline] pub fn data_from_box(gl: &GL15, uninit: UninitBuf, data: Box<T>) -> Self {
         move_copy(data, |ptr| unsafe{Self::data_raw(gl, uninit, ptr)})
     }
-    #[inline] pub fn data_hint_from_box(gl: &GL2, uninit: UninitBuf, data: Box<T>, usage: BufferUsage) -> Self {
+    #[inline] pub fn data_hint_from_box(gl: &GL15, uninit: UninitBuf, data: Box<T>, usage: BufferUsage) -> Self {
         move_copy(data, |ptr| unsafe{Self::data_raw_hint(gl, uninit, ptr, usage)})
     }
-    #[inline] pub fn from_box(gl: &GL2, data: Box<T>) -> Self {
+    #[inline] pub fn from_box(gl: &GL15, data: Box<T>) -> Self {
         move_copy(data, |ptr| unsafe{Self::from_raw(gl, ptr)})
     }
-    #[inline] pub fn from_box_with_hint(gl: &GL2, data: Box<T>, usage: BufferUsage) -> Self {
+    #[inline] pub fn from_box_with_hint(gl: &GL15, data: Box<T>, usage: BufferUsage) -> Self {
         move_copy(data, |ptr| unsafe{Self::raw_with_hint(gl, ptr, usage)})
     }
 }
 
 impl<T:?Sized> Buf<T,CopyOnly> {
-    #[inline] pub fn immut_from(gl: &GL2, data: Box<T>) -> Self { Self::from_box(gl, data) }
-    #[inline] pub fn immut_from_with_hint(gl: &GL2, data: Box<T>, usage: BufferUsage) -> Self {
+    #[inline] pub fn immut_from(gl: &GL15, data: Box<T>) -> Self { Self::from_box(gl, data) }
+    #[inline] pub fn immut_from_with_hint(gl: &GL15, data: Box<T>, usage: BufferUsage) -> Self {
         Self::from_box_with_hint(gl, data, usage)
     }
 }
 impl<T:?Sized> Buf<T,Read> {
-    #[inline] pub fn readonly_from(gl: &GL2, data: Box<T>) -> Self { Self::from_box(gl, data) }
-    #[inline] pub fn readonly_from_with_hint(gl: &GL2, data: Box<T>, usage: BufferUsage) -> Self {
+    #[inline] pub fn readonly_from(gl: &GL15, data: Box<T>) -> Self { Self::from_box(gl, data) }
+    #[inline] pub fn readonly_from_with_hint(gl: &GL15, data: Box<T>, usage: BufferUsage) -> Self {
         Self::from_box_with_hint(gl, data, usage)
     }
 }
 impl<T:?Sized> Buf<T,Write> {
-    #[inline] pub fn writeonly_from(gl: &GL2, data: Box<T>) -> Self { Self::from_box(gl, data) }
-    #[inline] pub fn writeonly_from_with_hint(gl: &GL2, data: Box<T>, usage: BufferUsage) -> Self {
+    #[inline] pub fn writeonly_from(gl: &GL15, data: Box<T>) -> Self { Self::from_box(gl, data) }
+    #[inline] pub fn writeonly_from_with_hint(gl: &GL15, data: Box<T>, usage: BufferUsage) -> Self {
         Self::from_box_with_hint(gl, data, usage)
     }
 }
 impl<T:?Sized> Buf<T,ReadWrite> {
-    #[inline] pub fn readwrite_from(gl: &GL2, data: Box<T>) -> Self { Self::from_box(gl, data) }
-    #[inline] pub fn readwrite_from_with_hint(gl: &GL2, data: Box<T>, usage: BufferUsage) -> Self {
+    #[inline] pub fn readwrite_from(gl: &GL15, data: Box<T>) -> Self { Self::from_box(gl, data) }
+    #[inline] pub fn readwrite_from_with_hint(gl: &GL15, data: Box<T>, usage: BufferUsage) -> Self {
         Self::from_box_with_hint(gl, data, usage)
     }
 }
@@ -265,59 +265,59 @@ impl<T:?Sized> Buf<T,ReadWrite> {
 //
 
 impl<T:Sized, A:BufferAccess> Buf<T,A> {
-    #[inline] pub unsafe fn alloc(gl: &GL2) -> Self {Self::from_raw(gl, null::<T>())}
-    #[inline] pub unsafe fn alloc_hint(gl: &GL2, usage: BufferUsage) -> Self {Self::raw_with_hint(gl, null::<T>(), usage)}
+    #[inline] pub unsafe fn alloc(gl: &GL15) -> Self {Self::from_raw(gl, null::<T>())}
+    #[inline] pub unsafe fn alloc_hint(gl: &GL15, usage: BufferUsage) -> Self {Self::raw_with_hint(gl, null::<T>(), usage)}
 }
 
 impl<T:Sized, A:BufferAccess> Buf<[T],A> {
-    #[inline] pub unsafe fn alloc_count(gl: &GL2, count: usize) -> Self {
+    #[inline] pub unsafe fn alloc_count(gl: &GL15, count: usize) -> Self {
         Self::from_raw(gl, from_raw_parts(null::<T>(), count))
     }
-    #[inline] pub unsafe fn alloc_count_hint(gl: &GL2, count: usize, usage: BufferUsage) -> Self {
+    #[inline] pub unsafe fn alloc_count_hint(gl: &GL15, count: usize, usage: BufferUsage) -> Self {
         Self::raw_with_hint(gl, from_raw_parts(null::<T>(), count), usage)
     }
 }
 
 impl<T:Sized> Buf<T,CopyOnly> {
-    #[inline] pub unsafe fn alloc_immut(gl: &GL2) -> Self {Self::alloc(gl)}
-    #[inline] pub unsafe fn alloc_immut_hint(gl: &GL2, usage: BufferUsage) -> Self {Self::alloc_hint(gl, usage)}
+    #[inline] pub unsafe fn alloc_immut(gl: &GL15) -> Self {Self::alloc(gl)}
+    #[inline] pub unsafe fn alloc_immut_hint(gl: &GL15, usage: BufferUsage) -> Self {Self::alloc_hint(gl, usage)}
 }
 impl<T:Sized> Buf<[T],CopyOnly> {
-    #[inline] pub unsafe fn alloc_immut_count(gl: &GL2, count: usize) -> Self {Self::alloc_count(gl,count)}
-    #[inline] pub unsafe fn alloc_immut_count_hint(gl: &GL2, count: usize, usage: BufferUsage) -> Self {
+    #[inline] pub unsafe fn alloc_immut_count(gl: &GL15, count: usize) -> Self {Self::alloc_count(gl,count)}
+    #[inline] pub unsafe fn alloc_immut_count_hint(gl: &GL15, count: usize, usage: BufferUsage) -> Self {
         Self::alloc_count_hint(gl, count, usage)
     }
 }
 
 impl<T:Sized> Buf<T,Read> {
-    #[inline] pub unsafe fn alloc_readonly(gl: &GL2) -> Self {Self::alloc(gl)}
-    #[inline] pub unsafe fn alloc_readonly_hint(gl: &GL2, usage: BufferUsage) -> Self {Self::alloc_hint(gl, usage)}
+    #[inline] pub unsafe fn alloc_readonly(gl: &GL15) -> Self {Self::alloc(gl)}
+    #[inline] pub unsafe fn alloc_readonly_hint(gl: &GL15, usage: BufferUsage) -> Self {Self::alloc_hint(gl, usage)}
 }
 impl<T:Sized> Buf<[T],Read> {
-    #[inline] pub unsafe fn alloc_readonly_count(gl: &GL2, count: usize) -> Self {Self::alloc_count(gl,count)}
-    #[inline] pub unsafe fn alloc_readonly_count_hint(gl: &GL2, count: usize, usage: BufferUsage) -> Self {
+    #[inline] pub unsafe fn alloc_readonly_count(gl: &GL15, count: usize) -> Self {Self::alloc_count(gl,count)}
+    #[inline] pub unsafe fn alloc_readonly_count_hint(gl: &GL15, count: usize, usage: BufferUsage) -> Self {
         Self::alloc_count_hint(gl, count, usage)
     }
 }
 
 impl<T:Sized> Buf<T,Write> {
-    #[inline] pub unsafe fn alloc_writeonly(gl: &GL2) -> Self {Self::alloc(gl)}
-    #[inline] pub unsafe fn alloc_writeonly_hint(gl: &GL2, usage: BufferUsage) -> Self {Self::alloc_hint(gl, usage)}
+    #[inline] pub unsafe fn alloc_writeonly(gl: &GL15) -> Self {Self::alloc(gl)}
+    #[inline] pub unsafe fn alloc_writeonly_hint(gl: &GL15, usage: BufferUsage) -> Self {Self::alloc_hint(gl, usage)}
 }
 impl<T:Sized> Buf<[T],Write> {
-    #[inline] pub unsafe fn alloc_writeonly_count(gl: &GL2, count: usize) -> Self {Self::alloc_count(gl,count)}
-    #[inline] pub unsafe fn alloc_writeonly_count_hint(gl: &GL2, count: usize, usage: BufferUsage) -> Self {
+    #[inline] pub unsafe fn alloc_writeonly_count(gl: &GL15, count: usize) -> Self {Self::alloc_count(gl,count)}
+    #[inline] pub unsafe fn alloc_writeonly_count_hint(gl: &GL15, count: usize, usage: BufferUsage) -> Self {
         Self::alloc_count_hint(gl, count, usage)
     }
 }
 
 impl<T:Sized> Buf<T,ReadWrite> {
-    #[inline] pub unsafe fn alloc_readwrite(gl: &GL2) -> Self {Self::alloc(gl)}
-    #[inline] pub unsafe fn alloc_readwrite_hint(gl: &GL2, usage: BufferUsage) -> Self {Self::alloc_hint(gl, usage)}
+    #[inline] pub unsafe fn alloc_readwrite(gl: &GL15) -> Self {Self::alloc(gl)}
+    #[inline] pub unsafe fn alloc_readwrite_hint(gl: &GL15, usage: BufferUsage) -> Self {Self::alloc_hint(gl, usage)}
 }
 impl<T:Sized> Buf<[T],ReadWrite> {
-    #[inline] pub unsafe fn alloc_readwrite_count(gl: &GL2, count: usize) -> Self {Self::alloc_count(gl,count)}
-    #[inline] pub unsafe fn alloc_readwrite_count_hint(gl: &GL2, count: usize, usage: BufferUsage) -> Self {
+    #[inline] pub unsafe fn alloc_readwrite_count(gl: &GL15, count: usize) -> Self {Self::alloc_count(gl,count)}
+    #[inline] pub unsafe fn alloc_readwrite_count_hint(gl: &GL15, count: usize, usage: BufferUsage) -> Self {
         Self::alloc_count_hint(gl, count, usage)
     }
 }

@@ -2,7 +2,6 @@
 use super::*;
 
 use std::rc::*;
-use std::collections::HashMap;
 use std::mem::forget;
 
 glenum! {
@@ -44,7 +43,7 @@ pub struct RawProgram {
 
 impl RawProgram {
 
-    pub fn create(_gl: &GL2) -> Self {
+    pub fn create(_gl: &GL20) -> Self {
         let id = unsafe {gl::CreateProgram()};
         if id == 0 {
             //this is a panic rather than a Result because it's not really _supposed_ to happen

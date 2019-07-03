@@ -30,7 +30,7 @@ impl Shader {
 
 //TODO something for ReleaseShaderCompiler as GetShaderPrecisionFormat
 
-    pub fn create(_gl: &GL2, ty: ShaderType) -> Result<Self, GLError> {
+    pub fn create(_gl: &GL20, ty: ShaderType) -> Result<Self, GLError> {
         unsafe {
             gl::GetError();//flush the current errors
             let id = gl::CreateShader(ty.into());
@@ -108,7 +108,7 @@ impl Shader {
         }
     }
 
-    pub fn from_source(gl: &GL2, ty: ShaderType, src: &[&str]) -> Result<Self, GLError> {
+    pub fn from_source(gl: &GL20, ty: ShaderType, src: &[&str]) -> Result<Self, GLError> {
         //create the shader
         let mut s = Shader::create(gl, ty)?;
 

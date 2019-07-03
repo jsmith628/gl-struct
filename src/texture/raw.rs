@@ -33,7 +33,7 @@ macro_rules! target {
 }
 
 pub unsafe trait TextureTarget: GLEnum + Default + Target<Resource=RawTex<Self>> {
-    type GL: GLProvider;
+    type GL: GL;
     type Dim: TexDim;
 
     #[inline] fn glenum() -> GLenum {Self::default().into()}
@@ -67,17 +67,17 @@ pub unsafe trait TextureTarget: GLEnum + Default + Target<Resource=RawTex<Self>>
 }
 
 target! {
-    [TEXTURE_1D "Texture 1D"]; GL1; [usize;1],
-    [TEXTURE_2D "Texture 2D"]; GL1; [usize;2],
-    [TEXTURE_3D "Texture 3D"]; GL1; [usize;3],
-    [TEXTURE_1D_ARRAY "Texture 1D Array"]; GL3; (<TEXTURE_1D as TextureTarget>::Dim, usize),
-    [TEXTURE_2D_ARRAY "Texture 2D Array"]; GL3; (<TEXTURE_2D as TextureTarget>::Dim, usize),
-    [TEXTURE_RECTANGLE "Texture Rectangle"]; GL3; <TEXTURE_2D as TextureTarget>::Dim,
-    [TEXTURE_BUFFER "Texture Buffer"]; GL3; usize,
-    [TEXTURE_CUBE_MAP "Texture Cube Map"]; GL1; <TEXTURE_2D as TextureTarget>::Dim,
-    [TEXTURE_CUBE_MAP_ARRAY "Texture Cube Map Array"]; GL4; <TEXTURE_2D_ARRAY as TextureTarget>::Dim,
-    [TEXTURE_2D_MULTISAMPLE "Texture 2D Multisample"]; GL3; <TEXTURE_2D as TextureTarget>::Dim,
-    [TEXTURE_2D_MULTISAMPLE_ARRAY "Texture 2D Multisample Array"]; GL3; <TEXTURE_2D_ARRAY as TextureTarget>::Dim
+    [TEXTURE_1D "Texture 1D"]; GL10; [usize;1],
+    [TEXTURE_2D "Texture 2D"]; GL10; [usize;2],
+    [TEXTURE_3D "Texture 3D"]; GL11; [usize;3],
+    [TEXTURE_1D_ARRAY "Texture 1D Array"]; GL30; (<TEXTURE_1D as TextureTarget>::Dim, usize),
+    [TEXTURE_2D_ARRAY "Texture 2D Array"]; GL30; (<TEXTURE_2D as TextureTarget>::Dim, usize),
+    [TEXTURE_RECTANGLE "Texture Rectangle"]; GL31; <TEXTURE_2D as TextureTarget>::Dim,
+    [TEXTURE_BUFFER "Texture Buffer"]; GL31; usize,
+    [TEXTURE_CUBE_MAP "Texture Cube Map"]; GL13; <TEXTURE_2D as TextureTarget>::Dim,
+    [TEXTURE_CUBE_MAP_ARRAY "Texture Cube Map Array"]; GL40; <TEXTURE_2D_ARRAY as TextureTarget>::Dim,
+    [TEXTURE_2D_MULTISAMPLE "Texture 2D Multisample"]; GL32; <TEXTURE_2D as TextureTarget>::Dim,
+    [TEXTURE_2D_MULTISAMPLE_ARRAY "Texture 2D Multisample Array"]; GL32; <TEXTURE_2D_ARRAY as TextureTarget>::Dim
 }
 
 pub struct RawTex<T: TextureTarget>(GLuint, PhantomData<T>);

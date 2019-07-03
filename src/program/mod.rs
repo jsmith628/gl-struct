@@ -2,12 +2,9 @@
 use gl::types::*;
 use ::*;
 
-use std::cell::Cell;
 use std::mem::transmute;
-use std::marker::PhantomData;
-use std::ops::{Deref, DerefMut};
+use std::ops::{Deref};
 use std::convert::TryInto;
-use std::ffi::CString;
 
 pub use self::shader::*;
 pub use self::raw::*;
@@ -95,7 +92,7 @@ impl Program {
         Program {raw: raw}
     }
 
-    pub fn from_source(gl:&GL2, src: &[(ShaderType, &[&str])]) -> Result<Self, GLError> {
+    pub fn from_source(gl:&GL20, src: &[(ShaderType, &[&str])]) -> Result<Self, GLError> {
 
         //compile the shader source code
         let mut shaders = Vec::with_capacity(src.len());
@@ -105,7 +102,7 @@ impl Program {
         Self::from_shaders(gl, &shaders.iter().collect::<Vec<_>>())
     }
 
-    pub fn from_shaders(gl:&GL2, shaders: &[&Shader]) -> Result<Self, GLError> {
+    pub fn from_shaders(gl:&GL20, shaders: &[&Shader]) -> Result<Self, GLError> {
 
         let mut raw = RawProgram::create(gl);
 
@@ -261,11 +258,11 @@ impl Program {
 //
 // }
 //
-#[derive(Clone, Copy)]
-pub enum Attribute<'a, A:GLSLType> {
-    Value(&'a dyn AttributeValue<A>),
-    Array(AttribArray<'a, A>)
-}
+// #[derive(Clone, Copy)]
+// pub enum Attribute<'a, A:GLSLType> {
+//     Value(&'a dyn AttributeValue<A>),
+//     Array(AttribArray<'a, A>)
+// }
 //
 // #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 // pub struct AttributeLocation {
