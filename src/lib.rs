@@ -88,11 +88,6 @@ pub mod texture;
 pub mod renderbuffer;
 pub mod sampler;
 
-pub trait Surface: {
-    fn is_active(&self) -> bool;
-    fn make_current(&mut self) -> &mut Context;
-}
-
 ///
 ///A struct for keeping track of global GL state while
 ///enforcing rust-like borrow rules on things like gl settings
