@@ -36,6 +36,9 @@ gl_resource! {
     }
 }
 
+impl !Send for UninitBuf {}
+impl !Sync for UninitBuf {}
+
 pub(self) union RawBuf<T:?Sized> {
     gl: *const GLvoid,
     gl_mut: *mut GLvoid,

@@ -132,3 +132,6 @@ impl Shader {
 impl Drop for Shader {
     fn drop(&mut self) { unsafe { gl::DeleteShader(self.0); } }
 }
+
+impl !Send for Shader {}
+impl !Sync for Shader {}

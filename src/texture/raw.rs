@@ -153,3 +153,6 @@ unsafe impl<T: TextureTarget> Resource for RawTex<T> {
 impl<T: TextureTarget> Drop for RawTex<T> {
     #[inline] fn drop(&mut self) { unsafe { gl::DeleteTextures(1, self.0 as *mut GLuint) } }
 }
+
+impl<T: TextureTarget> !Send for RawTex<T> {}
+impl<T: TextureTarget> !Sync for RawTex<T> {}

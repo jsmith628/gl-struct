@@ -178,6 +178,9 @@ impl Program {
 
 }
 
+impl !Send for Program {}
+impl !Sync for Program {}
+
 
 // pub unsafe trait Program: Sized {
 //     fn init(context: &GL1) -> Result<Self, GLError>;
