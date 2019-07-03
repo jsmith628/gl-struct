@@ -36,6 +36,35 @@ fn get_integerv(param: GLenum) -> GLint {
     }
 }
 
+///
+///A trait representing the currently loaded openGL version
+///
+///The purpose of this is two-fold:
+/// * To provide an object that can "own" the functions loaded by [`gl::load_with()`]:<p>
+///     <i>As it stands currently, by default, all of the GL calls in [`gl-rs`](crate::gl) will panic unless loaded
+///     with a function pointer to the driver functions. However, by having an object be created when
+///     those functions are loaded and making it a requirement for instantiating the OpenGL object
+///     structs, we can guarrantee that those panics will not occur (and at compile-time with near 0 cost) </i>
+/// * To provide an object that can enscapulate openGL versioning: <p>
+///     <i>Even with a guarrantee that [`gl::load_with()`] has been called, there is still no guarrantee
+///     that the driver implements or the hardware supports any given version of OpenGL (or that the
+///     functions were even loaded properly!). Thus, by having an object be created on version checking
+///     and requiring it for creating objects using that version, we can guarrantee that the GL version
+///     is available (also at compile time at near 0 cost)</i>
+///
+/// ## Usage
+///
+///Every openGL object in this crate will require a reference to some object that implements this
+///trait. In order to obtain this object, two things are required:
+/// * Loading the function pointers to obtain a [`GL10`] object:<p>
+///   This can be done by passing a fuction loader from any compatible context-creation library
+///   to [`GL10::load()`], as per [`gl::load_with()`] from [`gl-rs`](crate::gl). However, since this is
+///   fundamentally unsafe, it is highly recommended that such aforementioned crates implemement a
+///   safe function to do this automatically and return the `GL10` object for the end user to use
+/// * "Upgrading" that `GL10` object to the appropriate version:<p>
+///   This is done with the corresponding `try_as_*` functions in this trait and any necessary error
+///   handling in the case of the version not being supported.
+///
 pub unsafe trait GL {
 
     fn major_version(&self) -> GLuint;
@@ -70,9 +99,11 @@ pub unsafe trait GL {
 
 }
 
+///Signifies that a given [GL] object is a superset of another
 pub unsafe trait Supports<V:GL>: GL {}
 unsafe impl<G:GL> Supports<G> for G {}
 
+///Signifies that a given [GL] object supports all versions before [2.1](GL21)
 pub unsafe trait GL2:
     Supports<GL10> + Supports<GL11> + Supports<GL12> + Supports<GL13> + Supports<GL14> +
     Supports<GL15> + Supports<GL20>
@@ -84,11 +115,19 @@ pub unsafe trait GL2:
     #[inline(always)] fn as_gl15(&self) -> GL15 {GL15 {_private:()}}
 }
 
+unsafe impl<V> GL2 for V where V:
+    Supports<GL10> + Supports<GL11> + Supports<GL12> + Supports<GL13> + Supports<GL14> +
+    Supports<GL15> + Supports<GL20> {}
+
+///Signifies that a given [GL] object supports all versions before [3.1](GL31)
 pub unsafe trait GL3: GL2 + Supports<GL21> + Supports<GL30> {
     #[inline(always)] fn as_gl20(&self) -> GL20 {GL20 {_private:()}}
     #[inline(always)] fn as_gl21(&self) -> GL21 {GL21 {_private:()}}
 }
 
+unsafe impl<V> GL3 for V where V: GL2 + Supports<GL21> + Supports<GL30> {}
+
+///Signifies that a given [GL] object supports all versions before [4.1](GL41)
 pub unsafe trait GL4: GL3 + Supports<GL31> + Supports<GL32> + Supports<GL33> + Supports<GL40> {
     #[inline(always)] fn as_gl30(&self) -> GL30 {GL30 {_private:()}}
     #[inline(always)] fn as_gl31(&self) -> GL31 {GL31 {_private:()}}
@@ -96,13 +135,13 @@ pub unsafe trait GL4: GL3 + Supports<GL31> + Supports<GL32> + Supports<GL33> + S
     #[inline(always)] fn as_gl33(&self) -> GL33 {GL33 {_private:()}}
 }
 
-macro_rules! version_struct {
-    (@major $gl:ident 1) => {};
-    (@major $gl:ident 2) => { unsafe impl GL2 for $gl {} version_struct!(@major $gl 1); };
-    (@major $gl:ident 3) => { unsafe impl GL3 for $gl {} version_struct!(@major $gl 2); };
-    (@major $gl:ident 4) => { unsafe impl GL4 for $gl {} version_struct!(@major $gl 3); };
+unsafe impl<V> GL4 for V where V: GL3 + Supports<GL31> + Supports<GL32> + Supports<GL33> + Supports<GL40> {}
 
-    ({$($prev:ident)*} $gl:ident $maj:tt $min:tt , $($rest:tt)*) => {
+macro_rules! version_struct {
+    ({$($prev:ident)*} $gl:ident $maj:tt $min:tt $str:expr, $($rest:tt)*) => {
+
+        #[doc = "A [GL] object for OpenGL version "]
+        #[doc = $str]
         #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)] pub struct $gl { _private: () }
         unsafe impl GL for $gl {
             #[inline(always)] fn major_version(&self) -> GLuint {$maj}
@@ -110,9 +149,6 @@ macro_rules! version_struct {
         }
 
         $(unsafe impl Supports<$prev> for $gl {})*
-
-        version_struct!(@major $gl $maj);
-
         version_struct!({$($prev)* $gl} $($rest)*);
     };
 
@@ -120,10 +156,10 @@ macro_rules! version_struct {
 }
 
 version_struct!{ {}
-    GL10 1 0, GL11 1 1, GL12 1 2, GL13 1 3, GL14 1 4, GL15 1 5,
-    GL20 2 0, GL21 2 1,
-    GL30 3 0, GL31 3 1, GL32 3 2, GL33 3 3,
-    GL40 4 0, GL41 4 1, GL42 4 2, GL43 4 3, GL44 4 4, GL45 4 5, GL46 4 6,
+    GL10 1 0 "1.0", GL11 1 1 "1.1", GL12 1 2 "1.2", GL13 1 3 "1.3", GL14 1 4 "1.4", GL15 1 5 "1.5",
+    GL20 2 0 "2.0", GL21 2 1 "2.1",
+    GL30 3 0 "3.0", GL31 3 1 "3.1", GL32 3 2 "3.2", GL33 3 3 "3.3",
+    GL40 4 0 "4.0", GL41 4 1 "4.1", GL42 4 2 "4.2", GL43 4 3 "4.3", GL44 4 4 "4.4", GL45 4 5 "4.5", GL46 4 6 "4.6",
 }
 
 //TODO: add actual checking of if functions are loaded
