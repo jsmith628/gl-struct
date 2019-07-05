@@ -216,24 +216,18 @@ fn main() {
             if n==0 {
                 return;
             } else if n==4 {
-                unsafe { gl::MemoryBarrier(gl::SHADER_STORAGE_BARRIER_BIT); }
                 c2.compute((buf.len()>>4) as u32, 1, 1, buf);
-                // unsafe { gl::Finish(); }
             } else {
                 bitonic_sort(n-1, c, c2, buf);
 
                 *c.order = n-1;
                 c.flip.set(true);
-                unsafe { gl::MemoryBarrier(gl::SHADER_STORAGE_BARRIER_BIT); }
                 c.compute((buf.len()>>1) as u32, 1, 1, buf);
-                // unsafe { gl::Finish(); }
 
                 c.flip.set(false);
                 for m in (0..n-1).rev() {
                     *c.order = m;
-                    unsafe { gl::MemoryBarrier(gl::SHADER_STORAGE_BARRIER_BIT); }
                     c.compute((buf.len()>>1) as u32, 1, 1, buf);
-                    // unsafe { gl::Finish(); }
                 }
             }
 
@@ -242,7 +236,7 @@ fn main() {
         // small_bitonic.compute(1, 1, 1, &mut list);
         // unsafe { gl::Finish(); }
         bitonic_sort(order, &mut computer, &mut small_bitonic, &mut list);
-        // unsafe { gl::Finish();}
+        unsafe { gl::Finish();}
 
 
         println!("Finished GPU sorting in {:?}", ::std::time::Instant::now() - start);
