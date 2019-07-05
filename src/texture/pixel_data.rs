@@ -1,6 +1,6 @@
 
 use super::*;
-use buffer_new::{UninitBuf, BufferTarget};
+use buffer_new::{UninitBuf};
 use std::mem::*;
 
 #[derive(Copy,Clone,PartialEq,Eq,Hash)]

@@ -1,7 +1,7 @@
+#![allow(dead_code)]
 
 use super::*;
 use crate::gl;
-use crate::gl::types::*;
 
 use super::Target;
 
@@ -31,7 +31,7 @@ glenum! {
 
 impl TextureTarget {
     #[inline]
-    fn multisample(self) -> bool {
+    pub fn multisample(self) -> bool {
         match self {
             Self::Texture2DMultisample | Self::Texture1DMultisampleArray => true,
             _ => false
@@ -83,7 +83,6 @@ unsafe impl TexDim for [usize;3] {
     fn depth(&self) -> usize {self[2]}
 }
 
-
 unsafe fn apply_packing_settings<F:PixelFormatType,P:PixelData<F>>(pixels:&P) {
     gl::PixelStorei(gl::PACK_SWAP_BYTES, pixels.swap_bytes() as GLint);
     gl::PixelStorei(gl::PACK_LSB_FIRST, pixels.lsb_first() as GLint);
@@ -112,7 +111,7 @@ pub unsafe trait Texture: Sized {
         levels:usize,
         internalformat:Self::InternalFormat,
         dim:Self::Dim,
-        pixels:P
+        _pixels:P
     ) -> Self
     {
         unsafe {
@@ -206,22 +205,22 @@ impl<'a,T:Texture> SubTextureMut<'a,T> {
 }
 
 
-pub struct Tex1D<F:InternalFormat> {
-    raw: RawTex,
-    format: F,
-    dim: [usize;1]
-}
-
-
-
-pub struct Tex2D<F:InternalFormat> {
-    raw: RawTex,
-    format: F,
-    dim: [usize;2]
-}
-
-pub struct Tex3D<F:InternalFormat> {
-    raw: RawTex,
-    format: F,
-    dim: [usize;3]
-}
+// pub struct Tex1D<F:InternalFormat> {
+//     raw: RawTex,
+//     format: F,
+//     dim: [usize;1]
+// }
+//
+//
+//
+// pub struct Tex2D<F:InternalFormat> {
+//     raw: RawTex,
+//     format: F,
+//     dim: [usize;2]
+// }
+//
+// pub struct Tex3D<F:InternalFormat> {
+//     raw: RawTex,
+//     format: F,
+//     dim: [usize;3]
+// }

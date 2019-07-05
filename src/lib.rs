@@ -2,7 +2,6 @@
 #![feature(optin_builtin_traits)]
 #![feature(ptr_offset_from)]
 #![feature(untagged_unions)]
-#![feature(maybe_uninit)]
 #![feature(concat_idents)]
 #![feature(specialization)]
 #![feature(allocator_api)]
@@ -12,7 +11,6 @@
 #![feature(unsize)]
 #![feature(coerce_unsized)]
 #![feature(const_fn)]
-#![feature(type_alias_enum_variants)]
 #![recursion_limit="8192"]
 
 pub extern crate gl;

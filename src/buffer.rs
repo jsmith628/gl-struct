@@ -678,7 +678,7 @@ impl<'a, T:?Sized, A:BufferAccess> Drop for BMap<'a, T, A> {
 //Downcast
 //
 
-impl<A:BufferAccess> Buffer<Any, A> {
+impl<A:BufferAccess> Buffer<dyn Any, A> {
     pub fn downcast<T:'static>(self) -> Result<Buffer<T, A>, Self> {
         unsafe {
             let refr = &mut *self.repr.rust_mut;
@@ -694,7 +694,7 @@ impl<A:BufferAccess> Buffer<Any, A> {
     }
 }
 
-impl<'a, A:BufferAccess> BMap<'a, Any, A> {
+impl<'a, A:BufferAccess> BMap<'a, dyn Any, A> {
     pub fn downcast<T:'static>(mut self) -> Result<BMap<'a, T, A>, Self> {
         {
             let refr = &mut self.data;
