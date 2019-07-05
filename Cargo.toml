@@ -6,6 +6,7 @@ authors = ["Joshua Smith <anvil775@gmail.com>"]
 [dependencies]
 bitflags = "1.1"
 gl = "0.12"
+glfw = {version = "0.29", optional = true}
 macro-program = {path="../macro-program"}
 trait-arith = {path="../trait-arith"}
 
@@ -16,5 +17,11 @@ rayon = "1.0.3"
 
 [features]
 default = []
+
+#if the user wants arrays greater than 32 to have GLSLType implemented
+#NOTE: this can DRASTICALLY increase compile-times
 large_uniform_arrays = []
 extra_large_uniform_arrays = []
+
+#for implementing GLProvider on GLFW
+glfw-context = ["glfw"]

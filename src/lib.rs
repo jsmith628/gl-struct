@@ -14,6 +14,7 @@
 #![recursion_limit="8192"]
 
 pub extern crate gl;
+#[cfg(feature = "glfw-context")] pub extern crate glfw;
 
 #[macro_use] extern crate macro_program;
 #[macro_use] extern crate bitflags;
@@ -71,8 +72,8 @@ pub use resources::*;
 pub use gl_enum::*;
 pub use gl_version::*;
 
-#[macro_use] mod resources;
-#[macro_use] mod gl_enum;
+#[macro_use] pub mod resources;
+#[macro_use] pub mod gl_enum;
 #[macro_use] pub mod gl_version;
 
 pub use program::*;
