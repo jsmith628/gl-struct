@@ -1071,7 +1071,7 @@ macro_rules! glsl {
                                 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
-                                $crate::gl::MemoryBarrier($crate::gl::SHADER_STORAGE_BARRIER_BIT);
+                                $crate::gl::MemoryBarrier($crate::gl::ALL_BARRIER_BITS);
 
                                 $(self.$block.unbind();)*
                                 ProgramID::unbind_program();
