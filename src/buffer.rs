@@ -224,7 +224,7 @@ impl<T:?Sized, A:BufferAccess> Buffer<T, A> {
         }
     }
 
-    unsafe fn copy_data(&self, dest: &mut Self) {
+    pub unsafe fn copy_data(&self, dest: &mut Self) {
         let read_target = BufferTarget::CopyReadBuffer;
         let write_target = BufferTarget::CopyWriteBuffer;
 
