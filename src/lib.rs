@@ -69,15 +69,8 @@ macro_rules! impl_tuple {
     };
 }
 
-pub use resources::*;
-pub use gl_enum::*;
-pub use gl_version::*;
-pub use gl_context::*;
-
-#[macro_use] pub mod resources;
-#[macro_use] pub mod gl_enum;
-#[macro_use] pub mod gl_version;
-pub mod gl_context;
+pub use core::*;
+#[macro_use] mod core;
 
 pub use program::*;
 pub use glsl::*;
