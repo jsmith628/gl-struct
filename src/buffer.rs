@@ -268,6 +268,7 @@ impl<T:?Sized, A:BufferAccess> Buffer<T, A> {
         }
     }
 
+    #[inline] pub fn id(&self) -> GLuint { self.id }
     #[inline] pub fn data_offset(&self) -> usize { self.offset as usize }
     #[inline] pub fn data_size(&self) -> usize { self.size as usize }
     #[inline] pub fn buffer_size(&self) -> usize { self.capacity as usize }
@@ -763,21 +764,21 @@ impl<T:Sized, A:BufferAccess> Buffer<[T], A> {
 
     fn check_bounds(&self, i: usize) -> (GLsizeiptr, GLsizeiptr) {
         let unit = size_of::<T>() as GLsizeiptr;
-        let offset = self.offset + unit * (i as GLsizeiptr);
-        if offset >= self.size {
+        let bytes = unit * (i as GLsizeiptr);
+        if bytes >= self.size {
             panic!("Index out of bounds: {} >= {}", i, self.size / unit);
         } else {
-            (offset, unit)
+            (self.offset + bytes, unit)
         }
     }
 
     fn check_bounds_incl(&self, i: usize) -> (GLsizeiptr, GLsizeiptr) {
         let unit = size_of::<T>() as GLsizeiptr;
-        let offset = self.offset + unit * (i as GLsizeiptr);
-        if offset > self.size {
-            panic!("Index out of bounds: {} >= {}", i, self.size / unit);
+        let bytes = unit * (i as GLsizeiptr);
+        if bytes > self.size {
+            panic!("Index out of bounds: {} > {}", i, self.size / unit);
         } else {
-            (offset, unit)
+            (self.offset + bytes, unit)
         }
     }
 
