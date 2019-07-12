@@ -79,7 +79,7 @@ pub unsafe trait Texture: Sized {
     //the types that are effectively aliases
     type ClientFormat: ClientFormat;
     type Dim: TexDim;
-    type GL: GL;
+    type GL: GLVersion;
 
     fn dim(&self) -> Self::Dim;
     fn raw(&self) -> &RawTex<Self::Target>;

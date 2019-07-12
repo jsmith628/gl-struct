@@ -33,7 +33,7 @@ macro_rules! target {
 }
 
 pub unsafe trait TextureTarget: GLEnum + Default + Target<Resource=RawTex<Self>> {
-    type GL: GL;
+    type GL: GLVersion;
     type Dim: TexDim;
 
     #[inline] fn glenum() -> GLenum {Self::default().into()}

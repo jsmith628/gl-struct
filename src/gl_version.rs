@@ -23,16 +23,19 @@ fn get_integerv(param: GLenum) -> GLint {
     }
 }
 
-#[inline(always)] fn upgrade_to<Test:GL+?Sized, Version:GL+Sized>(gl: &Test) -> Result<Version,GLError> {
+#[inline] pub fn supports<Test:GLVersion+?Sized, Version:GLVersion+Sized>(gl: &Test) -> bool {
     let target: Version = unsafe { ::std::mem::zeroed() };
     let version = (target.major_version(), target.minor_version());
-    if
-        (gl.major_version(), gl.minor_version()) <= version ||
-        (gl.get_major_version(), gl.get_minor_version()) <= version
-    {
+    (gl.major_version(), gl.minor_version()) <= version ||
+    (gl.get_major_version(), gl.get_minor_version()) <= version
+}
+
+fn upgrade_to<Test:GLVersion+?Sized, Version:GLVersion+Sized>(gl: &Test) -> Result<Version,GLError> {
+    let target: Version = unsafe { ::std::mem::zeroed() };
+    if supports::<Test,Version>(gl){
         Ok(target)
     } else {
-        Err(GLError::Version(version.0, version.1))
+        Err(GLError::Version(target.major_version(), target.minor_version()))
     }
 }
 
@@ -65,7 +68,7 @@ fn get_integerv(param: GLenum) -> GLint {
 ///   This is done with the corresponding `try_as_*` functions in this trait and any necessary error
 ///   handling in the case of the version not being supported.
 ///
-pub unsafe trait GL {
+pub unsafe trait GLVersion {
 
     fn major_version(&self) -> GLuint;
     fn minor_version(&self) -> GLuint;
@@ -100,8 +103,8 @@ pub unsafe trait GL {
 }
 
 ///Signifies that a given [GL] object is a superset of another
-pub unsafe trait Supports<V:GL>: GL {}
-unsafe impl<G:GL> Supports<G> for G {}
+pub unsafe trait Supports<V:GLVersion>: GLVersion{}
+unsafe impl<G:GLVersion> Supports<G> for G {}
 
 ///Signifies that a given [GL] object supports all versions before [2.1](GL21)
 pub unsafe trait GL2:
@@ -143,7 +146,7 @@ macro_rules! version_struct {
         #[doc = "A [GL] object for OpenGL version "]
         #[doc = $str]
         #[derive(Clone, PartialEq, Eq, Hash, Debug)] pub struct $gl { _private: () }
-        unsafe impl GL for $gl {
+        unsafe impl GLVersion for $gl {
             #[inline(always)] fn major_version(&self) -> GLuint {$maj}
             #[inline(always)] fn minor_version(&self) -> GLuint {$min}
         }

@@ -1,7 +1,7 @@
 
 use crate::gl;
 use crate::gl::types::*;
-use crate::{GL, GL15, GL44, GLError};
+use crate::{GLVersion, GL15, GL44, GLError};
 use crate::{Resource, Target, Binding, BindingLocation};
 
 use std::alloc::{GlobalAlloc, Layout, System};
