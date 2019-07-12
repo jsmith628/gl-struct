@@ -15,6 +15,7 @@
 
 pub extern crate gl;
 #[cfg(feature = "glfw-context")] pub extern crate glfw;
+#[cfg(feature = "glutin-context")] pub extern crate glutin;
 
 #[macro_use] extern crate macro_program;
 #[macro_use] extern crate bitflags;
@@ -71,10 +72,12 @@ macro_rules! impl_tuple {
 pub use resources::*;
 pub use gl_enum::*;
 pub use gl_version::*;
+pub use gl_context::*;
 
 #[macro_use] pub mod resources;
 #[macro_use] pub mod gl_enum;
 #[macro_use] pub mod gl_version;
+pub mod gl_context;
 
 pub use program::*;
 pub use glsl::*;
@@ -89,23 +92,6 @@ pub mod texture;
 pub mod renderbuffer;
 pub mod sampler;
 
-///
-///A struct for keeping track of global GL state while
-///enforcing rust-like borrow rules on things like gl settings
-///and bind points
-///
-pub struct Context {
-
-}
-
-impl Context {
-    pub fn init<Version:GL>(_gl: &Version) -> Context {
-        Context {}
-    }
-}
-
-impl !Send for Context {}
-impl !Sync for Context {}
 
 glenum! {
     pub enum IntType {

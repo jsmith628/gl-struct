@@ -7,6 +7,7 @@ authors = ["Joshua Smith <anvil775@gmail.com>"]
 bitflags = "1.1"
 gl = "0.13"
 glfw = {version = "0.29", optional = true}
+glutin = {version = "0.22.0-alpha1", optional = true}
 macro-program = {path="../macro-program"}
 trait-arith = {path="../trait-arith"}
 
@@ -23,5 +24,8 @@ default = []
 large_uniform_arrays = []
 extra_large_uniform_arrays = []
 
-#for implementing GLProvider on GLFW
+#for implementing ContextProvider for glfw Windows
 glfw-context = ["glfw"]
+
+#for implementing ContextProvider on glutin Contexts
+glutin-context = ["glutin"]

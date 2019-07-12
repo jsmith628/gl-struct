@@ -142,7 +142,7 @@ macro_rules! version_struct {
 
         #[doc = "A [GL] object for OpenGL version "]
         #[doc = $str]
-        #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)] pub struct $gl { _private: () }
+        #[derive(Clone, PartialEq, Eq, Hash, Debug)] pub struct $gl { _private: () }
         unsafe impl GL for $gl {
             #[inline(always)] fn major_version(&self) -> GLuint {$maj}
             #[inline(always)] fn minor_version(&self) -> GLuint {$min}
@@ -166,18 +166,6 @@ version_struct!{ {}
 
 impl GL10 {
 
-    pub fn get_current() -> Result<Self, ()> {
-        //if glFinish isn't loaded, we can pretty safely assume nothing has
-        if gl::Finish::is_loaded() {
-            Ok(GL10{ _private: () })
-        } else {
-            Err(())
-        }
-    }
-
-    pub unsafe fn load<F: FnMut(&'static str) -> *const GLvoid>(proc_addr: F) -> GL10 {
-        gl::load_with(proc_addr);
-        GL10{ _private: () }
-    }
+    pub unsafe fn assume_loaded() -> GL10 { GL10 {_private:()}}
 
 }
