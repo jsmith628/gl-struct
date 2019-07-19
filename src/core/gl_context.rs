@@ -8,6 +8,7 @@ use gl_version::GLVersion;
 ///
 pub struct GLContext<V:GLVersion> {
     pub version: V,
+    // pub state: GLState<V>,
     _private: ()
 }
 

@@ -11,6 +11,7 @@
 #![feature(unsize)]
 #![feature(coerce_unsized)]
 #![feature(const_fn)]
+#![feature(maybe_uninit_ref)]
 #![recursion_limit="8192"]
 
 pub extern crate gl;
@@ -99,11 +100,6 @@ glenum! {
     pub enum FloatType {
         [Half HALF_FLOAT "Half"],
         [Float FLOAT "FLoat"]
-    }
-
-    pub enum VertexWinding {
-        [CCW CCW "Counter-Clockwise"],
-        [CW CW "Clockwise"]
     }
 }
 

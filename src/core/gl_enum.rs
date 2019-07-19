@@ -26,7 +26,7 @@ macro_rules! glenum {
         impl From<$name> for gl::types::GLenum {
             fn from(e: $name) -> ::gl::types::GLenum {
                 match e {
-                    $($name::$item => ::gl::$gl),*
+                    $($name::$item => ::gl::$gl as ::gl::types::GLenum),*
                 }
             }
         }
