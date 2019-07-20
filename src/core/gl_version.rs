@@ -102,11 +102,11 @@ pub unsafe trait GLVersion {
 
 }
 
-///Signifies that a given [GL] object is a superset of another
+///Signifies that a given [GLVersion] object is a superset of another
 pub unsafe trait Supports<V:GLVersion>: GLVersion{}
 unsafe impl<G:GLVersion> Supports<G> for G {}
 
-///Signifies that a given [GL] object supports all versions before [2.1](GL21)
+///Signifies that a given [GLVersion] object supports all versions before [2.1](GL21)
 pub unsafe trait GL2:
     Supports<GL10> + Supports<GL11> + Supports<GL12> + Supports<GL13> + Supports<GL14> +
     Supports<GL15> + Supports<GL20>
@@ -122,7 +122,7 @@ unsafe impl<V> GL2 for V where V:
     Supports<GL10> + Supports<GL11> + Supports<GL12> + Supports<GL13> + Supports<GL14> +
     Supports<GL15> + Supports<GL20> {}
 
-///Signifies that a given [GL] object supports all versions before [3.1](GL31)
+///Signifies that a given [GLVersion] object supports all versions before [3.1](GL31)
 pub unsafe trait GL3: GL2 + Supports<GL21> + Supports<GL30> {
     #[inline(always)] fn as_gl20(&self) -> GL20 {GL20 {_private:()}}
     #[inline(always)] fn as_gl21(&self) -> GL21 {GL21 {_private:()}}
@@ -130,7 +130,7 @@ pub unsafe trait GL3: GL2 + Supports<GL21> + Supports<GL30> {
 
 unsafe impl<V> GL3 for V where V: GL2 + Supports<GL21> + Supports<GL30> {}
 
-///Signifies that a given [GL] object supports all versions before [4.1](GL41)
+///Signifies that a given [GLVersion] object supports all versions before [4.1](GL41)
 pub unsafe trait GL4: GL3 + Supports<GL31> + Supports<GL32> + Supports<GL33> + Supports<GL40> {
     #[inline(always)] fn as_gl30(&self) -> GL30 {GL30 {_private:()}}
     #[inline(always)] fn as_gl31(&self) -> GL31 {GL31 {_private:()}}
@@ -143,7 +143,7 @@ unsafe impl<V> GL4 for V where V: GL3 + Supports<GL31> + Supports<GL32> + Suppor
 macro_rules! version_struct {
     ({$($prev:ident)*} $gl:ident $maj:tt $min:tt $str:expr, $($rest:tt)*) => {
 
-        #[doc = "A [GL] object for OpenGL version "]
+        #[doc = "A [GLVersion] object for OpenGL version "]
         #[doc = $str]
         #[derive(Clone, PartialEq, Eq, Hash, Debug)] pub struct $gl { _private: () }
         unsafe impl GLVersion for $gl {
