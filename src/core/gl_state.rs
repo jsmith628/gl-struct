@@ -4,6 +4,8 @@ use std::mem::*;
 use std::convert::TryInto;
 use std::ops::*;
 use std::ffi::*;
+use std::os::raw::c_char;
+
 
 glenum! {
 
@@ -140,7 +142,7 @@ impl<V:GLVersion> !Sync for GLState<V> {}
 impl<V:Supports<GL20>> GLState<V> {
 
     unsafe fn get_boolean(&self, pname: GLenum) -> bool {
-        let dest = MaybeUninit::uninit();
+        let mut dest = MaybeUninit::uninit();
         gl::GetBooleanv(pname, dest.as_mut_ptr());
         dest.assume_init() != 0
     }
@@ -148,34 +150,32 @@ impl<V:Supports<GL20>> GLState<V> {
     unsafe fn get_unsigned_integer(&self, pname: GLenum) -> GLuint { self.get_integer(pname) as GLuint }
     unsafe fn get_glenum<T:GLEnum>(&self, pname: GLenum) -> T {self.get_unsigned_integer(pname).try_into().unwrap()}
     unsafe fn get_integer(&self, pname: GLenum) -> GLint {
-        let dest = MaybeUninit::uninit();
+        let mut dest = MaybeUninit::uninit();
         gl::GetIntegerv(pname, dest.as_mut_ptr());
         dest.assume_init()
     }
 
     unsafe fn get_float(&self, pname: GLenum) -> GLfloat {
-        let dest = MaybeUninit::uninit();
+        let mut dest = MaybeUninit::uninit();
         gl::GetFloatv(pname, dest.as_mut_ptr());
         dest.assume_init()
     }
 
-    fn get_float_range(&self, pname:GLenum) -> RangeInclusive<GLfloat> {
-        unsafe {
-            let mut dest = MaybeUninit::<[GLfloat;2]>::uninit();
-            gl::GetFloatv(pname, &mut dest.get_mut()[0] as *mut GLfloat);
-            let dest = dest.assume_init();
-            dest[0]..=dest[1]
-        }
+    unsafe fn get_float_range(&self, pname:GLenum) -> RangeInclusive<GLfloat> {
+        let mut dest = MaybeUninit::<[GLfloat;2]>::uninit();
+        gl::GetFloatv(pname, &mut dest.get_mut()[0] as *mut GLfloat);
+        let dest = dest.assume_init();
+        dest[0]..=dest[1]
     }
 
     unsafe fn get_double(&self, pname: GLenum) -> GLdouble {
-        let dest = MaybeUninit::uninit();
+        let mut dest = MaybeUninit::uninit();
         gl::GetDoublev(pname, dest.as_mut_ptr());
         dest.assume_init()
     }
 
     unsafe fn get_string(&self, pname: GLenum) -> &CStr {
-        CStr::from_ptr(gl::GetString() as *const c_char)
+        CStr::from_ptr(gl::GetString(pname) as *const c_char)
     }
 
     //
@@ -385,24 +385,24 @@ impl<V:Supports<GL20>> GLState<V> {
 
     pub fn get_stencil_func(&self) -> CompareFunc { unsafe {self.get_glenum(gl::STENCIL_FUNC)} }
     pub fn get_stencil_value_mask(&self) -> GLuint { unsafe {self.get_unsigned_integer(gl::STENCIL_VALUE_MASK)} }
-    pub fn get_stencil_ref(&self) -> GLuint { unsafe {self.get_integer(gl::STENCIL_REF)} }
+    pub fn get_stencil_ref(&self) -> GLint { unsafe {self.get_integer(gl::STENCIL_REF)} }
 
     pub fn get_stencil_back_func(&self) -> CompareFunc { unsafe {self.get_glenum(gl::STENCIL_BACK_FUNC)} }
     pub fn get_stencil_back_value_mask(&self) -> GLuint { unsafe {self.get_unsigned_integer(gl::STENCIL_BACK_VALUE_MASK)} }
-    pub fn get_stencil_back_ref(&self) -> GLuint { unsafe {self.get_integer(gl::STENCIL_BACK_REF)} }
+    pub fn get_stencil_back_ref(&self) -> GLint { unsafe {self.get_integer(gl::STENCIL_BACK_REF)} }
 
     pub fn stencil_func(&mut self, func:CompareFunc, ref_value:GLint, mask:GLuint) {
         unsafe { gl::StencilFunc(func as GLenum, ref_value, mask) }
     }
 
     pub fn stencil_func_separate(&mut self, face:PolygonFace, func:CompareFunc, ref_value:GLint, mask:GLuint) {
-        unsafe { gl::StencilFunc(face as GLenum, func as GLenum, ref_value, mask) }
+        unsafe { gl::StencilFuncSeparate(face as GLenum, func as GLenum, ref_value, mask) }
     }
 
     pub fn get_stencil_writemask(&self) -> GLuint { unsafe {self.get_unsigned_integer(gl::STENCIL_WRITEMASK)} }
     pub fn get_stencil_back_writemask(&self) -> GLuint { unsafe {self.get_unsigned_integer(gl::STENCIL_BACK_WRITEMASK)} }
 
-    pub fn stencil_mask(&mut self, mask:GLuint) { unsafe {gl:StencilMask(mask)} }
+    pub fn stencil_mask(&mut self, mask:GLuint) { unsafe {gl::StencilMask(mask)} }
     pub fn stencil_mask_separate(&mut self, face:PolygonFace, mask:GLuint) { unsafe {gl::StencilMaskSeparate(face as GLenum, mask)} }
 
     pub fn get_stencil_fail(&self) -> StencilOp { unsafe {self.get_glenum(gl::STENCIL_FAIL)} }
@@ -418,7 +418,7 @@ impl<V:Supports<GL20>> GLState<V> {
     }
 
     pub fn stencil_op_separate(&mut self, face:PolygonFace, sfail:StencilOp, dpfail:StencilOp, dppass:StencilOp) {
-        unsafe {gl::StencilOpSeparate(face as GLenum, dpfail as GLenum, dppass as GLenum)}
+        unsafe {gl::StencilOpSeparate(face as GLenum, sfail as GLenum, dpfail as GLenum, dppass as GLenum)}
     }
 
 
@@ -437,7 +437,7 @@ impl<V:Supports<GL30>> GLState<V> {
 
 impl<V:Supports<GL32>> GLState<V> {
     unsafe fn get_integer64(&self, pname: GLenum) -> GLint64 {
-        let dest = MaybeUninit::uninit();
+        let mut dest = MaybeUninit::uninit();
         gl::GetInteger64v(pname, dest.as_mut_ptr());
         dest.assume_init()
     }
@@ -481,7 +481,7 @@ impl LogicOp {
         ])
     }
 
-    pub fn into_op(self) -> Box<dyn Fn(bool,bool)->bool> {Box::new(|r,l|self.op(r,l))}
+    pub fn into_op(self) -> Box<dyn Fn(bool,bool)->bool> {Box::new(move |r,l| self.op(r,l))}
 
     pub fn from_truth_table(table: TruthTable) -> Self {
 
