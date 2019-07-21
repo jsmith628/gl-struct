@@ -41,3 +41,6 @@ impl Uniform<dyn Any> {
     }
 
 }
+
+impl<T:?Sized> !Send for Uniform<T> {}
+impl<T:?Sized> !Sync for Uniform<T> {}
