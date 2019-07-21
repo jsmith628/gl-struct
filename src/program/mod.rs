@@ -12,10 +12,12 @@ use std::ffi::*;
 pub use self::shader::*;
 pub use self::raw::*;
 pub use self::uniform::*;
+pub use self::uniform_block::*;
 
 mod shader;
 mod raw;
 mod uniform;
+mod uniform_block;
 
 glenum! {
 
