@@ -5,14 +5,17 @@ use ::*;
 use std::mem::transmute;
 use std::ops::{Deref};
 use std::convert::TryInto;
+use std::any::Any;
+use std::marker::PhantomData;
+use std::ffi::*;
 
 pub use self::shader::*;
 pub use self::raw::*;
-// pub use self::uniform::*;
+pub use self::uniform::*;
 
 mod shader;
 mod raw;
-// mod uniform;
+mod uniform;
 
 glenum! {
 
@@ -267,6 +270,17 @@ impl Program {
                 Self::from_raw(raw)
             }
         )
+    }
+
+    pub fn get_uniform_location(&self, name: &CStr) -> Option<Uniform<dyn Any>> {
+        unsafe {
+            let index = gl::GetUniformLocation(self.id(), name.as_ptr());
+            if index >= 0 {
+                Some(Uniform {program: self.id(), index: index as GLuint, ty: PhantomData} )
+            } else {
+                None
+            }
+        }
     }
 
 }
