@@ -2,39 +2,7 @@
 use super::*;
 
 use std::rc::*;
-use std::mem::forget;
-
-glenum! {
-    pub enum ProgramParameter {
-        [DeleteStatus DELETE_STATUS "Delete Status"],
-        [LinkStatus LINK_STATUS "Delete Status"],
-        [ValidateStatus VALIDATE_STATUS "Validate Status"],
-        [InfoLogLength INFO_LOG_LENGTH "Info Log Length"],
-        [AttachedShaders ATTACHED_SHADERS "Attached Shaders"],
-        [ActiveAttributes ACTIVE_ATTRIBUTES "Active Attributes"],
-        [ActiveAttributeMaxLength ACTIVE_ATTRIBUTE_MAX_LENGTH "Active Attribute Max Length"],
-        [ActiveUniforms ACTIVE_UNIFORMS "Active Attributes"],
-        [ActiveUniformMaxLength ACTIVE_UNIFORM_MAX_LENGTH "Active Uniform Max Length"],
-        [TransformFeedbackBufferMode TRANSFORM_FEEDBACK_BUFFER_MODE "Transform Feedback Buffer Mode"],
-        [TransformFeedbackVaryings TRANSFORM_FEEDBACK_VARYINGS "Transform Feedback Varyings"],
-        [TransformFeedbackVaryingMaxLength TRANSFORM_FEEDBACK_VARYING_MAX_LENGTH "Transform Feedback Varying Max Length"],
-        [ActiveUniformBlocks ACTIVE_UNIFORM_BLOCKS "Active Uniform Blocks"],
-        [ActiveUniformBlockMaxNameLength ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH "Active Uniform Block Max Name Length"],
-        [GeometryVerticesOut GEOMETRY_VERTICES_OUT "Geometry Vertices Out"],
-        [GeometryInputType GEOMETRY_INPUT_TYPE "Geometry Input Type"],
-        [GeometryOutputType GEOMETRY_OUTPUT_TYPE "Geometry Output Type"],
-        [GeometryShaderInvocations GEOMETRY_SHADER_INVOCATIONS "Geometry Shader Invocations"],
-        [TessControlOutputVertices TESS_CONTROL_OUTPUT_VERTICES "Tessellation Control Output Vertices"],
-        [TessGenMode TESS_GEN_MODE "Tessellation Gen Mode"],
-        [TessGenSpacing TESS_GEN_SPACING "Tessellation Gen Spacing"],
-        [TessGenVertexOrder TESS_GEN_VERTEX_ORDER "Tessellation Gen Vertex Order"],
-        [TessGenPointMode TESS_GEN_POINT_MODE "Tessellation Gen Point Mode"],
-        // [ComputeWorkGroupSize COMPUTE_WORK_GROUP_SIZE "Compute Work Group Size"],
-        [ProgramSeparable PROGRAM_SEPARABLE "Program Separable"],
-        [ProgramBinaryRetrievableHint PROGRAM_BINARY_RETRIEVABLE_HINT "Program Binary Retrievable Hint"],
-        [ActiveAtomicCounterBuffers ACTIVE_ATOMIC_COUNTER_BUFFERS "Active Atomic Counter Buffers"]
-    }
-}
+use std::mem::*;
 
 pub struct RawProgram {
     id: GLuint,
@@ -60,18 +28,22 @@ impl RawProgram {
 
     pub fn id(&self) -> GLuint {self.id}
 
-    pub fn get_program_int(&self, p: ProgramParameter) -> GLint {
-        let mut val:GLint = 0;
-        unsafe { gl::GetProgramiv(self.id, p.into(), &mut val as *mut GLint); }
-        val
+    pub(super) unsafe fn get_program_int(&self, p: GLenum) -> GLint {
+        let mut val = MaybeUninit::uninit();
+        gl::GetProgramiv(self.id, p, val.as_mut_ptr());
+        val.assume_init()
     }
 
-    pub fn delete_status(&self) -> bool {self.get_program_int(ProgramParameter::DeleteStatus) != 0}
-    pub fn link_status(&self) -> bool {self.get_program_int(ProgramParameter::LinkStatus) != 0}
-    pub fn validate_status(&self) -> bool {self.get_program_int(ProgramParameter::ValidateStatus) != 0}
+    pub(super) unsafe fn get_program_glenum<T:GLEnum>(&self, p: GLenum) -> T {
+        (self.get_program_int(p) as GLenum).try_into().unwrap()
+    }
 
-    pub fn info_log_length(&self) -> GLuint {self.get_program_int(ProgramParameter::InfoLogLength) as GLuint}
-    pub fn attached_shaders(&self) -> GLuint {self.get_program_int(ProgramParameter::AttachedShaders) as GLuint}
+    pub fn delete_status(&self) -> bool { unsafe {self.get_program_int(gl::DELETE_STATUS)!=0}}
+    pub fn link_status(&self) -> bool {unsafe {self.get_program_int(gl::LINK_STATUS)!=0}}
+    pub fn validate_status(&self) -> bool {unsafe {self.get_program_int(gl::VALIDATE_STATUS)!=0}}
+
+    pub fn info_log_length(&self) -> GLuint {unsafe {self.get_program_int(gl::INFO_LOG_LENGTH) as GLuint}}
+    pub fn attached_shaders(&self) -> GLuint {unsafe {self.get_program_int(gl::ATTACHED_SHADERS) as GLuint}}
 
     pub fn leak(mut self) -> GLuint {
         let id = self.id();

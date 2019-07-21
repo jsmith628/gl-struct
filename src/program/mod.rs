@@ -285,49 +285,53 @@ impl Program {
 
 }
 
-use ProgramParameter::*;
-
 impl Program {
-    pub fn active_attributes(&self) -> GLuint { self.get_program_int(ActiveAttributes) as GLuint }
-    pub fn active_attribute_max_length(&self) -> GLuint { self.get_program_int(ActiveAttributeMaxLength) as GLuint }
+    pub fn active_attributes(&self) -> GLuint { unsafe {self.get_program_int(gl::ACTIVE_ATTRIBUTES) as GLuint} }
+    pub fn active_attribute_max_length(&self) -> GLuint {
+        unsafe {self.get_program_int(gl::ACTIVE_ATTRIBUTE_MAX_LENGTH) as GLuint}
+    }
 
-    pub fn active_uniforms(&self) -> GLuint { self.get_program_int(ActiveUniforms) as GLuint }
-    pub fn active_uniform_max_length(&self) -> GLuint { self.get_program_int(ActiveUniformMaxLength) as GLuint }
+    pub fn active_uniforms(&self) -> GLuint { unsafe {self.get_program_int(gl::ACTIVE_UNIFORMS) as GLuint} }
+    pub fn active_uniform_max_length(&self) -> GLuint {
+        unsafe {self.get_program_int(gl::ACTIVE_UNIFORM_MAX_LENGTH) as GLuint}
+    }
 
-    pub fn transform_feedback_varyings(&self) -> GLuint { self.get_program_int(TransformFeedbackVaryings) as GLuint }
-    pub fn transform_feedback_varying_max_length(&self) -> GLuint { self.get_program_int(TransformFeedbackVaryingMaxLength) as GLuint }
+    pub fn transform_feedback_varyings(&self) -> GLuint {
+        unsafe {self.get_program_int(gl::TRANSFORM_FEEDBACK_VARYINGS) as GLuint}
+    }
+    pub fn transform_feedback_varying_max_length(&self) -> GLuint {
+        unsafe {self.get_program_int(gl::TRANSFORM_FEEDBACK_VARYING_MAX_LENGTH) as GLuint}
+    }
     pub fn transform_feedback_buffer_mode(&self) -> TransformFeedbackBufferMode {
-        (self.get_program_int(TransformFeedbackBufferMode) as GLenum).try_into().unwrap()
+        unsafe {self.get_program_glenum(gl::TRANSFORM_FEEDBACK_BUFFER_MODE)}
     }
 
-    pub fn active_uniform_blocks(&self) -> GLuint { self.get_program_int(ActiveUniformBlocks) as GLuint }
-    pub fn active_uniform_block_max_name_length(&self) -> GLuint { self.get_program_int(ActiveUniformBlockMaxNameLength) as GLuint }
-
-    pub fn geometry_vertices_out(&self) -> GLuint { self.get_program_int(GeometryVerticesOut) as GLuint }
-    pub fn geometry_shader_invocations(&self) -> GLuint { self.get_program_int(GeometryShaderInvocations) as GLuint }
-    pub fn geometry_input_type(&self) -> DrawPrimitive {
-        (self.get_program_int(GeometryInputType) as GLenum).try_into().unwrap()
-    }
-    pub fn geometry_output_type(&self) -> DrawPrimitive {
-        (self.get_program_int(GeometryOutputType) as GLenum).try_into().unwrap()
+    pub fn active_uniform_blocks(&self) -> GLuint { unsafe {self.get_program_int(gl::ACTIVE_UNIFORM_BLOCKS) as GLuint} }
+    pub fn active_uniform_block_max_name_length(&self) -> GLuint {
+        unsafe { self.get_program_int(gl::ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH) as GLuint }
     }
 
-    pub fn tess_control_output_vertices(&self) -> GLuint { self.get_program_int(TessControlOutputVertices) as GLuint }
-    pub fn tess_gen_point_mode(&self) -> bool { self.get_program_int(TessGenPointMode) != 0 }
-    pub fn tess_gen_mode(&self) -> TessGenMode {
-        (self.get_program_int(TessGenMode) as GLenum).try_into().unwrap()
+    pub fn geometry_vertices_out(&self) -> GLuint { unsafe {self.get_program_int(gl::GEOMETRY_VERTICES_OUT) as GLuint} }
+    pub fn geometry_shader_invocations(&self) -> GLuint { unsafe {self.get_program_int(gl::GEOMETRY_SHADER_INVOCATIONS) as GLuint} }
+    pub fn geometry_input_type(&self) -> DrawPrimitive { unsafe {self.get_program_glenum(gl::GEOMETRY_INPUT_TYPE)} }
+    pub fn geometry_output_type(&self) -> DrawPrimitive { unsafe {self.get_program_glenum(gl::GEOMETRY_OUTPUT_TYPE)} }
+
+    pub fn tess_control_output_vertices(&self) -> GLuint {
+        unsafe {self.get_program_int(gl::TESS_CONTROL_OUTPUT_VERTICES) as GLuint}
     }
-    pub fn tess_gen_spacing(&self) -> TessGenSpacing {
-        (self.get_program_int(TessGenSpacing) as GLenum).try_into().unwrap()
-    }
-    pub fn tess_gen_vertex_order(&self) -> VertexWinding {
-        (self.get_program_int(TessGenVertexOrder) as GLenum).try_into().unwrap()
+    pub fn tess_gen_point_mode(&self) -> bool { unsafe {self.get_program_int(gl::TESS_GEN_POINT_MODE)!=0} }
+    pub fn tess_gen_mode(&self) -> TessGenMode { unsafe {self.get_program_glenum(gl::TESS_GEN_MODE)} }
+    pub fn tess_gen_spacing(&self) -> TessGenSpacing { unsafe {self.get_program_glenum(gl::TESS_GEN_SPACING)} }
+    pub fn tess_gen_vertex_order(&self) -> VertexWinding { unsafe {self.get_program_glenum(gl::TESS_GEN_VERTEX_ORDER)} }
+
+    pub fn program_separable(&self) -> bool { unsafe {self.get_program_int(gl::PROGRAM_SEPARABLE)!= 0} }
+    pub fn program_binary_retrievable_hint(&self) -> bool {
+        unsafe { self.get_program_int(gl::PROGRAM_BINARY_RETRIEVABLE_HINT) != 0 }
     }
 
-    pub fn program_separable(&self) -> bool { self.get_program_int(ProgramSeparable) != 0 }
-    pub fn program_binary_retrievable_hint(&self) -> bool { self.get_program_int(ProgramBinaryRetrievableHint) != 0 }
-
-    pub fn active_atomic_counter_buffers(&self) -> GLuint { self.get_program_int(ActiveAtomicCounterBuffers) as GLuint }
+    pub fn active_atomic_counter_buffers(&self) -> GLuint {
+        unsafe { self.get_program_int(gl::ACTIVE_ATOMIC_COUNTER_BUFFERS) as GLuint }
+    }
 
     pub fn compute_work_group_size(&self) -> [GLuint; 3] {
         unsafe {
