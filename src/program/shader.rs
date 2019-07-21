@@ -75,13 +75,13 @@ impl Shader {
 
     pub fn info_log(&mut self) -> String {
         unsafe {
-            get_resource_string(self.0, self.info_log_length(), gl::GetShaderInfoLog, "Malformatted shader info log")
+            get_program_string(self.0, self.info_log_length(), gl::GetShaderInfoLog, "Malformatted shader info log")
         }
     }
 
     pub fn get_source(&self) -> String {
         unsafe {
-            get_resource_string(self.0, self.shader_source_length(), gl::GetShaderSource, "Malformatted shader source")
+            get_program_string(self.0, self.shader_source_length(), gl::GetShaderSource, "Malformatted shader source")
         }
     }
 

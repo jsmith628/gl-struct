@@ -134,7 +134,7 @@ impl RawProgram {
 
     pub fn info_log(&mut self) -> String {
         unsafe {
-            get_resource_string(self.id(), self.info_log_length(), gl::GetProgramInfoLog, "Malformatted program info log")
+            get_program_string(self.id(), self.info_log_length(), gl::GetProgramInfoLog, "Malformatted program info log")
         }
     }
 

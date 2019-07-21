@@ -8,9 +8,11 @@ use std::convert::TryInto;
 
 pub use self::shader::*;
 pub use self::raw::*;
+// pub use self::uniform::*;
 
 mod shader;
 mod raw;
+// mod uniform;
 
 glenum! {
 
@@ -61,7 +63,7 @@ impl DrawPrimitive {
     }
 }
 
-pub(self) unsafe fn get_resource_string(
+pub(self) unsafe fn get_program_string(
     id:GLuint, len:GLuint, f: unsafe fn(GLuint,GLsizei,*mut GLsizei,*mut GLchar), msg:&'static str
 ) -> String {
     let len = len as usize;
@@ -70,6 +72,22 @@ pub(self) unsafe fn get_resource_string(
         let mut log:Vec<u8> = Vec::with_capacity(len);
         log.set_len(len);
         f(id, len as GLsizei, &mut actual as *mut GLint, transmute(&mut log[0]));
+        log.set_len(len.min(actual as usize));
+        String::from_utf8(log).expect(msg)
+    } else {
+        "".to_owned()
+    }
+}
+
+pub(self) unsafe fn get_resource_string(
+    prog:GLuint, id:GLuint, len:GLuint, f: unsafe fn(GLuint,GLuint,GLsizei,*mut GLsizei,*mut GLchar), msg:&'static str
+) -> String {
+    let len = len as usize;
+    let mut actual: GLint = 0;
+    if len > 0 {
+        let mut log:Vec<u8> = Vec::with_capacity(len);
+        log.set_len(len);
+        f(prog, id, len as GLsizei, &mut actual as *mut GLint, transmute(&mut log[0]));
         log.set_len(len.min(actual as usize));
         String::from_utf8(log).expect(msg)
     } else {
@@ -180,232 +198,3 @@ impl Program {
 
 impl !Send for Program {}
 impl !Sync for Program {}
-
-
-// pub unsafe trait Program: Sized {
-//     fn init(context: &GL1) -> Result<Self, GLError>;
-// }
-//
-// pub unsafe trait ShaderProgram: Program {}
-// pub unsafe trait ComputeProgram: Program {}
-
-// pub struct Uniform<T: GLSLType> {
-//     value: Box<T>,
-//     location: Cell<(GLint, GLuint)>,
-//     loaded: Cell<bool>,
-// }
-//
-// impl<T: GLSLType> Deref for Uniform<T> {
-//     type Target = T;
-//     fn deref(&self) -> &T {&*self.value}
-// }
-//
-// impl<T: GLSLType> DerefMut for Uniform<T> {
-//     fn deref_mut(&mut self) -> &mut T { self.loaded.set(false); &mut *self.value}
-// }
-//
-// impl<T: GLSLType> Uniform<T> {
-//     #[inline]
-//     pub fn set<U: Into<T>>(&mut self, data: U) {
-//         **self = data.into();
-//     }
-//
-//     #[inline]
-//     pub fn get<U: From<T>>(&self) -> U {
-//         (**self).into()
-//     }
-//
-// }
-//
-// pub struct UniformLocation {
-//     id: GLint,
-//     pid: GLuint
-// }
-//
-// impl UniformLocation {
-//
-//     pub fn get(p: &ProgramID, name: &str) -> Result<UniformLocation, UniformLocation> {
-//         let id = unsafe {
-//             gl::GetUniformLocation(p.id, CString::new(name).unwrap().into_raw())
-//         };
-//
-//         let loc = UniformLocation { id: id, pid: p.id };
-//
-//         if id<0 {Err(loc)} else {Ok(loc)}
-//
-//     }
-//
-//     pub unsafe fn get_uniform<T:GLSLType>(&self) -> Uniform<T> {
-//
-//         let value = T::get_uniform(self.pid, self.id);
-//
-//         Uniform {
-//             value: Box::new(value),
-//             location: Cell::new((self.id, self.pid)),
-//             loaded: Cell::new(true)
-//         }
-//     }
-//
-//     pub unsafe fn load<T:GLSLType>(&self, value: &Uniform<T>) {
-//         if !self.is_loaded(value) {
-//             T::load_uniform(self.id, &**value);
-//             value.loaded.set(true);
-//             value.location.set((self.id, self.pid));
-//         }
-//     }
-//
-//     #[inline] fn is_loaded<T:GLSLType>(&self, value: &Uniform<T>) -> bool {
-//         let (id, pid) = value.location.get();
-//         value.loaded.get() && id == self.id && pid == self.pid
-//     }
-//
-// }
-//
-// #[derive(Clone, Copy)]
-// pub enum Attribute<'a, A:GLSLType> {
-//     Value(&'a dyn AttributeValue<A>),
-//     Array(AttribArray<'a, A>)
-// }
-//
-// #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-// pub struct AttributeLocation {
-//     id: GLint
-// }
-//
-// impl AttributeLocation {
-//
-//     pub fn get(p: &ProgramID, name: &str) -> Result<Self, Self> {
-//         let id = unsafe { gl::GetAttribLocation(p.id, CString::new(name).unwrap().into_raw()) };
-//         let loc = AttributeLocation {id: id};
-//         if id<0 {Err(loc)} else {Ok(loc)}
-//     }
-//
-//     #[inline]
-//     pub unsafe fn load<'a, A:GLSLType>(&self, a: &Attribute<'a, A>) {
-//         if self.id < 0 {return};
-//         match a {
-//             Attribute::Value(val) => {
-//                 debug_assert_eq!(val.format().size(), ::std::mem::size_of_val(val), "Invalid value size for given attribute format!");
-//
-//                 union Repr<'b, T> {
-//                     rust: &'b T,
-//                     void: &'b GLvoid
-//                 }
-//
-//                 gl::DisableVertexAttribArray(self.id as GLuint);
-//                 A::set_attribute(self.id as GLuint, val.format(), Repr{rust: val}.void);
-//             },
-//             Attribute::Array(arr) => {
-//                 gl::EnableVertexAttribArray(self.id as GLuint);
-//                 arr.bind();
-//                 A::bind_attribute(self.id as GLuint, arr.format(), arr.stride(), arr.offset());
-//                 AttribArray::<'a, A>::unbind();
-//             }
-//         }
-//     }
-//
-// }
-//
-// pub trait InterfaceBlock<L:BlockLayout, T:Layout<L>+?Sized> {
-//     fn buffer_target() -> IndexedBufferTarget;
-//     fn binding(&self) -> GLuint;
-//
-//     #[inline]
-//     unsafe fn bind_buffer_range<A:BufferAccess>(&self, buffer: &Buffer<T, A>) {
-//         Self::buffer_target().bind_range(buffer, self.binding());
-//     }
-//
-//     #[inline] unsafe fn unbind(&self) {Self::buffer_target().unbind(self.binding())}
-// }
-//
-// pub struct UniformBlock<L:BlockLayout, T:Layout<L>+Sized> {
-//     id: GLuint,
-//     pid: GLuint,
-//     binding: GLuint,
-//     p: PhantomData<(Box<T>, L)>
-// }
-//
-// impl<L:BlockLayout, T:Layout<L>+Sized> UniformBlock<L, T> {
-//
-//     pub unsafe fn get(p: &ProgramID, name: &str) -> Self {
-//         let mut block = UniformBlock {
-//             id: gl::GetUniformBlockIndex(p.id, CString::new(name).unwrap().into_raw()),
-//             pid: p.id,
-//             binding: 0,
-//             p: PhantomData
-//         };
-//
-//         if block.id!=gl::INVALID_INDEX {
-//             gl::GetActiveUniformBlockiv(block.pid, block.id, gl::UNIFORM_BLOCK_BINDING, transmute::<&mut GLuint, *mut GLint>(&mut block.binding));
-//         }
-//
-//         block
-//     }
-//
-//     pub unsafe fn set_binding(&mut self, binding: GLuint) {
-//         debug_assert!(binding < gl::MAX_UNIFORM_BUFFER_BINDINGS, "UBO Binding higher than maximum!");
-//         self.binding = binding;
-//         gl::UniformBlockBinding(self.pid, self.id, self.binding);
-//     }
-//
-// }
-//
-// impl<L:BlockLayout, T:Layout<L>+Sized> InterfaceBlock<L,T> for UniformBlock<L, T> {
-//     #[inline] fn buffer_target() -> IndexedBufferTarget {IndexedBufferTarget::UniformBuffer}
-//     #[inline] fn binding(&self) -> GLuint {self.binding}
-// }
-//
-//
-// pub struct ShaderStorageBlock<L:BlockLayout, T:Layout<L>+?Sized> {
-//     id: GLuint,
-//     pid: GLuint,
-//     binding: GLuint,
-//     p: PhantomData<(Box<T>, L)>
-// }
-//
-// impl<L:BlockLayout, T:Layout<L>+?Sized> ShaderStorageBlock<L, T> {
-//
-//     pub unsafe fn get(p: &ProgramID, name: &str) -> Self {
-//         let mut block = ShaderStorageBlock {
-//             id: gl::GetProgramResourceIndex(p.id, gl::SHADER_STORAGE_BLOCK, CString::new(name).unwrap().into_raw()),
-//             pid: p.id,
-//             binding: 0,
-//             p: PhantomData
-//         };
-//
-//         if block.id!=gl::INVALID_INDEX {
-//             //aaaand this is officially the worst gl call ever made...
-//             let props = [gl::BUFFER_BINDING];
-//             gl::GetProgramResourceiv(
-//                 block.pid, gl::SHADER_STORAGE_BLOCK, block.id,
-//                 1, &props[0] as *const GLenum, 1, ::std::ptr::null_mut(),
-//                 transmute::<&mut GLuint, *mut GLint>(&mut block.binding)
-//             );
-//         }
-//
-//         block
-//     }
-//
-//     pub unsafe fn set_binding(&mut self, binding: GLuint) {
-//         debug_assert!(binding < gl::MAX_VERTEX_ATTRIB_BINDINGS, "UBO Binding higher than maximum!");
-//         self.binding = binding;
-//         gl::ShaderStorageBlockBinding(self.pid, self.id, self.binding);
-//     }
-//
-// }
-//
-// impl<L:BlockLayout, T:Layout<L>+?Sized> InterfaceBlock<L,T> for ShaderStorageBlock<L, T> {
-//     #[inline] fn buffer_target() -> IndexedBufferTarget {IndexedBufferTarget::ShaderStorageBuffer}
-//     #[inline] fn binding(&self) -> GLuint {self.binding}
-// }
-//
-// #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-// pub struct SubroutineLocation {
-//     id: GLint,
-//     stage: ShaderType,
-//     pid: GLuint
-// }
-//
-// impl SubroutineLocation {
-//
-// }
