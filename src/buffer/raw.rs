@@ -31,22 +31,51 @@ glenum!{
     }
 }
 
-impl BindingLocation<UninitBuf> {
+gl_resource! {
+    pub struct RawBuffer {
+        gl = GL15,
+        target = BufferTarget,
+        gen = GenBuffers,
+        bind = BindBuffer,
+        is = IsBuffer,
+        delete = DeleteBuffers
+    }
+}
+
+impl !Send for RawBuffer {}
+impl !Sync for RawBuffer {}
+
+impl BindingLocation<RawBuffer> {
     #[inline]
-    pub fn bind_buf<'a,T:?Sized,A:BufferAccess>(&'a mut self, buf: &'a Buf<T,A>) -> Binding<'a,UninitBuf> {
+    pub fn bind_buf<'a,T:?Sized,A:BufferAccess>(&'a mut self, buf: &'a Buf<T,A>) -> Binding<'a,RawBuffer> {
         unsafe { self.target().bind(buf.id()); }
         Binding(self, buf.id())
     }
 
     #[inline]
-    pub fn bind_slice<'a,T:?Sized,A:BufferAccess>(&'a mut self, buf: &'a BSlice<'a,T,A>) -> Binding<'a,UninitBuf> {
+    pub fn bind_slice<'a,T:?Sized,A:BufferAccess>(&'a mut self, buf: &'a BSlice<'a,T,A>) -> Binding<'a,RawBuffer> {
         unsafe { self.target().bind(buf.id()); }
         Binding(self, buf.id())
     }
 
     #[inline]
-    pub fn bind_slice_mut<'a,T:?Sized,A:BufferAccess>(&'a mut self, buf: &'a BSliceMut<'a,T,A>) -> Binding<'a,UninitBuf> {
+    pub fn bind_slice_mut<'a,T:?Sized,A:BufferAccess>(&'a mut self, buf: &'a BSliceMut<'a,T,A>) -> Binding<'a,RawBuffer> {
         unsafe { self.target().bind(buf.id()); }
         Binding(self, buf.id())
     }
 }
+
+
+///
+///Any type that can be cloned within a [buffer](super::Buf) by simple byte-wise copies of its data.
+///
+pub unsafe trait GPUCopy {}
+unsafe impl<T:Copy> GPUCopy for T {}
+unsafe impl<T:Copy> GPUCopy for [T] {}
+
+macro_rules! impl_tuple_gpucopy {
+    ({$($T:ident:$t:ident)*} $Last:ident:$l:ident) => {
+        unsafe impl<$($T:GPUCopy,)* $Last: Sized> GPUCopy for ($($T,)* [$Last]) where [$Last]:GPUCopy {}
+    };
+}
+impl_tuple!(impl_tuple_gpucopy @with_last);

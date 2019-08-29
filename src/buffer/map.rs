@@ -50,14 +50,20 @@ impl<'a,T:Sized,A:WriteAccess> BMap<'a,[T],A> {
 //MapBuffer
 //
 
+fn map_access<B:BufferAccess>() -> GLenum {
+    match (<B::Read as Boolean>::VALUE, <B::Write as Boolean>::VALUE) {
+        (true, false) => gl::READ_ONLY,
+        (false, true) => gl::WRITE_ONLY,
+        (true, true) => gl::READ_WRITE,
+        (false, false) => panic!("Invalid map flags"),
+    }
+}
+
 impl<T:?Sized, A:BufferAccess> Buf<T,A> {
     pub unsafe fn map_raw<'a,B:BufferAccess>(&'a mut self) -> BMap<'a,T,B> {
         let mut target = BufferTarget::CopyWriteBuffer.as_loc();
-        let mut ptr = RawBuf { rust_mut: self.ptr };
-        ptr.gl_mut = gl::MapBuffer(
-            target.bind_buf(self).target_id(),
-            MapAccess::from_access::<B>() as GLenum
-        );
+        let mut ptr = BufPtr { rust_mut: self.ptr };
+        ptr.gl_mut = gl::MapBuffer(target.bind_buf(self).target_id(), map_access::<B>());
 
         BMap {
             ptr: &mut *ptr.rust_mut,
@@ -95,19 +101,24 @@ impl<T:?Sized, A:ReadAccess+WriteAccess> Buf<T,A> {
 impl<'a,T:?Sized,A:BufferAccess> BSliceMut<'a,T,A> {
     unsafe fn map_range_raw<'b,B:BufferAccess>(self) -> BMap<'b,T,B> {
         let mut target = BufferTarget::CopyWriteBuffer.as_loc();
-        let mut ptr = RawBuf { rust_mut: self.ptr };
+        let mut ptr = BufPtr { rust_mut: self.ptr };
 
         if gl::MapBufferRange::is_loaded() {
+
+            let mut flags = 0;
+            if <B::Read as Boolean>::VALUE {flags |= gl::MAP_READ_BIT;}
+            if <B::Write as Boolean>::VALUE {flags |= gl::MAP_WRITE_BIT;}
+
             ptr.gl_mut = gl::MapBufferRange(
                 target.bind_slice_mut(&self).target_id(),
                 self.offset() as GLintptr,
                 self.size() as GLsizeiptr,
-                MapRangeFlags::from_access::<B>().bits()
+                flags
             );
         } else {
             ptr.gl_mut = gl::MapBuffer(
                 target.bind_slice_mut(&self).target_id(),
-                MapAccess::from_access::<B>() as GLenum
+                map_access::<B>()
             ).offset(self.offset() as isize);
         }
 

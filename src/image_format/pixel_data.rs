@@ -1,7 +1,7 @@
 
 use super::*;
 
-use buffer::{UninitBuf};
+use buffer::{RawBuffer};
 use std::mem::*;
 
 #[derive(Copy,Clone,PartialEq,Eq,Hash)]
@@ -85,14 +85,14 @@ pub unsafe trait PixelData<F:ClientFormat> {
     fn size(&self) -> usize;
 
     fn pixels<'a>(
-        &'a self, target:&'a mut BindingLocation<UninitBuf>
-    ) -> (Option<Binding<'a,UninitBuf>>, *const GLvoid);
+        &'a self, target:&'a mut BindingLocation<RawBuffer>
+    ) -> (Option<Binding<'a,RawBuffer>>, *const GLvoid);
 }
 
 pub unsafe trait PixelDataMut<F:ClientFormat>: PixelData<F> {
     fn pixels_mut<'a>(
-        &'a mut self, target:&'a mut BindingLocation<UninitBuf>
-    ) -> (Option<Binding<'a,UninitBuf>>, *mut GLvoid);
+        &'a mut self, target:&'a mut BindingLocation<RawBuffer>
+    ) -> (Option<Binding<'a,RawBuffer>>, *mut GLvoid);
 }
 
 pub unsafe trait PixelType<F: ClientFormat>: Sized+Copy+Clone+PartialEq {
@@ -112,16 +112,16 @@ unsafe impl<F:ClientFormat,T:PixelType<F>> PixelData<F> for [T] {
     #[inline] fn size(&self) -> usize {size_of_val(self)}
 
     #[inline] fn pixels<'a>(
-        &'a self, _:&'a mut BindingLocation<UninitBuf>
-    ) -> (Option<Binding<'a,UninitBuf>>, *const GLvoid) {
+        &'a self, _:&'a mut BindingLocation<RawBuffer>
+    ) -> (Option<Binding<'a,RawBuffer>>, *const GLvoid) {
         (None, &self[0] as *const T as *const GLvoid)
     }
 }
 
 unsafe impl<F:ClientFormat,T:PixelType<F>> PixelDataMut<F> for [T] {
     #[inline] fn pixels_mut<'a>(
-        &'a mut self, _:&'a mut BindingLocation<UninitBuf>
-    ) -> (Option<Binding<'a,UninitBuf>>, *mut GLvoid) {
+        &'a mut self, _:&'a mut BindingLocation<RawBuffer>
+    ) -> (Option<Binding<'a,RawBuffer>>, *mut GLvoid) {
         (None, &mut self[0] as *mut T as *mut GLvoid)
     }
 }

@@ -50,15 +50,15 @@ impl<'a,T:Sized,A:BufferAccess> BSlice<'a,[T],A> {
     pub fn index<U:?Sized,I:SliceIndex<[T],Output=U>>(&self,i:I) -> BSlice<'a,U,A> {
         unsafe {
             let null_ptr = {
-                let mut raw = RawBuf{rust:self.ptr};
+                let mut raw = BufPtr{rust:self.ptr};
                 raw.c = null();
                 &*raw.rust
             };
             let indexed = &null_ptr[i];
 
             BSlice {
-                ptr: RawBuf{rust:indexed}.rust_mut,
-                offset: self.offset + RawBuf{rust:indexed}.c.offset_from(null()) as usize,
+                ptr: BufPtr{rust:indexed}.rust_mut,
+                offset: self.offset + BufPtr{rust:indexed}.c.offset_from(null()) as usize,
                 buf: PhantomData
             }
         }
@@ -75,15 +75,15 @@ impl<'a,T:Sized,A:BufferAccess> BSliceMut<'a,[T],A> {
     pub fn index_mut<U:?Sized,I:SliceIndex<[T],Output=U>>(&mut self,i:I) -> BSliceMut<'a,U,A> {
         unsafe {
             let null_ptr = {
-                let mut raw = RawBuf{rust_mut:self.ptr};
+                let mut raw = BufPtr{rust_mut:self.ptr};
                 raw.c = null();
                 &mut *raw.rust_mut
             };
             let indexed = &mut null_ptr[i];
 
             BSliceMut {
-                ptr: RawBuf{rust_mut: indexed}.rust_mut,
-                offset: self.offset + RawBuf{rust_mut:indexed}.c.offset_from(null()) as usize,
+                ptr: BufPtr{rust_mut: indexed}.rust_mut,
+                offset: self.offset + BufPtr{rust_mut:indexed}.c.offset_from(null()) as usize,
                 buf: PhantomData
             }
         }
@@ -139,17 +139,17 @@ impl<'a,T:?Sized,A:BufferAccess> BSlice<'a,T,A> {
             target.bind_slice(self).target_id(),
             self.offset as GLintptr,
             size_of_val(&*data) as GLsizeiptr,
-            RawBuf{rust_mut: data}.gl_mut
+            BufPtr{rust_mut: data}.gl_mut
         );
     }
 
     pub(super) unsafe fn _into_box(&self) -> Box<T> {
         //Manually allocate a pointer on the head that we will store the data in
-        let data = System.alloc(::std::alloc::Layout::for_value(&*self.ptr));
+        let data = Global.alloc(::std::alloc::Layout::for_value(&*self.ptr)).unwrap().as_ptr();
 
         //next, construct a *mut T pointer from the u8 pointer we just allocated using the metadata
         //stored in this buf
-        let mut ptr = RawBuf{ rust: self.ptr };
+        let mut ptr = BufPtr{ rust: self.ptr };
         ptr.c_mut = data;
 
         //next, copy the data into the newly created heap-pointer
@@ -211,7 +211,7 @@ impl<'a, T:?Sized, A:WriteAccess> BSliceMut<'a,T,A> {
             target.bind_slice_mut(self).target_id(),
             self.offset as GLintptr,
             self.size() as GLsizeiptr,
-            RawBuf{rust:data}.gl
+            BufPtr{rust:data}.gl
         );
     }
 }
@@ -253,7 +253,10 @@ impl<'a,T:Sized,A:WriteAccess> BSliceMut<'a,[T],A> {
 
             //now, deallocate the box
             let layout = Layout::for_value(&*temp_data);
-            System.dealloc(RawBuf{rust_mut: Box::into_raw(temp_data)}.c_mut, layout)
+            Global.dealloc(
+                NonNull::new_unchecked(BufPtr{rust_mut: Box::into_raw(temp_data)}.c_mut),
+                layout
+            )
         }
     }
 }
@@ -312,8 +315,8 @@ unsafe impl<'a,F:ClientFormat,T:PixelType<F>,A:BufferAccess> PixelData<F> for BS
     #[inline] fn size(&self) -> usize {BSlice::size(self)}
 
     #[inline] fn pixels<'b>(
-        &'b self, target:&'b mut BindingLocation<UninitBuf>
-    ) -> (Option<Binding<'b,UninitBuf>>, *const GLvoid) {
+        &'b self, target:&'b mut BindingLocation<RawBuffer>
+    ) -> (Option<Binding<'b,RawBuffer>>, *const GLvoid) {
         (Some(target.bind_slice(self)), self.offset as *const GLvoid)
     }
 }
@@ -329,16 +332,16 @@ unsafe impl<'a,F:ClientFormat,T:PixelType<F>,A:BufferAccess> PixelData<F> for BS
     #[inline] fn size(&self) -> usize {BSliceMut::size(self)}
 
     #[inline] fn pixels<'b>(
-        &'b self, target:&'b mut BindingLocation<UninitBuf>
-    ) -> (Option<Binding<'b,UninitBuf>>, *const GLvoid) {
+        &'b self, target:&'b mut BindingLocation<RawBuffer>
+    ) -> (Option<Binding<'b,RawBuffer>>, *const GLvoid) {
         (Some(target.bind_slice_mut(self)), self.offset as *const GLvoid)
     }
 }
 
 unsafe impl<'a,F:ClientFormat,T:PixelType<F>,A:BufferAccess> PixelDataMut<F> for BSliceMut<'a,[T],A> {
     #[inline] fn pixels_mut<'b>(
-        &'b mut self, target:&'b mut BindingLocation<UninitBuf>
-    ) -> (Option<Binding<'b,UninitBuf>>, *mut GLvoid) {
+        &'b mut self, target:&'b mut BindingLocation<RawBuffer>
+    ) -> (Option<Binding<'b,RawBuffer>>, *mut GLvoid) {
         (Some(target.bind_slice_mut(self)), self.offset as *mut GLvoid)
     }
 }
