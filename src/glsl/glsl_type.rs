@@ -1,5 +1,6 @@
 
 use std::slice::*;
+use std::mem::*;
 
 ///
 ///A macro constucting the gl functions for managing uniforms using the
@@ -145,10 +146,10 @@ macro_rules! glsl_type {
             }
 
             unsafe fn get_uniform(p: GLuint, id:GLint) -> Self {
-                let mut data = ::std::mem::uninitialized::<Self>();
+                let mut data = MaybeUninit::<Self>::uninit();
                 let f = &$get;
-                f(p, id, transmute(&mut data));
-                data
+                f(p, id, transmute(data.as_mut_ptr()));
+                data.assume_init()
             }
         }
 
@@ -281,11 +282,11 @@ macro_rules! impl_array_type {
                 }
 
                 unsafe fn get_uniform(p: GLuint, id:GLint) -> Self {
-                    let mut data = ::std::mem::uninitialized::<Self>();
+                    let mut data = MaybeUninit::<Self>::uninit();
                     for i in 0..$num {
-                        data[i] = T::get_uniform(p, id + i as GLint);
+                        data.get_mut()[i] = T::get_uniform(p, id + i as GLint);
                     }
-                    data
+                    data.assume_init()
                 }
 
                 #[inline] fn uniform_locations() -> GLuint { T::uniform_locations() * $num }
@@ -377,13 +378,13 @@ macro_rules! impl_tuple_type {
             }
 
             unsafe fn get_uniform(p: GLuint, id:GLint) -> Self {
-                let ($(mut $t),*) = ::std::mem::uninitialized::<Self>();
+                let ($(mut $t),*) = ($(MaybeUninit::<$T>::uninit()),*);
                 let mut i = id;
                 $(
-                    *(&mut $t) = $T::get_uniform(p, i);
+                    *$t.get_mut() = $T::get_uniform(p, i);
                     *(&mut i) = i + $T::uniform_locations() as GLint;
                 )*
-                ($($t),*)
+                ($($t.assume_init()),*)
             }
 
             #[inline] fn uniform_locations() -> GLuint { 0 $(+ $T::uniform_locations())* }

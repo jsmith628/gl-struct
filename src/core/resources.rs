@@ -6,9 +6,9 @@ macro_rules! gl_resource{
         #[inline]
         fn gen(_gl: &Self::GL) -> Self {
             unsafe {
-                let mut obj = ::std::mem::uninitialized::<Self>();
-                gl::$gl(1, &mut obj.0 as *mut gl::types::GLuint);
-                obj
+                let mut obj = ::std::mem::MaybeUninit::<Self>::uninit();
+                gl::$gl(1, obj.get_mut().0 as *mut gl::types::GLuint);
+                obj.assume_init()
             }
         }
 

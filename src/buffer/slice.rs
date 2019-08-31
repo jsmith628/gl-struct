@@ -182,9 +182,9 @@ impl<'a,T:GPUCopy+?Sized,A:BufferAccess> BSlice<'a,T,A> {
 impl<'a,T:GPUCopy+Sized, A:BufferAccess> BSlice<'a,T,A> {
     #[inline] pub fn get_subdata(&self) -> T {
         unsafe {
-            let mut data = uninitialized();
-            self.get_subdata_raw(&mut data as *mut T);
-            data
+            let mut data = MaybeUninit::uninit();
+            self.get_subdata_raw(data.as_mut_ptr());
+            data.assume_init()
         }
     }
 }
@@ -234,11 +234,11 @@ impl<'a,T:Sized,A:WriteAccess> BSliceMut<'a,T,A> {
     #[inline]
     pub fn replace_subdata(&mut self, data: T) -> T {
         unsafe {
-            let mut old_data = uninitialized::<T>();
-            self.get_subdata_raw(&mut old_data);
+            let mut old_data = MaybeUninit::<T>::uninit();
+            self.get_subdata_raw(old_data.get_mut());
             self.subdata_raw(&data);
             forget(data); //note, we need to make sure the destructor of data is NOT run
-            return old_data;
+            return old_data.assume_init();
         }
     }
 }

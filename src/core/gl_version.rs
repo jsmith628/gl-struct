@@ -1,6 +1,8 @@
 
 use super::*;
 
+use std::mem::MaybeUninit;
+
 // macro_rules! check_loaded {
 //     ($gl_fun0:ident, $($gl_fun:ident),+; $expr:expr) => {
 //         check_loaded!($gl_fun0; check_loaded!($($gl_fun),+; $expr)).map_or_else(|e| Err(e), |ok| ok)
@@ -17,9 +19,9 @@ use super::*;
 
 fn get_integerv(param: GLenum) -> GLint {
     unsafe {
-        let mut dest = ::std::mem::uninitialized();
-        gl::GetIntegerv(param, &mut dest);
-        dest
+        let mut dest = MaybeUninit::uninit();
+        gl::GetIntegerv(param, dest.get_mut());
+        dest.assume_init()
     }
 }
 

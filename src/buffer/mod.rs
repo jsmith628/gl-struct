@@ -74,7 +74,7 @@ impl<T:?Sized, A:BufferAccess> Buf<T,A> {
         if <A::Read as Boolean>::VALUE { flags |= gl::MAP_READ_BIT};
         if <A::Write as Boolean>::VALUE { flags |= gl::MAP_WRITE_BIT | gl::DYNAMIC_STORAGE_BIT};
         if <A::Persistent as Boolean>::VALUE { flags |= gl::MAP_PERSISTENT_BIT};
-        if let Some(hints) = hint { flags |= (gl::CLIENT_STORAGE_BIT & hints.bits()) }
+        if let Some(hints) = hint { flags |= gl::CLIENT_STORAGE_BIT & hints.bits() }
 
         //upload the data
         let mut target = BufferTarget::CopyWriteBuffer.as_loc();
@@ -268,11 +268,6 @@ impl_creation_method!(ReadWrite readwrite_from_ref new_readwrite alloc_readwrite
 //
 
 impl<T:?Sized, A:BufferAccess> Buf<T,A> {
-
-    pub fn forget(self) {
-        unsafe {  };
-        forget(self);
-    }
 
     pub fn into_box(self) -> Box<T> {
         unsafe {

@@ -210,13 +210,13 @@ pub struct MipmapLevel<T:Texture+PixelTransfer> {
 
 pub(super) fn get_level_parameter_iv<T:Texture>(tex:&T, level:GLuint, pname: TexLevelParameteriv) -> GLint {
     unsafe {
-        let mut params = ::std::mem::uninitialized::<GLint>();
+        let mut params = MaybeUninit::uninit();
         let mut target = T::Target::binding_location();
         let binding = target.bind(tex.raw());
         gl::GetTexLevelParameteriv(
-            binding.target_id(), level as GLint, pname as GLenum, &mut params as *mut GLint
+            binding.target_id(), level as GLint, pname as GLenum, params.as_mut_ptr()
         );
-        params
+        params.assume_init()
     }
 
 }

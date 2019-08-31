@@ -90,15 +90,15 @@ pub unsafe fn tex_parameter_iv<T:Texture>(tex:&mut T, pname:GLenum, params: *con
 }
 
 pub unsafe fn get_tex_parameter_iv<T:Texture>(tex:&T, pname:GLenum) -> GLint {
-    let mut param = ::std::mem::uninitialized();
+    let mut param = MaybeUninit::uninit();
     if gl::GetTextureParameteriv::is_loaded() {
-        gl::GetTextureParameteriv(tex.raw().id(), pname, &mut param as *mut GLint);
+        gl::GetTextureParameteriv(tex.raw().id(), pname, param.as_mut_ptr());
     } else {
         let mut target = T::Target::binding_location();
         let binding = target.bind(tex.raw());
-        gl::GetTexParameteriv(binding.target_id(), pname, &mut param as *mut GLint);
+        gl::GetTexParameteriv(binding.target_id(), pname, param.as_mut_ptr());
     }
-    param
+    param.assume_init()
 }
 
 #[inline]

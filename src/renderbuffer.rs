@@ -46,16 +46,16 @@ impl<T:InternalFormat> Renderbuffer<T> {
 
     pub fn parameter(&self, pname: RenderbufferParameter) -> GLint {
         unsafe {
-            let mut params: GLint = ::std::mem::uninitialized();
+            let mut params = ::std::mem::MaybeUninit::uninit();
 
             if gl::GetNamedRenderbufferParameteriv::is_loaded() {
-                gl::GetNamedRenderbufferParameteriv(self.raw.id(), pname as GLenum, &mut params as *mut GLint);
+                gl::GetNamedRenderbufferParameteriv(self.raw.id(), pname as GLenum, params.as_mut_ptr());
             } else {
                 let binding = TARGET.bind(&self.raw);
-                gl::GetRenderbufferParameteriv(binding.target_id(), pname as GLenum, &mut params as *mut GLint);
+                gl::GetRenderbufferParameteriv(binding.target_id(), pname as GLenum, params.as_mut_ptr());
             }
 
-            params
+            params.assume_init()
         }
     }
 

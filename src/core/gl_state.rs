@@ -131,7 +131,7 @@ glenum! {
 }
 
 pub struct GLState<V:GLVersion> {
-    version: V
+    version: std::marker::PhantomData<V>
 }
 
 impl<V:GLVersion> !Send for GLState<V> {}
@@ -168,6 +168,7 @@ impl<V:Supports<GL20>> GLState<V> {
         dest[0]..=dest[1]
     }
 
+    #[allow(dead_code)]
     unsafe fn get_double(&self, pname: GLenum) -> GLdouble {
         let mut dest = MaybeUninit::uninit();
         gl::GetDoublev(pname, dest.as_mut_ptr());
@@ -436,12 +437,15 @@ impl<V:Supports<GL30>> GLState<V> {
 }
 
 impl<V:Supports<GL32>> GLState<V> {
+
+    #[allow(dead_code)]
     unsafe fn get_integer64(&self, pname: GLenum) -> GLint64 {
         let mut dest = MaybeUninit::uninit();
         gl::GetInteger64v(pname, dest.as_mut_ptr());
         dest.assume_init()
     }
 
+    #[allow(dead_code)]
     unsafe fn get_unsinged_integer64(&self, pname: GLenum) -> GLuint64 { self.get_integer64(pname) as GLuint64 }
 }
 

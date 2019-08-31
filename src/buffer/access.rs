@@ -1,9 +1,5 @@
 use super::*;
 
-use trait_arith::{Boolean, True, False};
-use std::ops::{BitOr, BitOrAssign};
-use std::convert::TryFrom;
-
 ///
 ///Trait-level control over buffer creation and mapping access flags
 ///

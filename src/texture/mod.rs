@@ -9,7 +9,7 @@ use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::ops::{Bound,RangeBounds};
 use std::collections::HashMap;
-use std::mem::{size_of, uninitialized};
+use std::mem::*;
 
 use self::helper_methods::*;
 #[macro_use] mod helper_methods;
@@ -53,9 +53,9 @@ impl TryFrom<GLuint> for TextureUnitID {
             if !gl::GetIntegerv::is_loaded() {
                 Err(GLError::FunctionNotLoaded("glGetIntegerv"))
             } else {
-                let mut units = ::std::mem::uninitialized();
-                gl::GetIntegerv(gl::MAX_COMBINED_TEXTURE_IMAGE_UNITS, &mut units as *mut GLint);
-                if unit >= units as GLuint {
+                let mut units = MaybeUninit::uninit();
+                gl::GetIntegerv(gl::MAX_COMBINED_TEXTURE_IMAGE_UNITS, units.as_mut_ptr());
+                if unit >= units.assume_init() as GLuint {
                     Err(GLError::InvalidEnum(unit, "Texture Unit ID".to_string()))
                 } else {
                     Ok(TextureUnitID(unit))
@@ -170,19 +170,19 @@ pub unsafe trait PixelTransfer: Texture {
 
     fn get_swizzle_rgba(&self) -> [TextureSwizzle;4] where Self::InternalFormat: InternalFormatColor{
         unsafe {
-            let mut swizzle = uninitialized::<[GLint;4]>();
+            let mut swizzle = MaybeUninit::<[GLint;4]>::uninit();
             if gl::GetTextureParameteriv::is_loaded() {
-                gl::GetTextureParameteriv(self.raw().id(), gl::TEXTURE_SWIZZLE_RGBA, &mut swizzle[0] as *mut GLint);
+                gl::GetTextureParameteriv(self.raw().id(), gl::TEXTURE_SWIZZLE_RGBA, swizzle.get_mut()[0] as *mut GLint);
             } else {
                 let mut target = Self::Target::binding_location();
                 let binding = target.bind(self.raw());
-                gl::GetTexParameteriv(binding.target_id(), gl::TEXTURE_SWIZZLE_RGBA, &mut swizzle[0] as *mut GLint);
+                gl::GetTexParameteriv(binding.target_id(), gl::TEXTURE_SWIZZLE_RGBA, swizzle.get_mut()[0] as *mut GLint);
             }
             [
-                (swizzle[0] as GLenum).try_into().unwrap(),
-                (swizzle[1] as GLenum).try_into().unwrap(),
-                (swizzle[2] as GLenum).try_into().unwrap(),
-                (swizzle[3] as GLenum).try_into().unwrap(),
+                (swizzle.get_mut()[0] as GLenum).try_into().unwrap(),
+                (swizzle.get_mut()[1] as GLenum).try_into().unwrap(),
+                (swizzle.get_mut()[2] as GLenum).try_into().unwrap(),
+                (swizzle.get_mut()[3] as GLenum).try_into().unwrap(),
             ]
         }
     }

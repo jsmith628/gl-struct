@@ -68,9 +68,9 @@ macro_rules! sampler_params {
         #[inline]
         pub fn $get(&self) -> $enum {
             unsafe {
-                let mut param:GLint = ::std::mem::uninitialized();
-                gl::GetSamplerParameteriv(self.id(), gl::$gl, &mut param as *mut GLint);
-                (param as GLenum).try_into().unwrap()
+                let mut param = ::std::mem::MaybeUninit::uninit();
+                gl::GetSamplerParameteriv(self.id(), gl::$gl, param.as_mut_ptr());
+                (param.assume_init() as GLenum).try_into().unwrap()
             }
         }
 
@@ -88,9 +88,9 @@ macro_rules! sampler_params {
         #[inline]
         pub fn $get(&self) -> GLfloat {
             unsafe {
-                let mut param = ::std::mem::uninitialized();
-                gl::GetSamplerParameterfv(self.id(), gl::$gl, &mut param as *mut GLfloat);
-                param
+                let mut param = ::std::mem::MaybeUninit::uninit();
+                gl::GetSamplerParameterfv(self.id(), gl::$gl, param.as_mut_ptr());
+                param.assume_init()
             }
         }
 
@@ -126,9 +126,9 @@ impl Sampler {
     #[inline]
     pub fn get_cube_map_seamless(&mut self) -> bool {
         unsafe {
-            let mut dest: GLint = ::std::mem::uninitialized();
-            gl::GetSamplerParameteriv(self.id(), gl::TEXTURE_CUBE_MAP_SEAMLESS, &mut dest as *mut GLint);
-            dest != 0
+            let mut dest = ::std::mem::MaybeUninit::uninit();
+            gl::GetSamplerParameteriv(self.id(), gl::TEXTURE_CUBE_MAP_SEAMLESS, dest.as_mut_ptr());
+            dest.assume_init() != 0
         }
     }
 
