@@ -20,6 +20,8 @@ pub use self::access::*;
 pub use self::storage::*;
 pub use self::map::*;
 pub use self::slice::*;
+pub use self::any::*;
+pub use self::cmp::*;
 pub use self::fmt::*;
 pub use self::pixel_transfer::*;
 pub use self::attrib_array::*;
@@ -30,6 +32,7 @@ mod access;
 mod storage;
 mod map;
 mod slice;
+mod any;
 mod cmp;
 mod fmt;
 mod pixel_transfer;
@@ -241,11 +244,6 @@ impl<T:?Sized+GPUCopy,A:BufferAccess> Clone for Buffer<T,A> {
         }
     }
 }
-
-// impl<T:PartialEq<U>+?Sized, U:?Sized, A:BufferAccess> PartialEq<U> for Buffer<T,A> {
-//     #[inline] fn eq(&self, rhs:&U) -> bool {}
-// }
-
 
 impl<T:?Sized, A:BufferAccess> Drop for Buffer<T,A> {
     fn drop(&mut self) {
