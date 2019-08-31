@@ -97,6 +97,10 @@ impl<'a,T:Sized,A:WriteAccess> BMap<'a,[T],A> {
     }
 }
 
+unsafe fn check_allignment(map:*const GLvoid, align: usize) {
+    assert_eq!((map as usize) % align, 0, "invalid map alignment for type");
+}
+
 //
 //MapBuffer
 //
@@ -120,6 +124,8 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
             let mut target = BufferTarget::CopyWriteBuffer.as_loc();
             ptr.gl_mut = gl::MapBuffer(target.bind_buf(self).target_id(), map_access::<B>());
         }
+
+        check_allignment(ptr.gl, self.align());
 
         BMap {
             ptr: ptr.rust_mut,
@@ -194,6 +200,8 @@ impl<'a,T:?Sized,A:BufferAccess> BSliceMut<'a,T,A> {
 
         }
 
+        check_allignment(ptr.gl, self.align());
+
         BMap {
             ptr: &mut *ptr.rust_mut,
             id: self.id(),
@@ -256,6 +264,8 @@ impl<'a,T:?Sized,A:BufferAccess> BSlice<'a,T,A> {
                     binding.target_id(), 0, buf_size.assume_init() as GLsizeiptr, flags
                 );
             }
+
+            check_allignment(*ptr.as_ptr(), (&*this).align());
 
         }
 
