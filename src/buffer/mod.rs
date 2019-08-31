@@ -36,6 +36,9 @@ mod attrib_array;
 
 pub type Buf<T,A> = Buffer<T,A>;
 pub type RawBuf = RawBuffer;
+pub type BufSlice<'a,T,A> = Slice<'a,T,A>;
+pub type BufSliceMut<'a,T,A> = SliceMut<'a,T,A>;
+pub type BufMap<'a,T,A> = Map<'a,T,A>;
 
 pub(self) union BufPtr<T:?Sized> {
     gl: *const GLvoid,
@@ -110,8 +113,8 @@ impl<T:Sized, A:BufferAccess> Buffer<[T],A> {
 }
 
 impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
-    #[inline] pub fn as_slice(&self) -> BSlice<T,A> {BSlice::from(self)}
-    #[inline] pub fn as_slice_mut(&mut self) -> BSliceMut<T,A> {BSliceMut::from(self)}
+    #[inline] pub fn as_slice(&self) -> Slice<T,A> {Slice::from(self)}
+    #[inline] pub fn as_slice_mut(&mut self) -> SliceMut<T,A> {SliceMut::from(self)}
 }
 
 //

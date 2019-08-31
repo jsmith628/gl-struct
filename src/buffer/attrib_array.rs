@@ -3,7 +3,7 @@ use super::*;
 use glsl::GLSLType;
 
 pub struct ArribArray<'a,A:GLSLType> {
-    buf: BSlice<'a,[u8],CopyOnly>,
+    buf: Slice<'a,[u8],CopyOnly>,
     stride: usize,
     format: A::AttributeFormat,
 }

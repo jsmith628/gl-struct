@@ -53,13 +53,13 @@ impl BindingLocation<RawBuffer> {
     }
 
     #[inline]
-    pub fn bind_slice<'a,T:?Sized,A:BufferAccess>(&'a mut self, buf: &'a BSlice<'a,T,A>) -> Binding<'a,RawBuffer> {
+    pub fn bind_slice<'a,T:?Sized,A:BufferAccess>(&'a mut self, buf: &'a Slice<'a,T,A>) -> Binding<'a,RawBuffer> {
         unsafe { self.target().bind(buf.id()); }
         Binding(self, buf.id())
     }
 
     #[inline]
-    pub fn bind_slice_mut<'a,T:?Sized,A:BufferAccess>(&'a mut self, buf: &'a BSliceMut<'a,T,A>) -> Binding<'a,RawBuffer> {
+    pub fn bind_slice_mut<'a,T:?Sized,A:BufferAccess>(&'a mut self, buf: &'a SliceMut<'a,T,A>) -> Binding<'a,RawBuffer> {
         unsafe { self.target().bind(buf.id()); }
         Binding(self, buf.id())
     }
