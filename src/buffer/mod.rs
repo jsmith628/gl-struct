@@ -112,8 +112,31 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
 //Methods for arrays
 //
 
+use std::slice::SliceIndex;
+
 impl<T:Sized, A:BufferAccess> Buffer<[T],A> {
     #[inline] pub fn len(&self) -> usize { unsafe {(&*self.ptr).len()} }
+
+    #[inline] pub fn split_at(&self, mid:usize) -> (Slice<[T],A>, Slice<[T],A>) { self.as_slice().split_at(mid) }
+    #[inline] pub fn split_at_mut(&mut self, mid:usize) -> (SliceMut<[T],A>, SliceMut<[T],A>) {
+        self.as_slice_mut().split_at_mut(mid)
+    }
+
+    #[inline] pub fn split_first(&self) -> Option<(Slice<T,A>, Slice<[T],A>)> { self.as_slice().split_first() }
+    #[inline] pub fn split_first_mut(&mut self) -> Option<(SliceMut<T,A>, SliceMut<[T],A>)> {
+        self.as_slice_mut().split_first_mut()
+    }
+
+    #[inline] pub fn split_last(&self) -> Option<(Slice<T,A>, Slice<[T],A>)> { self.as_slice().split_last() }
+    #[inline] pub fn split_last_mut(&mut self) -> Option<(SliceMut<T,A>, SliceMut<[T],A>)> {
+        self.as_slice_mut().split_last_mut()
+    }
+
+    #[inline] pub fn index<U:?Sized,I:SliceIndex<[T],Output=U>>(&self,i:I) -> Slice<U,A> { self.as_slice().index(i) }
+    #[inline] pub fn index_mut<U:?Sized,I:SliceIndex<[T],Output=U>>(&mut self,i:I) -> SliceMut<U,A> {
+        self.as_slice_mut().index_mut(i)
+    }
+
 }
 
 impl<T:?Sized, A:BufferAccess> Buffer<T,A> {

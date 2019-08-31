@@ -118,7 +118,7 @@ impl<'a,T:Sized,A:BufferAccess> SliceMut<'a,[T],A> {
         self.as_immut().split_first()
     }
 
-    #[inline] pub fn split_first_mut(&self) -> Option<(SliceMut<'a,T,A>, SliceMut<'a,[T],A>)> {
+    #[inline] pub fn split_first_mut(&mut self) -> Option<(SliceMut<'a,T,A>, SliceMut<'a,[T],A>)> {
         unsafe { self.split_first().map(|(s1,s2)| (s1.into_mut(), s2.into_mut())) }
     }
 
@@ -126,7 +126,7 @@ impl<'a,T:Sized,A:BufferAccess> SliceMut<'a,[T],A> {
         self.as_immut().split_last()
     }
 
-    #[inline] pub fn split_last_mut(&self) -> Option<(SliceMut<'a,T,A>, SliceMut<'a,[T],A>)> {
+    #[inline] pub fn split_last_mut(&mut self) -> Option<(SliceMut<'a,T,A>, SliceMut<'a,[T],A>)> {
         unsafe { self.split_last().map(|(s1,s2)| (s1.into_mut(), s2.into_mut())) }
     }
 
@@ -135,6 +135,7 @@ impl<'a,T:Sized,A:BufferAccess> SliceMut<'a,[T],A> {
         self.as_immut().index(i)
     }
 
+    #[inline]
     pub fn index_mut<U:?Sized,I:SliceIndex<[T],Output=U>>(&mut self,i:I) -> SliceMut<'a,U,A> {
         unsafe { self.as_immut().index(i).into_mut() }
     }
