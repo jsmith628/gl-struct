@@ -112,6 +112,10 @@ impl<'a,T:?Sized,A:BufferAccess> BSlice<'a,T,A> {
     #[inline] pub fn align(&self) -> usize {self.map_buf(|buf| buf.align())}
     #[inline] pub fn offset(&self) -> usize {self.offset}
 
+    #[inline] pub(super) unsafe fn _read_into_box(&self) -> Box<T> {
+        map_alloc(self.ptr, |ptr| self.get_subdata_raw(ptr))
+    }
+
     pub unsafe fn get_subdata_raw(&self, data: *mut T) {
         if gl::GetNamedBufferSubData::is_loaded() {
             gl::GetNamedBufferSubData(
@@ -158,7 +162,7 @@ impl<'a,T:GPUCopy+?Sized,A:BufferAccess> BSlice<'a,T,A> {
     }
 
     pub fn get_subdata_box(&self) -> Box<T> {
-        unsafe { map_alloc(self.ptr, |ptr| self.get_subdata_raw(ptr)) }
+        unsafe { self._read_into_box() }
     }
 }
 
@@ -245,7 +249,7 @@ impl<'a,T:Sized,A:WriteAccess> BSliceMut<'a,[T],A> {
             assert_eq!(data.len(), self.len(), "destination and source have different lengths");
 
             //read the buffer data into a Box
-            let temp_data = map_alloc(self.ptr, |ptr| self.get_subdata_raw(ptr));
+            let temp_data = self.as_immut()._read_into_box();
 
             //upload new data to buffer
             self.subdata_raw(data);

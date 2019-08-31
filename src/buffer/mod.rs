@@ -28,6 +28,7 @@ mod access;
 mod storage;
 mod map;
 mod slice;
+mod cmp;
 mod attrib_array;
 
 pub type Buf<T,A> = Buffer<T,A>;
@@ -233,6 +234,11 @@ impl<T:?Sized+GPUCopy,A:BufferAccess> Clone for Buffer<T,A> {
         }
     }
 }
+
+// impl<T:PartialEq<U>+?Sized, U:?Sized, A:BufferAccess> PartialEq<U> for Buffer<T,A> {
+//     #[inline] fn eq(&self, rhs:&U) -> bool {}
+// }
+
 
 impl<T:?Sized, A:BufferAccess> Drop for Buffer<T,A> {
     fn drop(&mut self) {
