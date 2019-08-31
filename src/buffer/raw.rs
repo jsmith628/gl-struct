@@ -47,7 +47,7 @@ impl !Sync for RawBuffer {}
 
 impl BindingLocation<RawBuffer> {
     #[inline]
-    pub fn bind_buf<'a,T:?Sized,A:BufferAccess>(&'a mut self, buf: &'a Buf<T,A>) -> Binding<'a,RawBuffer> {
+    pub fn bind_buf<'a,T:?Sized,A:BufferAccess>(&'a mut self, buf: &'a Buffer<T,A>) -> Binding<'a,RawBuffer> {
         unsafe { self.target().bind(buf.id()); }
         Binding(self, buf.id())
     }
@@ -67,7 +67,7 @@ impl BindingLocation<RawBuffer> {
 
 
 ///
-///Any type that can be cloned within a [buffer](super::Buf) by simple byte-wise copies of its data.
+///Any type that can be cloned within a [buffer](super::Buffer) by simple byte-wise copies of its data.
 ///
 pub unsafe trait GPUCopy {}
 unsafe impl<T:Copy> GPUCopy for T {}
@@ -79,3 +79,10 @@ macro_rules! impl_tuple_gpucopy {
     };
 }
 impl_tuple!(impl_tuple_gpucopy @with_last);
+
+///Gives a hint as to if the given value needs its destructor run
+pub(super) trait NeedsDropVal { fn needs_drop_val(&self) -> bool; }
+
+impl<T:?Sized> NeedsDropVal for T { #[inline] default fn needs_drop_val(&self) -> bool {true} }
+impl<T:Sized> NeedsDropVal for [T] { #[inline] fn needs_drop_val(&self) -> bool {self.len()>0 && needs_drop::<T>()} }
+impl<T:Sized> NeedsDropVal for T { #[inline] fn needs_drop_val(&self) -> bool {needs_drop::<T>()} }

@@ -4,7 +4,7 @@ use super::*;
 ///Trait-level control over buffer creation and mapping access flags
 ///
 ///This particular system exists in lieu of a runtime solution in order to provide proper
-///restriction of (Buffer)[super::Buf] features at compile-time. This gives a way to make sure that
+///restriction of (Buffer)[super::Buffer] features at compile-time. This gives a way to make sure that
 ///all available functions for a given buffer satisfy the OpenGL API restrictions on use.
 ///
 pub trait BufferAccess {
@@ -23,9 +23,13 @@ impl<A:BufferAccess<Read=True>> ReadAccess for A {}
 pub trait WriteAccess: BufferAccess<Write=True> {}
 impl<A:BufferAccess<Write=True>> WriteAccess for A {}
 
-///Any [BufferAccess] allowing client-side writes of Buffer contents
+///Any [BufferAccess] allowing persistent mapping
 pub trait PersistentAccess: BufferAccess<Persistent=True> {}
 impl<A:BufferAccess<Persistent=True>> PersistentAccess for A {}
+
+///Any [BufferAccess] that doesn't persistently map buffers
+pub trait NonPersistentAccess: BufferAccess<Persistent=False> {}
+impl<A:BufferAccess<Persistent=False>> NonPersistentAccess for A {}
 
 ///A [BufferAccess] allowing no client-side access
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]

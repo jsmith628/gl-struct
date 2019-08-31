@@ -8,13 +8,13 @@ use std::slice::SliceIndex;
 pub struct BSlice<'a, T:?Sized, A:BufferAccess> {
     ptr: *const T,
     offset: usize,
-    buf: PhantomData<&'a Buf<T, A>>
+    buf: PhantomData<&'a Buffer<T, A>>
 }
 
 pub struct BSliceMut<'a, T:?Sized, A:BufferAccess> {
     pub(super) ptr: *mut T,
     offset: usize,
-    buf: PhantomData<&'a Buf<T, A>>
+    buf: PhantomData<&'a mut Buffer<T, A>>
 }
 
 impl<'a,U:?Sized,T:?Sized+Unsize<U>,A:BufferAccess> CoerceUnsized<BSlice<'a,U,A>> for BSlice<'a,T,A> {}
@@ -33,20 +33,17 @@ impl<'a, T:?Sized, A:BufferAccess> From<BSliceMut<'a,T,A>> for BSlice<'a,T,A> {
     #[inline] fn from(bmut: BSliceMut<'a,T,A>) -> Self {BSlice{ptr: bmut.ptr, offset: bmut.offset, buf:PhantomData}}
 }
 
-impl<'a, T:?Sized, A:BufferAccess> From<&'a Buf<T,A>> for BSlice<'a,T,A> {
-    #[inline] fn from(bref: &'a Buf<T,A>) -> Self {BSlice{ptr: bref.ptr, offset: 0, buf:PhantomData}}
+impl<'a, T:?Sized, A:BufferAccess> From<&'a Buffer<T,A>> for BSlice<'a,T,A> {
+    #[inline] fn from(bref: &'a Buffer<T,A>) -> Self {BSlice{ptr: bref.ptr, offset: 0, buf:PhantomData}}
 }
 
-impl<'a, T:?Sized, A:BufferAccess> From<&'a mut Buf<T,A>> for BSliceMut<'a,T,A> {
-    #[inline] fn from(bref: &'a mut Buf<T,A>) -> Self {BSliceMut{ptr: bref.ptr, offset: 0, buf:PhantomData}}
-}
-
-impl<T:?Sized,A:BufferAccess> Buf<T,A> {
-    #[inline] pub fn as_slice(&self) -> BSlice<T,A> {BSlice::from(self)}
-    #[inline] pub fn as_slice_mut(&mut self) -> BSliceMut<T,A> {BSliceMut::from(self)}
+impl<'a, T:?Sized, A:BufferAccess> From<&'a mut Buffer<T,A>> for BSliceMut<'a,T,A> {
+    #[inline] fn from(bref: &'a mut Buffer<T,A>) -> Self {BSliceMut{ptr: bref.ptr, offset: 0, buf:PhantomData}}
 }
 
 impl<'a,T:Sized,A:BufferAccess> BSlice<'a,[T],A> {
+    #[inline] pub fn len(&self) -> usize {self.map_buf(|buf| buf.len())}
+
     pub fn index<U:?Sized,I:SliceIndex<[T],Output=U>>(&self,i:I) -> BSlice<'a,U,A> {
         unsafe {
             let null_ptr = {
@@ -67,6 +64,8 @@ impl<'a,T:Sized,A:BufferAccess> BSlice<'a,[T],A> {
 }
 
 impl<'a,T:Sized,A:BufferAccess> BSliceMut<'a,[T],A> {
+    #[inline] pub fn len(&self) -> usize {self.as_immut().len()}
+
     #[inline]
     pub fn index<U:?Sized,I:SliceIndex<[T],Output=U>>(&self,i:I) -> BSlice<'a,U,A> {
         self.as_immut().index(i)
@@ -76,14 +75,14 @@ impl<'a,T:Sized,A:BufferAccess> BSliceMut<'a,[T],A> {
         unsafe {
             let null_ptr = {
                 let mut raw = BufPtr{rust_mut:self.ptr};
-                raw.c = null();
+                raw.c_mut = null_mut();
                 &mut *raw.rust_mut
             };
             let indexed = &mut null_ptr[i];
 
             BSliceMut {
                 ptr: BufPtr{rust_mut: indexed}.rust_mut,
-                offset: self.offset + BufPtr{rust_mut:indexed}.c.offset_from(null()) as usize,
+                offset: self.offset + BufPtr{rust_mut:indexed}.c_mut.offset_from(null_mut()) as usize,
                 buf: PhantomData
             }
         }
@@ -98,31 +97,11 @@ impl<'a,T:Sized,A:BufferAccess> BSliceMut<'a,[T],A> {
 //Basic methods
 //
 
-impl<'a,T:?Sized,A:BufferAccess> BSliceMut<'a,T,A> {
-
-    #[inline] fn map_buf<F:for<'b> FnOnce(&'b Buf<T,A>)->U, U>(&self, f:F) -> U {self.as_immut().map_buf(f)}
-
-    #[inline] pub fn id(&self) -> GLuint {self.map_buf(|buf| buf.id())}
-    #[inline] pub fn size(&self) -> usize {self.map_buf(|buf| buf.size())}
-    #[inline] pub fn align(&self) -> usize {self.map_buf(|buf| buf.align())}
-    #[inline] pub fn offset(&self) -> usize {self.offset}
-
-    #[inline] pub unsafe fn get_subdata_raw(&self, data: *mut T) { self.as_immut().get_subdata_raw(data) }
-
-    #[inline] pub fn as_immut(&self) -> BSlice<'a,T,A> {
-        BSlice{ptr:self.ptr, offset:self.offset, buf:PhantomData}
-    }
-}
-
-impl<'a,T:Sized,A:BufferAccess> BSliceMut<'a,[T],A> {
-    #[inline] pub fn len(&self) -> usize {self.map_buf(|buf| buf.len())}
-}
-
 impl<'a,T:?Sized,A:BufferAccess> BSlice<'a,T,A> {
 
     #[inline]
-    fn map_buf<F:for<'b> FnOnce(&'b Buf<T,A>)->U, U>(&self, f:F) -> U {
-        let buf = Buf{ptr: self.ptr as *mut T, access:PhantomData};
+    fn map_buf<F:for<'b> FnOnce(&'b Buffer<T,A>)->U, U>(&self, f:F) -> U {
+        let buf = Buffer{ptr: self.ptr as *mut T, access:PhantomData};
         let res = f(&buf);
         forget(buf);
         res
@@ -134,53 +113,59 @@ impl<'a,T:?Sized,A:BufferAccess> BSlice<'a,T,A> {
     #[inline] pub fn offset(&self) -> usize {self.offset}
 
     pub unsafe fn get_subdata_raw(&self, data: *mut T) {
-        let mut target = BufferTarget::CopyReadBuffer.as_loc();
-        gl::GetBufferSubData(
-            target.bind_slice(self).target_id(),
-            self.offset as GLintptr,
-            size_of_val(&*data) as GLsizeiptr,
-            BufPtr{rust_mut: data}.gl_mut
-        );
-    }
-
-    pub(super) unsafe fn _into_box(&self) -> Box<T> {
-        //Manually allocate a pointer on the head that we will store the data in
-        let data = Global.alloc(::std::alloc::Layout::for_value(&*self.ptr)).unwrap().as_ptr();
-
-        //next, construct a *mut T pointer from the u8 pointer we just allocated using the metadata
-        //stored in this buf
-        let mut ptr = BufPtr{ rust: self.ptr };
-        ptr.c_mut = data;
-
-        //next, copy the data into the newly created heap-pointer
-        self.get_subdata_raw(ptr.rust_mut);
-
-        //finally, make and return a Box to own the heap data
-        Box::from_raw(ptr.rust_mut)
+        if gl::GetNamedBufferSubData::is_loaded() {
+            gl::GetNamedBufferSubData(
+                self.id(), self.offset() as GLintptr, self.size() as GLintptr, data as *mut GLvoid
+            );
+        } else {
+            let mut target = BufferTarget::CopyReadBuffer.as_loc();
+            gl::GetBufferSubData(
+                target.bind_slice(self).target_id(),
+                self.offset() as GLintptr,
+                self.size() as GLintptr,
+                data as *mut GLvoid
+            );
+        }
     }
 
 }
 
-impl<'a,T:Sized,A:BufferAccess> BSlice<'a,[T],A> {
-    #[inline] pub fn len(&self) -> usize {self.map_buf(|buf| buf.len())}
+impl<'a,T:?Sized,A:BufferAccess> BSliceMut<'a,T,A> {
+
+    #[inline] fn map_buf<F:for<'b> FnOnce(&'b Buffer<T,A>)->U, U>(&self, f:F) -> U {self.as_immut().map_buf(f)}
+
+    #[inline] pub fn id(&self) -> GLuint {self.as_immut().id()}
+    #[inline] pub fn size(&self) -> usize {self.as_immut().size()}
+    #[inline] pub fn align(&self) -> usize {self.as_immut().align()}
+    #[inline] pub fn offset(&self) -> usize {self.offset}
+
+    #[inline] pub unsafe fn get_subdata_raw(&self, data: *mut T) { self.as_immut().get_subdata_raw(data) }
+
+    #[inline] pub fn as_immut(&self) -> BSlice<'a,T,A> {
+        BSlice{ptr:self.ptr, offset:self.offset, buf:PhantomData}
+    }
 }
 
 //
-//Reading subdata
+//Reading subdata: glGetBufferSubData
 //
 
 impl<'a,T:GPUCopy+?Sized,A:BufferAccess> BSlice<'a,T,A> {
-    #[inline] pub fn get_subdata_ref(&self, data: &mut T) {
+
+    pub fn get_subdata_ref(&self, data: &mut T) {
         if size_of_val(data) != self.size() {
             panic!("Destination size not equal to source size: {} != {}", size_of_val(data), self.size())
         }
         unsafe {self.get_subdata_raw(data)}
     }
-    #[inline] pub fn get_subdata_box(&self) -> Box<T> { unsafe { self._into_box() } }
+
+    pub fn get_subdata_box(&self) -> Box<T> {
+        unsafe { map_alloc(self.ptr, |ptr| self.get_subdata_raw(ptr)) }
+    }
 }
 
 impl<'a,T:GPUCopy+Sized, A:BufferAccess> BSlice<'a,T,A> {
-    #[inline] pub fn get_subdata(&self) -> T {
+    pub fn get_subdata(&self) -> T {
         unsafe {
             let mut data = MaybeUninit::uninit();
             self.get_subdata_raw(data.as_mut_ptr());
@@ -201,18 +186,25 @@ impl<'a,T:GPUCopy+Sized,A:BufferAccess> BSliceMut<'a,T,A> {
 
 
 //
-//Writing subdata
+//Writing subdata: glBufferSubData
 //
 
 impl<'a, T:?Sized, A:WriteAccess> BSliceMut<'a,T,A> {
     pub unsafe fn subdata_raw(&mut self, data: *const T) {
-        let mut target = BufferTarget::CopyWriteBuffer.as_loc();
-        gl::BufferSubData(
-            target.bind_slice_mut(self).target_id(),
-            self.offset as GLintptr,
-            self.size() as GLsizeiptr,
-            BufPtr{rust:data}.gl
-        );
+        if gl::NamedBufferSubData::is_loaded() {
+            gl::NamedBufferSubData(
+                self.id(), self.offset as GLintptr, self.size() as GLsizeiptr, BufPtr{rust:data}.gl
+            );
+        } else {
+            let mut target = BufferTarget::CopyWriteBuffer.as_loc();
+            gl::BufferSubData(
+                target.bind_slice_mut(self).target_id(),
+                self.offset as GLintptr,
+                self.size() as GLsizeiptr,
+                BufPtr{rust:data}.gl
+            );
+        }
+
     }
 }
 
@@ -220,9 +212,9 @@ impl<'a,T:Sized,A:WriteAccess> BSliceMut<'a,T,A> {
     #[inline]
     pub fn subdata(&mut self, data: T) {
         unsafe {
-            if data.needs_drop() {
+            if needs_drop::<T>() {
                 //we need to make sure that the destructor on the data is run if it is a Drop type
-                drop(self.replace_subdata(data));
+                drop(self.replace(data));
             } else {
                 //else, we can just overwrite the data
                 self.subdata_raw(&data);
@@ -232,12 +224,16 @@ impl<'a,T:Sized,A:WriteAccess> BSliceMut<'a,T,A> {
     }
 
     #[inline]
-    pub fn replace_subdata(&mut self, data: T) -> T {
+    pub fn replace(&mut self, data: T) -> T {
         unsafe {
+            //read the buffer data into a temporary variable
             let mut old_data = MaybeUninit::<T>::uninit();
-            self.get_subdata_raw(old_data.get_mut());
+            self.get_subdata_raw(old_data.as_mut_ptr());
+
+            //modify the buffer
             self.subdata_raw(&data);
             forget(data); //note, we need to make sure the destructor of data is NOT run
+
             return old_data.assume_init();
         }
     }
@@ -245,18 +241,19 @@ impl<'a,T:Sized,A:WriteAccess> BSliceMut<'a,T,A> {
 
 impl<'a,T:Sized,A:WriteAccess> BSliceMut<'a,[T],A> {
     #[inline]
-    pub fn replace_subdata_range(&mut self, data: &mut [T]) {
+    pub fn replace_range(&mut self, data: &mut [T]) {
         unsafe {
-            let mut temp_data = self.as_immut()._into_box();
-            data.swap_with_slice(&mut temp_data);
-            self.subdata_raw(&*temp_data);
+            //check bounds
+            assert_eq!(data.len(), self.len(), "destination and source have different lengths");
 
-            //now, deallocate the box
-            let layout = Layout::for_value(&*temp_data);
-            Global.dealloc(
-                NonNull::new_unchecked(BufPtr{rust_mut: Box::into_raw(temp_data)}.c_mut),
-                layout
-            )
+            //read the buffer data into a Box
+            let temp_data = map_alloc(self.ptr, |ptr| self.get_subdata_raw(ptr));
+
+            //upload new data to buffer
+            self.subdata_raw(data);
+
+            //deallocate the temp-box and copy to the destination slice
+            map_dealloc(temp_data, |ptr| copy_nonoverlapping((&*ptr).as_ptr(), data.as_mut_ptr(), data.len()))
         }
     }
 }
@@ -264,37 +261,33 @@ impl<'a,T:Sized,A:WriteAccess> BSliceMut<'a,[T],A> {
 impl<'a,T:GPUCopy+?Sized,A:WriteAccess> BSliceMut<'a,T,A> {
     #[inline]
     pub fn subdata_ref(&mut self, data: &T) {
-        if self.size() != size_of_val(data) {
-            panic!("Destination size not equal to source size: {} != {}", self.size(), size_of_val(data))
-        }
+        assert_eq!(self.size(), size_of_val(data), "destination and source have different lengths");//check bounds
         unsafe {self.subdata_raw(data)}
     }
 }
 
 //
-//Copying data between buffers
+//Copying data between buffers: glCopyBufferSubData
 //
 
 impl<'a,T:?Sized,A:BufferAccess> BSlice<'a,T,A> {
-    pub unsafe fn copy_subdata_raw(&self, other:&mut BSliceMut<'a,T,A>) {
+    pub unsafe fn copy_subdata_unchecked(&self, dest:&mut BSliceMut<'a,T,A>) {
         let mut t1 = BufferTarget::CopyReadBuffer.as_loc();
         let mut t2 = BufferTarget::CopyWriteBuffer.as_loc();
         gl::CopyBufferSubData(
             t1.bind_slice(self).target_id(),
-            t2.bind_slice_mut(other).target_id(),
+            t2.bind_slice_mut(dest).target_id(),
             self.offset as GLintptr,
-            other.offset as GLintptr,
+            dest.offset as GLintptr,
             self.size() as GLsizeiptr
         );
     }
 }
 
 impl<'a,T:GPUCopy+?Sized,A:BufferAccess> BSlice<'a,T,A> {
-    #[inline] pub fn copy_subdata(&self, other:&mut BSliceMut<'a,T,A>) {
-        if other.size() != self.size() {
-            panic!("Destination size not equal to source size: {} < {}", other.size(), self.size())
-        }
-        unsafe{self.copy_subdata_raw(other)}
+    #[inline] pub fn copy_subdata(&self, dest:&mut BSliceMut<'a,T,A>) {
+        assert_eq!(dest.size(), self.size(), "destination and source buffers have different sizes");
+        unsafe{ self.copy_subdata_unchecked(dest) }
     }
 }
 

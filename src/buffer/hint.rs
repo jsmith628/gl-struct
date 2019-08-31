@@ -1,5 +1,9 @@
 use super::*;
 
+pub type DataHint = Option<BufferUsage>;
+pub type StorageHint = Option<StorageFlags>;
+pub type CreationHint = Option<BufferCreationFlags>;
+
 glenum!{
     ///Possible hints for buffer data initialization with [glBufferData()](gl::BufferData())
     pub enum BufferUsage {
@@ -32,15 +36,15 @@ bitflags! {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct BufferCreationHint(pub BufferUsage, pub StorageFlags);
+pub struct BufferCreationFlags(pub BufferUsage, pub StorageFlags);
 
-impl BufferCreationHint {
+impl BufferCreationFlags {
     #[inline] pub fn client_storage() -> Self { Self(Default::default(), StorageFlags::CLIENT_STORAGE_BIT) }
 }
 
-impl From<BufferUsage> for BufferCreationHint {
+impl From<BufferUsage> for BufferCreationFlags {
     #[inline] fn from(usage:BufferUsage) -> Self { Self(usage,Default::default()) }
 }
 
 impl Default for BufferUsage { #[inline] fn default() -> Self {BufferUsage::DynamicDraw} }
-impl Default for BufferCreationHint { #[inline] fn default() -> Self {Self(Default::default(),Default::default())} }
+impl Default for BufferCreationFlags { #[inline] fn default() -> Self {Self(Default::default(),Default::default())} }
