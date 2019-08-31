@@ -132,8 +132,6 @@ impl<'a,T:?Sized,A:BufferAccess> BSlice<'a,T,A> {
 
 impl<'a,T:?Sized,A:BufferAccess> BSliceMut<'a,T,A> {
 
-    #[inline] fn map_buf<F:for<'b> FnOnce(&'b Buffer<T,A>)->U, U>(&self, f:F) -> U {self.as_immut().map_buf(f)}
-
     #[inline] pub fn id(&self) -> GLuint {self.as_immut().id()}
     #[inline] pub fn size(&self) -> usize {self.as_immut().size()}
     #[inline] pub fn align(&self) -> usize {self.as_immut().align()}

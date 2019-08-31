@@ -51,6 +51,11 @@ impl BufferAccess for PersistentRead { type Read=True; type Write=False; type Pe
 pub struct Write;
 impl BufferAccess for Write { type Read=False; type Write=True; type Persistent=False; }
 
+///A [BufferAccess] allowing writeonly client-side access and persistent mapping
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
+pub struct PersistentWrite;
+impl BufferAccess for PersistentWrite { type Read=False; type Write=True; type Persistent=True; }
+
 ///A [BufferAccess] allowing both client-side reads and writes
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
 pub struct ReadWrite;

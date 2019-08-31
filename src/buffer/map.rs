@@ -101,12 +101,12 @@ impl<'a,T:Sized,A:WriteAccess> BMap<'a,[T],A> {
 //MapBuffer
 //
 
-fn map_access<B:BufferAccess>() -> GLenum {
+unsafe fn map_access<B:BufferAccess>() -> GLenum {
     match (<B::Read as Boolean>::VALUE, <B::Write as Boolean>::VALUE) {
         (true, false) => gl::READ_ONLY,
         (false, true) => gl::WRITE_ONLY,
         (true, true) => gl::READ_WRITE,
-        (false, false) => panic!("Invalid map flags"),
+        (false, false) => 0,
     }
 }
 
@@ -134,6 +134,14 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
 //(ie. use this buffer to render something) while mapped, which is dissallowed for everything but
 //persistence mapping
 
+unsafe fn map_range_flags<B:BufferAccess>() -> GLbitfield {
+    let mut flags = 0;
+    if <B::Read as Boolean>::VALUE {flags |= gl::MAP_READ_BIT;}
+    if <B::Write as Boolean>::VALUE {flags |= gl::MAP_WRITE_BIT;}
+    if <B::Persistent as Boolean>::VALUE {flags |= gl::MAP_PERSISTENT_BIT;}
+    flags
+}
+
 impl<T:?Sized, A:ReadAccess+NonPersistentAccess> Buffer<T,A> {
     #[inline] pub fn map<'a>(&'a mut self) -> BMap<'a,T,Read> { unsafe{self.map_raw()} }
 }
@@ -160,12 +168,9 @@ impl<'a,T:?Sized,A:BufferAccess> BSliceMut<'a,T,A> {
         let mut target = BufferTarget::CopyWriteBuffer.as_loc();
         let mut ptr = BufPtr { rust_mut: self.ptr };
 
-        if gl::MapBufferRange::is_loaded() || gl::MapNamedBufferRange::is_loaded() {
+        if <B::Persistent as Boolean>::VALUE || gl::MapBufferRange::is_loaded() || gl::MapNamedBufferRange::is_loaded() {
 
-            let mut flags = 0;
-            if <B::Read as Boolean>::VALUE {flags |= gl::MAP_READ_BIT;}
-            if <B::Write as Boolean>::VALUE {flags |= gl::MAP_WRITE_BIT;}
-
+            let flags = map_range_flags::<B>();
             if gl::MapNamedBufferRange::is_loaded() {
                 ptr.gl_mut = gl::MapNamedBufferRange(
                     self.id(), self.offset() as GLintptr, self.size() as GLsizeiptr, flags
@@ -219,4 +224,71 @@ impl<T:Sized,A:ReadAccess+WriteAccess> Buffer<[T],A> {
     }
 }
 
-//TODO persistent mapping
+//
+//Persistent mapping
+//
+
+impl<'a,T:?Sized,A:BufferAccess> BSlice<'a,T,A> {
+    unsafe fn get_map_pointer_raw<'b,B:BufferAccess>(this:*const Self) -> BMap<'b,T,B> {
+        let mut ptr = MaybeUninit::uninit();
+
+        if gl::GetNamedBufferPointerv::is_loaded() {
+            gl::GetNamedBufferPointerv((&*this).id(), gl::BUFFER_MAP_POINTER, ptr.as_mut_ptr());
+        } else {
+            let mut target = BufferTarget::CopyReadBuffer.as_loc();
+            gl::GetBufferPointerv(target.bind_slice(&*this).target_id(), gl::BUFFER_MAP_POINTER, ptr.as_mut_ptr());
+        }
+
+        if ptr.get_ref().is_null() {
+            let mut buf_size = MaybeUninit::uninit();
+            let flags = map_range_flags::<A>(); //needs to be the A flags because this is for persistent maps
+
+            if gl::GetNamedBufferParameteriv::is_loaded() && gl::MapNamedBufferRange::is_loaded() {
+                gl::GetNamedBufferParameteriv((&*this).id(), gl::BUFFER_SIZE, buf_size.as_mut_ptr());
+                *ptr.get_mut() = gl::MapNamedBufferRange(
+                    (&*this).id(), 0, buf_size.assume_init() as GLsizeiptr, flags
+                );
+            } else {
+                let mut target = BufferTarget::CopyReadBuffer.as_loc();
+                let binding = target.bind_slice(&*this);
+                gl::GetBufferParameteriv(binding.target_id(), gl::BUFFER_SIZE, buf_size.as_mut_ptr());
+                *ptr.get_mut() = gl::MapBufferRange(
+                    binding.target_id(), 0, buf_size.assume_init() as GLsizeiptr, flags
+                );
+            }
+
+        }
+
+        BMap {
+            ptr: BufPtr{gl_mut: ptr.assume_init()}.rust_mut,
+            id: (&*this).id(),
+            offset: (&*this).offset(),
+            buf: PhantomData
+        }
+
+    }
+}
+
+impl<'a,T:?Sized,A:ReadAccess+PersistentAccess> BSlice<'a,T,A> {
+    #[inline] pub fn get_map_pointer(&self) -> BMap<T,PersistentRead> {
+        unsafe {Self::get_map_pointer_raw(self)}
+    }
+}
+
+impl<'a,T:?Sized,A:ReadAccess+PersistentAccess> BSliceMut<'a,T,A> {
+    #[inline] pub fn get_map_pointer(&self) -> BMap<T,PersistentRead> {
+        unsafe {BSlice::get_map_pointer_raw(&self.as_immut())}
+    }
+}
+
+impl<'a,T:?Sized,A:WriteAccess+PersistentAccess> BSliceMut<'a,T,A> {
+    #[inline] pub fn get_map_pointer_write(&mut self) -> BMap<T,PersistentWrite> {
+        unsafe {BSlice::get_map_pointer_raw(&self.as_immut())}
+    }
+}
+
+impl<'a,T:?Sized,A:WriteAccess+ReadAccess+PersistentAccess> BSliceMut<'a,T,A> {
+    #[inline] pub fn get_map_pointer_mut(&mut self) -> BMap<T,PersistentReadWrite> {
+        unsafe {BSlice::get_map_pointer_raw(&self.as_immut())}
+    }
+}
