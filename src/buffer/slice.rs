@@ -1,7 +1,7 @@
 use super::*;
 use crate::gl;
 
-use std::slice::SliceIndex;
+use std::slice::*;
 
 #[derive(Clone, Copy)]
 pub struct Slice<'a, T:?Sized, A:BufferAccess> {
@@ -47,18 +47,52 @@ impl<'a, T:?Sized, A:BufferAccess> From<&'a mut Buffer<T,A>> for SliceMut<'a,T,A
 impl<'a,T:Sized,A:BufferAccess> Slice<'a,[T],A> {
     #[inline] pub fn len(&self) -> usize {self.map_buf(|buf| buf.len())}
 
+    unsafe fn from_raw_parts(id:GLuint, len:usize, offset:usize) -> Self {
+        let mut slice = BufPtr { rust: from_raw_parts(NonNull::dangling().as_ptr(), len)};
+        slice.buf = id;
+        Slice{ptr:slice.rust, offset: offset, buf:PhantomData}
+    }
+
+    pub fn split_at(&self, mid:usize) -> (Slice<'a,[T],A>, Slice<'a,[T],A>) {
+        assert!(mid<=self.len(), "split midpoint larger than slice length");
+        unsafe {
+            (
+                Self::from_raw_parts(self.id(), mid, self.offset),
+                Self::from_raw_parts(self.id(), self.len() - mid, self.offset + mid*size_of::<T>())
+            )
+        }
+    }
+
+    pub fn split_first(&self) -> Option<(Slice<'a,T,A>, Slice<'a,[T],A>)> {
+        match self.len()==0 {
+            true => None,
+            _ => {
+                let (first, rest) = self.split_at(1);
+                Some((first.index(0), rest))
+            }
+        }
+    }
+
+    pub fn split_last(&self) -> Option<(Slice<'a,T,A>, Slice<'a,[T],A>)> {
+        match self.len()==0 {
+            true => None,
+            _ => {
+                let (rest, last) = self.split_at(self.len()-1);
+                Some((last.index(0), rest))
+            }
+        }
+    }
+
     pub fn index<U:?Sized,I:SliceIndex<[T],Output=U>>(&self,i:I) -> Slice<'a,U,A> {
         unsafe {
-            let null_ptr = {
-                let mut raw = BufPtr{rust:self.ptr};
-                raw.c = null();
-                &*raw.rust
-            };
-            let indexed = &null_ptr[i];
+            let dangling_slice = from_raw_parts(NonNull::dangling().as_ptr(), self.len());
+            let indexed = &dangling_slice[i];
+
+            let offset = BufPtr{rust:indexed}.c.offset_from(dangling_slice.as_ptr() as *const u8);
 
             Slice {
                 ptr: BufPtr{rust:indexed}.rust_mut,
-                offset: self.offset + BufPtr{rust:indexed}.c.offset_from(null()) as usize,
+                offset: self.offset + offset as usize,
                 buf: PhantomData
             }
         }
@@ -69,26 +103,40 @@ impl<'a,T:Sized,A:BufferAccess> Slice<'a,[T],A> {
 impl<'a,T:Sized,A:BufferAccess> SliceMut<'a,[T],A> {
     #[inline] pub fn len(&self) -> usize {self.as_immut().len()}
 
+    #[inline] pub fn split_at(&self, mid:usize) -> (Slice<'a,[T],A>, Slice<'a,[T],A>) {
+        self.as_immut().split_at(mid)
+    }
+
+    #[inline] pub fn split_at_mut(&mut self, mid:usize) -> (SliceMut<'a,[T],A>, SliceMut<'a,[T],A>) {
+        unsafe {
+            let (s1, s2) = self.split_at(mid);
+            (s1.into_mut(), s2.into_mut())
+        }
+    }
+
+    #[inline] pub fn split_first(&self) -> Option<(Slice<'a,T,A>, Slice<'a,[T],A>)> {
+        self.as_immut().split_first()
+    }
+
+    #[inline] pub fn split_first_mut(&self) -> Option<(SliceMut<'a,T,A>, SliceMut<'a,[T],A>)> {
+        unsafe { self.split_first().map(|(s1,s2)| (s1.into_mut(), s2.into_mut())) }
+    }
+
+    #[inline] pub fn split_last(&self) -> Option<(Slice<'a,T,A>, Slice<'a,[T],A>)> {
+        self.as_immut().split_last()
+    }
+
+    #[inline] pub fn split_last_mut(&self) -> Option<(SliceMut<'a,T,A>, SliceMut<'a,[T],A>)> {
+        unsafe { self.split_last().map(|(s1,s2)| (s1.into_mut(), s2.into_mut())) }
+    }
+
     #[inline]
     pub fn index<U:?Sized,I:SliceIndex<[T],Output=U>>(&self,i:I) -> Slice<'a,U,A> {
         self.as_immut().index(i)
     }
 
     pub fn index_mut<U:?Sized,I:SliceIndex<[T],Output=U>>(&mut self,i:I) -> SliceMut<'a,U,A> {
-        unsafe {
-            let null_ptr = {
-                let mut raw = BufPtr{rust_mut:self.ptr};
-                raw.c_mut = null_mut();
-                &mut *raw.rust_mut
-            };
-            let indexed = &mut null_ptr[i];
-
-            SliceMut {
-                ptr: BufPtr{rust_mut: indexed}.rust_mut,
-                offset: self.offset + BufPtr{rust_mut:indexed}.c_mut.offset_from(null_mut()) as usize,
-                buf: PhantomData
-            }
-        }
+        unsafe { self.as_immut().index(i).into_mut() }
     }
 }
 
@@ -108,6 +156,11 @@ impl<'a,T:?Sized,A:BufferAccess> Slice<'a,T,A> {
         let res = f(&buf);
         forget(buf);
         res
+    }
+
+    #[inline]
+    unsafe fn into_mut(self) -> SliceMut<'a,T,A> {
+        SliceMut{ ptr:self.ptr as *mut T, offset:self.offset, buf:PhantomData }
     }
 
     #[inline] pub fn id(&self) -> GLuint {self.map_buf(|buf| buf.id())}
