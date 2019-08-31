@@ -27,8 +27,13 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
         if let Some(hints) = hint { flags |= gl::CLIENT_STORAGE_BIT & hints.bits() }
 
         //upload the data
-        let mut target = BufferTarget::CopyWriteBuffer.as_loc();
-        gl::BufferStorage(target.bind(&raw).target_id(), size as GLsizeiptr, ptr, flags);
+        if gl::NamedBufferStorage::is_loaded() {
+            gl::NamedBufferStorage(raw.id(), size as GLsizeiptr, ptr, flags)
+        } else {
+            let mut target = BufferTarget::CopyWriteBuffer.as_loc();
+            gl::BufferStorage(target.bind(&raw).target_id(), size as GLsizeiptr, ptr, flags);
+        }
+
 
         //make sure we don't delete the buffer by accident
         forget(raw);
@@ -53,9 +58,13 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
         conv.buf = raw.id();
 
         //upload the data
-        let mut target = BufferTarget::CopyWriteBuffer.as_loc();
-        let tar = target.bind(&raw).target_id();
-        gl::BufferData(tar, size as GLsizeiptr, ptr, usage.unwrap_or(Default::default()) as GLenum);
+        if gl::NamedBufferData::is_loaded() {
+            gl::NamedBufferData(raw.id(), size as GLsizeiptr, ptr, usage.unwrap_or(Default::default()) as GLenum);
+        } else {
+            let mut target = BufferTarget::CopyWriteBuffer.as_loc();
+            let tar = target.bind(&raw).target_id();
+            gl::BufferData(tar, size as GLsizeiptr, ptr, usage.unwrap_or(Default::default()) as GLenum);
+        }
 
         //make sure we don't delete the buffer by accident
         forget(raw);
