@@ -249,7 +249,7 @@ impl<'a,T:?Sized,A:BufferAccess> BSlice<'a,T,A> {
 
         if ptr.get_ref().is_null() {
             let mut buf_size = MaybeUninit::uninit();
-            let flags = map_range_flags::<A>(); //needs to be the A flags because this is for persistent maps
+            let flags = map_range_flags::<A>() | gl::MAP_UNSYNCHRONIZED_BIT; //needs to be the A flags because this is for persistent maps
 
             if gl::GetNamedBufferParameteriv::is_loaded() && gl::MapNamedBufferRange::is_loaded() {
                 gl::GetNamedBufferParameteriv((&*this).id(), gl::BUFFER_SIZE, buf_size.as_mut_ptr());
@@ -268,6 +268,8 @@ impl<'a,T:?Sized,A:BufferAccess> BSlice<'a,T,A> {
             check_allignment(*ptr.as_ptr(), (&*this).align());
 
         }
+
+        if <B::Read as Boolean>::VALUE {gl::MemoryBarrier(gl::CLIENT_MAPPED_BUFFER_BARRIER_BIT);}
 
         BMap {
             ptr: BufPtr{gl_mut: ptr.assume_init()}.rust_mut,
