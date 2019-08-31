@@ -1,7 +1,7 @@
 
 use crate::gl;
 use crate::gl::types::*;
-use crate::{GLVersion, GL15, GL44, GLError};
+use crate::{GLVersion, GL15, GL44, GLError, assume_supported};
 use crate::{Resource, Target, Binding, BindingLocation};
 
 use std::alloc::{Global, Alloc, Layout};
@@ -61,6 +61,8 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
     #[inline] pub fn id(&self) -> GLuint { unsafe {BufPtr{rust_mut: self.ptr}.buf} }
     #[inline] pub fn size(&self) -> usize { unsafe {size_of_val(&*self.ptr)} }
     #[inline] pub fn align(&self) -> usize { unsafe {align_of_val(&*self.ptr)} }
+
+    #[inline] pub fn gl(&self) -> GL15 { unsafe { assume_supported::<GL15>() } }
 
     //
     //Wrappers for glGetParameteriv
@@ -176,7 +178,7 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
 impl<T:Sized, A:BufferAccess> Buffer<T,A> {
     pub fn into_inner(self) -> T {
         unsafe {
-            //read the data into a box
+            //read the data
             let mut data = MaybeUninit::uninit();
             self.as_slice().get_subdata_raw(data.get_mut() as *mut T);
 
@@ -185,6 +187,49 @@ impl<T:Sized, A:BufferAccess> Buffer<T,A> {
 
             //return the data
             data.assume_init()
+        }
+    }
+}
+
+impl<T:?Sized+GPUCopy,A:BufferAccess> Clone for Buffer<T,A> {
+    fn clone(&self) -> Self {
+        unsafe {
+            //allocate storage
+            let mut uninit = {
+                trait Mirror { unsafe fn _mirror(&self) -> Self; }
+                impl<U:?Sized,B:BufferAccess> Mirror for Buffer<U,B> {
+                    default unsafe fn _mirror(&self) -> Self {
+                        let raw = RawBuffer::gen(&self.gl());
+
+                        let mut ptr = BufPtr { rust_mut: self.ptr};
+                        ptr.c = null();
+
+                        Self::storage_raw(&assume_supported(), raw, ptr.rust, Some(self.storage_flags()))
+                    }
+                }
+
+                impl<U:?Sized,B:NonPersistentAccess> Mirror for Buffer<U,B>  {
+                    unsafe fn _mirror(&self) -> Self {
+                        let raw = RawBuffer::gen(&self.gl());
+
+                        let mut ptr = BufPtr { rust_mut: self.ptr};
+                        ptr.c = null();
+
+                        if self.immutable_storage() {
+                            Self::storage_raw(&assume_supported(), raw, ptr.rust, Some(self.storage_flags()))
+                        } else {
+                            Self::data_raw(raw, ptr.rust, Some(self.usage()))
+                        }
+                    }
+                }
+
+                self._mirror()
+            };
+
+            //copy the data directly
+            self.as_slice().copy_subdata_unchecked(&mut uninit.as_slice_mut());
+
+            uninit
         }
     }
 }

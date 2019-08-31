@@ -25,6 +25,11 @@ fn get_integerv(param: GLenum) -> GLint {
     }
 }
 
+#[inline]
+pub unsafe fn assume_supported<GL:GLVersion>() -> GL {
+    MaybeUninit::zeroed().assume_init()
+}
+
 #[inline] pub fn supports<Test:GLVersion+?Sized, Version:GLVersion+Sized>(gl: &Test) -> bool {
     let target: Version = unsafe { ::std::mem::zeroed() };
     let version = (target.major_version(), target.minor_version());
