@@ -20,6 +20,8 @@ pub use self::access::*;
 pub use self::storage::*;
 pub use self::map::*;
 pub use self::slice::*;
+pub use self::cmp::*;
+pub use self::pixel_transfer::*;
 pub use self::attrib_array::*;
 
 mod raw;
@@ -29,6 +31,7 @@ mod storage;
 mod map;
 mod slice;
 mod cmp;
+mod pixel_transfer;
 mod attrib_array;
 
 pub type Buf<T,A> = Buffer<T,A>;
