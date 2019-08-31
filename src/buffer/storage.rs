@@ -90,11 +90,11 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
 
 impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
 
-    pub fn storage(gl: &GL44, raw: RawBuffer, data: Box<T>, hint: StorageHint) -> Self {
+    pub fn storage_box(gl: &GL44, raw: RawBuffer, data: Box<T>, hint: StorageHint) -> Self {
         map_dealloc(data, |ptr| unsafe{Self::storage_raw(gl, raw, ptr, hint)})
     }
 
-    pub fn data(raw: RawBuffer, data: Box<T>, usage: DataHint) -> Self where A:NonPersistentAccess {
+    pub fn data_box(raw: RawBuffer, data: Box<T>, usage: DataHint) -> Self where A:NonPersistentAccess {
         map_dealloc(data, |ptr| unsafe{Self::data_raw(raw, ptr, usage)})
     }
 
@@ -120,6 +120,30 @@ impl<T:?Sized+GPUCopy, A:BufferAccess> Buffer<T,A> {
 }
 
 impl<T:Sized, A:BufferAccess> Buffer<T,A> {
+
+    pub fn storage(gl: &GL44, raw: RawBuffer, data:T, hint: StorageHint) -> Self {
+        unsafe {
+            let buf = Self::storage_raw(gl, raw, &data, hint);
+            forget(data);
+            buf
+        }
+    }
+
+    pub fn data(raw: RawBuffer, data:T, usage: DataHint) -> Self where A:NonPersistentAccess {
+        unsafe {
+            let buf = Self::data_raw(raw, &data, usage);
+            forget(data);
+            buf
+        }
+    }
+
+    pub fn from(gl: &GL15, data:T, hint: CreationHint) -> Self where A:NonPersistentAccess {
+        unsafe {
+            let buf = Self::from_raw(gl, &data, hint);
+            forget(data);
+            buf
+        }
+    }
 
     pub fn storage_uninit(gl: &GL44, raw: RawBuffer, hint: StorageHint) -> Self {
         unsafe { Self::storage_raw(gl, raw, null::<T>(), hint) }
