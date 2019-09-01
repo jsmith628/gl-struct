@@ -1,5 +1,5 @@
 
-use ::*;
+use super::*;
 use std::mem::transmute;
 
 pub type IntFormat = IntType;

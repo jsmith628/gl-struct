@@ -1,5 +1,5 @@
 
-use std::slice::*;
+use super::*;
 use std::mem::*;
 
 ///

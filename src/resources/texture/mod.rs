@@ -1,7 +1,7 @@
 use super::*;
 use crate::gl;
 
-use image_format::*;
+use format::*;
 use super::buffer::BufferTarget;
 
 use std::convert::TryInto;

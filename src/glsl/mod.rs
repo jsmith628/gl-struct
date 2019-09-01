@@ -3,11 +3,10 @@ use ::*;
 use std::slice::*;
 use crate::resources::*;
 
-pub use self::attrib_format::*;
+use crate::format::*;
 
 #[macro_use]
 mod glsl;
-mod attrib_format;
 pub mod glsl_type;
 
 pub unsafe trait GLSLType: Sized + Copy + Debug {

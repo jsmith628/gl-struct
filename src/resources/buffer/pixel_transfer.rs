@@ -1,5 +1,5 @@
 use super::*;
-use image_format::{ClientFormat,PixelType,PixelData,PixelDataMut,PixelRowAlignment};
+use format::{ClientFormat,PixelType,PixelData,PixelDataMut,PixelRowAlignment};
 
 unsafe impl<'a,F:ClientFormat,T:PixelType<F>,A:BufferAccess> PixelData<F> for Slice<'a,[T],A> {
     #[inline] fn swap_bytes(&self) -> bool {T::swap_bytes()}
