@@ -34,6 +34,7 @@ gl_resource! {
     pub struct RawBuffer {
         gl = GL15,
         target = BufferTarget,
+        ident = Buffer,
         gen = GenBuffers,
         bind = BindBuffer,
         is = IsBuffer,

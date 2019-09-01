@@ -98,6 +98,8 @@ unsafe impl<T: TextureTarget> Resource for RawTex<T> {
     type GL = T::GL;
     type BindingTarget = T;
 
+    const IDENTIFIER: ResourceIdentifier = ResourceIdentifier::Texture;
+
     #[inline(always)] fn id(&self) -> GLuint {self.0}
     #[inline(always)] fn into_raw(self) -> GLuint {self.0}
 

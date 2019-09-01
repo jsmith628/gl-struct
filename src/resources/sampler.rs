@@ -49,6 +49,7 @@ gl_resource!{
     pub struct Sampler {
         gl = GL33,
         target = TextureUnitID,
+        ident = Sampler,
         gen = GenSamplers,
         bind = BindSampler,
         is = IsSampler,

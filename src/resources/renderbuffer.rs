@@ -28,6 +28,7 @@ gl_resource!{
     pub struct RawRenderbuffer {
         gl = GL30,
         target = RenderbufferTarget,
+        ident = Renderbuffer,
         gen = GenRenderbuffers,
         bind = BindRenderbuffer,
         is = IsRenderbuffer,

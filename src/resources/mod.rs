@@ -32,6 +32,9 @@ macro_rules! gl_resource{
 
     (@fun gl=$GL:ident) => { type GL = $GL; };
     (@fun target=$Target:ident) => { type BindingTarget = $Target; };
+    (@fun ident=$ident:ident) => {
+        const IDENTIFIER: crate::resources::ResourceIdentifier = crate::resources::ResourceIdentifier::$ident;
+    };
 
     (@fun delete=$gl:ident) => {
         #[inline]
@@ -110,6 +113,22 @@ pub mod renderbuffer;
 pub mod sampler;
 
 
+glenum! {
+    pub enum ResourceIdentifier {
+        [Buffer BUFFER "Buffer"],
+        [Framebuffer FRAMEBUFFER "Framebuffer"],
+        [ProgramPipeline PROGRAM_PIPELINE "Program Pipeline"],
+        [Program PROGRAM "Program"],
+        [Query QUERY "Query"],
+        [Renderbuffer RENDERBUFFER "Renderbuffer"],
+        [Sampler SAMPLER "Sampler"],
+        [Shader SHADER "Shader"],
+        [Texture TEXTURE "Texture"],
+        [TransformFeedback TRANSFORM_FEEDBACK "Transform Feedback"],
+        [VertexArray VERTEX_ARRAY "Vertex Array"]
+    }
+}
+
 ///
 ///An OpenGL resource object that follows the standard [glGen*](Resource::gen),
 ///[glIs*](Resource::is), and [glDelete*](Resource::delete) pattern
@@ -125,6 +144,8 @@ pub unsafe trait Resource:Sized {
     ///The OpenGL version type that guarrantees that the functions required for initialization are loaded
     type GL: GLVersion;
     type BindingTarget: Target<Resource=Self>;
+
+    const IDENTIFIER: ResourceIdentifier;
 
     ///
     ///The identification of the object used internally by OpenGL that is returned by the gen method.
@@ -197,6 +218,65 @@ pub unsafe trait Resource:Sized {
     ///to certain targets similar to a reference counted smart-pointer.
     ///
     fn delete_resources(resouces: Box<[Self]>);
+
+    fn label(&self, label: &str) -> Result<(),GLError> {
+        use std::mem::MaybeUninit;
+
+        unsafe {
+            if gl::ObjectLabel::is_loaded() {
+                let mut max_length = MaybeUninit::uninit();
+                gl::GetIntegerv(gl::MAX_LABEL_LENGTH, max_length.as_mut_ptr());
+                if max_length.assume_init() >= label.len() as GLint {
+                    gl::ObjectLabel(
+                        Self::IDENTIFIER as GLenum,
+                        self.id(), label.len() as GLsizei, label.as_ptr() as *const GLchar
+                    );
+                    Ok(())
+                } else {
+                    Err(GLError::InvalidValue("object label longer than maximum allowed length".to_string()))
+                }
+            } else {
+                Err(GLError::FunctionNotLoaded("ObjectLabel"))
+            }
+        }
+    }
+
+    fn get_label(&self) -> Option<String> {
+        use std::mem::MaybeUninit;
+        use std::ptr::*;
+
+        unsafe {
+            if gl::GetObjectLabel::is_loaded() {
+                //get the length of the label
+                let mut length = MaybeUninit::uninit();
+                gl::GetObjectLabel(
+                    Self::IDENTIFIER as GLenum, self.id(), 0, length.as_mut_ptr(), null_mut()
+                );
+
+                let length = length.assume_init();
+                if length==0 { //if there is no label
+                    None
+                } else {
+                    //allocate the space for the label
+                    let mut bytes = Vec::with_capacity(length as usize);
+                    bytes.set_len(length as usize);
+
+                    //copy the label
+                    gl::GetObjectLabel(
+                        Self::IDENTIFIER as GLenum,
+                        self.id(), length as GLsizei, null_mut(), bytes.as_mut_ptr() as *mut GLchar
+                    );
+
+                    //since label() loads from a &str, we can assume the returned bytes are valid utf8
+                    Some(String::from_utf8_unchecked(bytes))
+                }
+
+            } else {
+                None
+            }
+        }
+
+    }
 
 }
 

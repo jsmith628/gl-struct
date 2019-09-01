@@ -12,6 +12,7 @@
 #![feature(coerce_unsized)]
 #![feature(const_fn)]
 #![feature(maybe_uninit_ref)]
+#![feature(non_exhaustive)]
 #![recursion_limit="8192"]
 
 pub extern crate gl;
@@ -86,12 +87,14 @@ pub mod program;
 pub mod format;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum GLError {
     ShaderCompilation(GLuint, ShaderType, String),
     ProgramLinking(GLuint, String),
     ProgramValidation(GLuint, String),
     InvalidEnum(GLenum, String),
     InvalidOperation(String),
+    InvalidValue(String),
     InvalidBits(GLbitfield, String),
     BufferCopySizeError(usize, usize),
     FunctionNotLoaded(&'static str),
@@ -108,6 +111,7 @@ impl Debug for GLError {
             GLError::ProgramValidation(id, log) => write!(f, "Program #{} validation error: {}", id, log),
             GLError::InvalidEnum(id, ty) => write!(f, "Invalid enum: #{} is not a valid {}", id, ty),
             GLError::InvalidOperation(msg) => write!(f, "Invalid operation: {}", msg),
+            GLError::InvalidValue(msg) => write!(f, "Invalid value: {}", msg),
             GLError::InvalidBits(id, ty) => write!(f, "Invalid bitfield: {:b} are not valid flags for {}", id, ty),
             GLError::FunctionNotLoaded(name) => write!(f, "{} not loaded", name),
             GLError::Version(maj, min) => write!(f, "OpenGL version {}.{} not supported", maj, min),
