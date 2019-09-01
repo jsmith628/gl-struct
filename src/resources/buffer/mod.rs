@@ -1,8 +1,8 @@
 
+use super::*;
+
 use crate::gl;
-use crate::gl::types::*;
 use crate::{GLVersion, GL15, GL44, GLError, assume_supported};
-use crate::{Resource, Target, Binding, BindingLocation};
 
 use std::alloc::{Global, Alloc, Layout};
 use std::marker::{PhantomData, Unsize};

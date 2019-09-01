@@ -1,6 +1,7 @@
 
 use ::*;
 use std::slice::*;
+use crate::resources::*;
 
 pub use self::attrib_format::*;
 

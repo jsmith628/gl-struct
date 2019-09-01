@@ -1,5 +1,5 @@
 use super::*;
-use crate::texture::TextureUnitID;
+use super::texture::TextureUnitID;
 
 use std::convert::TryInto;
 

@@ -1,5 +1,4 @@
 use super::*;
-use crate::Target;
 
 glenum!{
     ///Binding targets for [glBindBuffer()](gl::BindBuffer()) and OpenGL calls

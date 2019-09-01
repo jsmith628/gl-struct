@@ -1,9 +1,8 @@
 use super::*;
 use crate::gl;
-use crate::Target;
 
 use image_format::*;
-use buffer::BufferTarget;
+use super::buffer::BufferTarget;
 
 use std::convert::TryInto;
 use std::marker::PhantomData;

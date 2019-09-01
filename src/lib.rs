@@ -75,16 +75,13 @@ pub use core::*;
 
 pub use program::*;
 pub use glsl::*;
-pub use buffer::*;
 
 #[macro_use] pub mod glsl;
 
+pub mod resources;
 pub mod program;
-pub mod buffer;
 pub mod image_format;
-pub mod texture;
-pub mod renderbuffer;
-pub mod sampler;
+
 
 
 glenum! {

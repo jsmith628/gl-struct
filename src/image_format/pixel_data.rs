@@ -1,7 +1,7 @@
 
 use super::*;
+use crate::resources::*;
 
-use buffer::{RawBuffer};
 use std::mem::*;
 
 #[derive(Copy,Clone,PartialEq,Eq,Hash)]

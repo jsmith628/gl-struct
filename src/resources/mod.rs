@@ -64,7 +64,7 @@ macro_rules! gl_resource{
 
         #[repr(C)] $($mod)* struct $name(GLuint);
 
-        unsafe impl $crate::Resource for $name {
+        unsafe impl $crate::resources::Resource for $name {
             $(gl_resource!(@fun $fun=$gl);)*
 
             #[inline] fn id(&self) -> gl::types::GLuint { self.0 }
@@ -84,7 +84,7 @@ macro_rules! gl_resource{
         }
 
         impl Drop for $name {
-            #[inline] fn drop(&mut self) { $crate::Resource::delete($name(self.0)); }
+            #[inline] fn drop(&mut self) { $crate::resources::Resource::delete($name(self.0)); }
         }
 
 
@@ -97,6 +97,16 @@ macro_rules! gl_resource{
     ($kw:ident $($tt:tt)*) => {gl_resource!({} $kw $($tt)*);};
     (#[$attr:meta] $($tt:tt)*) => {gl_resource!({} #[$attr] $($tt)*);};
 }
+
+pub use self::buffer::*;
+pub use self::texture::*;
+pub use self::renderbuffer::*;
+pub use self::sampler::*;
+
+pub mod buffer;
+pub mod texture;
+pub mod renderbuffer;
+pub mod sampler;
 
 
 ///
