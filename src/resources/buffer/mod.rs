@@ -2,7 +2,6 @@
 use super::*;
 
 use crate::gl;
-use crate::{GLVersion, GL15, GL44, GLError, assume_supported};
 
 use std::alloc::{Global, Alloc, Layout};
 use std::marker::{PhantomData, Unsize};

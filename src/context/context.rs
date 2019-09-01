@@ -1,5 +1,4 @@
 use super::*;
-use gl_version::GLVersion;
 
 ///
 ///A struct for keeping track of global GL state while
@@ -22,7 +21,7 @@ impl GLContext<GL10> {
 impl<V:GLVersion> GLContext<V> {
     pub fn upgrade_to<V2:GLVersion>(self) -> Result<GLContext<V2>, (Self, GLError)> {
         let v2 = unsafe { ::std::mem::zeroed::<V2>() };
-        if gl_version::supports::<V,V2>(&self.version) {
+        if supports::<V,V2>(&self.version) {
             return Ok(GLContext {version: v2, _private: ()} );
         } else {
             return Err((self, GLError::Version(v2.major_version(), v2.minor_version())));

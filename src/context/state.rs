@@ -489,7 +489,7 @@ impl LogicOp {
 
     pub fn from_truth_table(table: TruthTable) -> Self {
 
-        use LogicOp::*;
+        use self::LogicOp::*;
 
         match table {
             [[false, false], [false, false]] => Clear,
@@ -516,7 +516,7 @@ impl LogicOp {
     }
 
     pub fn op_fn<S:FnOnce()->bool, D:FnOnce()->bool>(self, src:S, dst:D) -> bool {
-        use LogicOp::*;
+        use self::LogicOp::*;
         match self {
             Clear => false,
             Set => true,
@@ -575,7 +575,7 @@ impl_ops!(BitXor::bitxor ^ BitXorAssign::bitxor_assign);
 impl Not for LogicOp {
     type Output = Self;
     fn not(self) -> Self {
-        use LogicOp::*;
+        use self::LogicOp::*;
         match self {
             Clear => Set, Set => Clear,
             Copy => CopyInverted, CopyInverted => Copy,

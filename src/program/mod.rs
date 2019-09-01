@@ -1,6 +1,7 @@
 
 use gl::types::*;
-use ::*;
+use super::*;
+use context::*;
 
 use std::mem::transmute;
 use std::ops::{Deref};
