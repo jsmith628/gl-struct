@@ -129,11 +129,13 @@ pub use self::buffer::*;
 pub use self::texture::*;
 pub use self::renderbuffer::*;
 pub use self::sampler::*;
+// pub use self::sync::*;
 
 pub mod buffer;
 pub mod texture;
 pub mod renderbuffer;
 pub mod sampler;
+pub mod sync;
 
 
 glenum! {
