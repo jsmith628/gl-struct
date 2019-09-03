@@ -1,7 +1,7 @@
 
 use ::*;
 use std::slice::*;
-use crate::resources::*;
+use crate::object::*;
 
 use crate::format::*;
 

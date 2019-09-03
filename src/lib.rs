@@ -81,7 +81,7 @@ pub use glsl::*;
 #[macro_use] pub mod glsl;
 
 pub mod context;
-pub mod resources;
+pub mod object;
 pub mod program;
 
 pub mod format;

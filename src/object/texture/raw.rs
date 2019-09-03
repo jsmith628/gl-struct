@@ -94,30 +94,14 @@ pub type RawTexCubeMapArray       = RawTex<TEXTURE_CUBE_MAP_ARRAY>;
 pub type RawTex2DMultisample      = RawTex<TEXTURE_2D_MULTISAMPLE>;
 pub type RawTex2DMultisampleArray = RawTex<TEXTURE_2D_MULTISAMPLE_ARRAY>;
 
-unsafe impl<T: TextureTarget> Resource for RawTex<T> {
+unsafe impl<T: TextureTarget> Object for RawTex<T> {
     type GL = T::GL;
-    type BindingTarget = T;
+    type Raw = GLuint;
 
-    const IDENTIFIER: ResourceIdentifier = ResourceIdentifier::Texture;
-
-    #[inline(always)] fn id(&self) -> GLuint {self.0}
     #[inline(always)] fn into_raw(self) -> GLuint {self.0}
 
-    #[inline] fn gen(_gl: &Self::GL) -> Self {
-        let mut raw = Self(0, PhantomData);
-        unsafe { gl::GenTextures(1, &mut raw.0 as *mut GLuint); }
-        raw
-    }
-
-    #[inline] fn gen_resources(_gl: &Self::GL, count: GLuint) -> Box<[Self]> {
-        let mut raw = Vec::with_capacity(count as usize);
-        unsafe {
-            if count > 0 {
-                raw.set_len(count as usize);
-                gl::GenTextures(count as GLsizei, &mut raw[0] as *mut GLuint);
-            }
-            ::std::mem::transmute(raw.into_boxed_slice())
-        }
+    #[inline(always)] unsafe fn from_raw(id:GLuint) -> Option<Self> {
+        if Self::is(id) { Some(RawTex(id, PhantomData)) } else { None }
     }
 
     fn is(id: GLuint) -> bool {
@@ -131,14 +115,40 @@ unsafe impl<T: TextureTarget> Resource for RawTex<T> {
                 false
             }
         }
-
-    }
-
-    #[inline(always)] unsafe fn from_raw(id:GLuint) -> Option<Self> {
-        if Self::is(id) { Some(RawTex(id, PhantomData)) } else { None }
     }
 
     #[inline(always)] fn delete(self) { drop(self) }
+
+    #[inline] fn label(&mut self, label: &str) -> Result<(),GLError> { object::object_label(self, label) }
+    #[inline] fn get_label(&self) -> Option<String> { object::get_object_label(self) }
+
+
+}
+
+
+unsafe impl<T: TextureTarget> Resource for RawTex<T> {
+    type BindingTarget = T;
+
+    const IDENTIFIER: ResourceIdentifier = ResourceIdentifier::Texture;
+
+    #[inline(always)] fn id(&self) -> GLuint {self.0}
+
+    #[inline] fn gen(_gl: &<Self as Object>::GL) -> Self {
+        let mut raw = Self(0, PhantomData);
+        unsafe { gl::GenTextures(1, &mut raw.0 as *mut GLuint); }
+        raw
+    }
+
+    #[inline] fn gen_resources(_gl: &<Self as Object>::GL, count: GLuint) -> Box<[Self]> {
+        let mut raw = Vec::with_capacity(count as usize);
+        unsafe {
+            if count > 0 {
+                raw.set_len(count as usize);
+                gl::GenTextures(count as GLsizei, &mut raw[0] as *mut GLuint);
+            }
+            ::std::mem::transmute(raw.into_boxed_slice())
+        }
+    }
 
     #[inline]
     fn delete_resources(resources: Box<[Self]>) {

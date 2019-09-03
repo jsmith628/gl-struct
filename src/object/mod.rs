@@ -3,9 +3,10 @@ use context::*;
 
 macro_rules! gl_resource{
 
+    (@obj gen=$gl:ident) => {};
     (@fun gen=$gl:ident) => {
         #[inline]
-        fn gen(_gl: &Self::GL) -> Self {
+        fn gen(_gl: &<Self as Object>::GL) -> Self {
             unsafe {
                 let mut obj = ::std::mem::MaybeUninit::<Self>::uninit();
                 gl::$gl(1, obj.get_mut().0 as *mut gl::types::GLuint);
@@ -14,7 +15,7 @@ macro_rules! gl_resource{
         }
 
         #[inline]
-        fn gen_resources(_gl: &Self::GL, count: gl::types::GLuint) -> Box<[Self]> {
+        fn gen_resources(_gl: &<Self as Object>::GL, count: gl::types::GLuint) -> Box<[Self]> {
             unsafe {
                 let mut obj = Vec::<Self>::with_capacity(count as usize);
                 obj.set_len(count as usize);
@@ -24,24 +25,33 @@ macro_rules! gl_resource{
         }
     };
 
-    (@fun is=$gl:ident) => {
-        #[inline] fn is(id: gl::types::GLuint) -> bool { unsafe { gl::$gl(id) != gl::FALSE } }
+
+    (@fun is=$gl:ident) => {};
+    (@obj is=$gl:ident) => {
+        #[inline] fn is(id: Self::Raw) -> bool { unsafe { gl::$gl(id) != gl::FALSE } }
     };
 
+    (@obj bind=$gl:ident) => {};
     (@fun bind=$gl:ident) => {};
 
-    (@fun gl=$GL:ident) => { type GL = $GL; };
+    (@obj gl=$GL:ident) => { type GL = $GL; };
+    (@fun gl=$GL:ident) => { };
+
+    (@obj target=$Target:ident) => { };
     (@fun target=$Target:ident) => { type BindingTarget = $Target; };
+
+    (@obj ident=$ident:ident) => { };
     (@fun ident=$ident:ident) => {
-        const IDENTIFIER: crate::resources::ResourceIdentifier = crate::resources::ResourceIdentifier::$ident;
+        const IDENTIFIER: crate::object::ResourceIdentifier = crate::object::ResourceIdentifier::$ident;
     };
 
-    (@fun delete=$gl:ident) => {
+    (@obj delete=$gl:ident) => {
         #[inline]
         fn delete(self) {
             unsafe { gl::$gl(1, &self.into_raw() as *const gl::types::GLuint); }
         }
-
+    };
+    (@fun delete=$gl:ident) => {
         #[inline]
         fn delete_resources(resources: Box<[Self]>) {
             unsafe {
@@ -68,10 +78,11 @@ macro_rules! gl_resource{
 
         #[repr(C)] $($mod)* struct $name(GLuint);
 
-        unsafe impl $crate::resources::Resource for $name {
-            $(gl_resource!(@fun $fun=$gl);)*
+        unsafe impl $crate::object::Object for $name {
 
-            #[inline] fn id(&self) -> gl::types::GLuint { self.0 }
+            type Raw = gl::types::GLuint;
+
+            $(gl_resource!(@obj $fun=$gl);)*
 
             #[inline]
             unsafe fn from_raw(id: gl::types::GLuint) -> Option<Self> {
@@ -85,10 +96,22 @@ macro_rules! gl_resource{
                 id
             }
 
+            fn label(&mut self, label: &str) -> Result<(),GLError> {
+                object::object_label(self, label)
+            }
+
+            fn get_label(&self) -> Option<String> { object::get_object_label(self) }
+        }
+
+        unsafe impl $crate::object::Resource for $name {
+            $(gl_resource!(@fun $fun=$gl);)*
+
+            #[inline] fn id(&self) -> gl::types::GLuint { self.0 }
+
         }
 
         impl Drop for $name {
-            #[inline] fn drop(&mut self) { $crate::resources::Resource::delete($name(self.0)); }
+            #[inline] fn drop(&mut self) { $crate::object::Object::delete($name(self.0)); }
         }
 
 
@@ -129,6 +152,113 @@ glenum! {
     }
 }
 
+pub unsafe trait Object: Sized {
+    ///The OpenGL version type that guarrantees that the functions required for initialization are loaded
+    type GL: GLVersion;
+    type Raw: Copy;
+
+    ///
+    ///Consumes this object and leaks its id
+    ///
+    ///As such, it is up to the caller to delete the resource or remake the object with
+    ///[from_raw](Object::from_raw) to avoid a memory leak. Despite this however, this method is not
+    ///considered unsafe for much the same reason [Box::into_raw] is not
+    fn into_raw(self) -> Self::Raw;
+
+
+    ///
+    ///Constructs an object from a raw GL object id or [Option::None] if the id is not a name of
+    ///
+    ///
+    ///This id should be one from a previous call to [into_raw](Object::into_raw) or an unowned object
+    ///created manually otherwise there almost certainly will be a double-free. However, it is _not_
+    ///unsafe to provide an invalid id or an id from a different type as OpenGL and the implementor
+    ///should catch them and return a None
+    ///
+    ///# Unsafety
+    ///
+    ///Calling this on the same id twice will almost certainly cause a double-free and/or other memory
+    ///issues from double-ownership
+    ///
+    unsafe fn from_raw(raw: Self::Raw) -> Option<Self>;
+
+    ///Determines if a given id is the name of an OpenGL object of this type
+    fn is(raw: Self::Raw) -> bool;
+
+    ///
+    ///Consumes this object and deletes its OpenGL resources.
+    ///
+    ///Do note though that if this object is queued for an operation (unless synchronization is
+    ///overrided by various (unsafe) means) the object will continue to exist until those operations
+    ///have completed. Furthermore, certain objects will continue to exist in memory if bound
+    ///to certain targets similar to a reference counted smart-pointer.
+    ///
+    fn delete(self);
+
+    fn label(&mut self, label: &str) -> Result<(), GLError>;
+
+    fn get_label(&self) -> Option<String>;
+
+}
+
+pub(self) fn object_label<R:Resource>(this:&mut R, label:&str) -> Result<(),GLError> {
+    use std::mem::MaybeUninit;
+
+    unsafe {
+        if gl::ObjectLabel::is_loaded() {
+            let mut max_length = MaybeUninit::uninit();
+            gl::GetIntegerv(gl::MAX_LABEL_LENGTH, max_length.as_mut_ptr());
+            if max_length.assume_init() >= label.len() as GLint {
+                gl::ObjectLabel(
+                    R::IDENTIFIER as GLenum,
+                    this.id(), label.len() as GLsizei, label.as_ptr() as *const GLchar
+                );
+                Ok(())
+            } else {
+                Err(GLError::InvalidValue("object label longer than maximum allowed length".to_string()))
+            }
+        } else {
+            Err(GLError::FunctionNotLoaded("ObjectLabel"))
+        }
+    }
+}
+
+pub(self) fn get_object_label<R:Resource>(this:&R) -> Option<String>{
+    use std::mem::MaybeUninit;
+    use std::ptr::*;
+
+    unsafe {
+        if gl::GetObjectLabel::is_loaded() {
+            //get the length of the label
+            let mut length = MaybeUninit::uninit();
+            gl::GetObjectLabel(
+                R::IDENTIFIER as GLenum, this.id(), 0, length.as_mut_ptr(), null_mut()
+            );
+
+            let length = length.assume_init();
+            if length==0 { //if there is no label
+                None
+            } else {
+                //allocate the space for the label
+                let mut bytes = Vec::with_capacity(length as usize);
+                bytes.set_len(length as usize);
+
+                //copy the label
+                gl::GetObjectLabel(
+                    R::IDENTIFIER as GLenum,
+                    this.id(), length as GLsizei, null_mut(), bytes.as_mut_ptr() as *mut GLchar
+                );
+
+                //since label() loads from a &str, we can assume the returned bytes are valid utf8
+                Some(String::from_utf8_unchecked(bytes))
+            }
+
+        } else {
+            None
+        }
+    }
+}
+
 ///
 ///An OpenGL resource object that follows the standard [glGen*](Resource::gen),
 ///[glIs*](Resource::is), and [glDelete*](Resource::delete) pattern
@@ -139,10 +269,8 @@ glenum! {
 ///when leaving scope, and to guarrantee that the [GL](Resource::GL) object properly loads all necessary
 ///functions
 ///
-pub unsafe trait Resource:Sized {
+pub unsafe trait Resource: Object<Raw=GLuint> {
 
-    ///The OpenGL version type that guarrantees that the functions required for initialization are loaded
-    type GL: GLVersion;
     type BindingTarget: Target<Resource=Self>;
 
     const IDENTIFIER: ResourceIdentifier;
@@ -162,52 +290,14 @@ pub unsafe trait Resource:Sized {
     ///
     fn id(&self) -> GLuint;
 
-    ///
-    ///Consumes this object and leaks its id
-    ///
-    ///As such, it is up to the caller to delete the resource or remake the object with
-    ///[from_raw](Resource::from_raw) to avoid a memroy leak. Despite this however, this method is not
-    ///considered unsafe for much the same reason [Box::into_raw] is not
-    fn into_raw(self) -> GLuint;
-
-    ///
-    ///Constructs an object from a raw GL object id or [Option::None] if the id is not a name of
-    ///
-    ///
-    ///This id should be one from a previous call to [into_raw](Resource::into_raw) or an unowned object
-    ///created manually otherwise there almost certainly will be a double-free. However, it is _not_
-    ///unsafe to provide an invalid id or an id from a different type as OpenGL and the implementor
-    ///should catch them and return a None
-    ///
-    ///# Unsafety
-    ///
-    ///Calling this on the same id twice will almost certainly cause a double-free and/or other memory
-    ///issues from double-ownership
-    ///
-    unsafe fn from_raw(id:GLuint) -> Option<Self>;
-
-
     ///Creates a new OpenGL resource of this type
-    fn gen(gl: &Self::GL) -> Self;
+    fn gen(gl: &<Self as Object>::GL) -> Self;
 
     ///Creates an array of new OpenGL resources
-    fn gen_resources(gl: &Self::GL, count: GLuint) -> Box<[Self]>;
-
-    ///Determines if a given id is the name of an OpenGL resource of this type
-    fn is(GLuint) -> bool;
+    fn gen_resources(gl: &<Self as Object>::GL, count: GLuint) -> Box<[Self]>;
 
     ///Returns true if the two OpenGL objects are the same _object_ without checking value-equivalence
     #[inline] fn obj_eq<R:Resource+?Sized>(&self, rhs:&R) -> bool {self.id()==rhs.id()}
-
-    ///
-    ///Consumes this object and deletes its OpenGL resource.
-    ///
-    ///Do note though that if this object is queued for an operation (unless synchronization is
-    ///overrided by various (unsafe) means) the object will continue to exist until those operations
-    ///have completed. Furthermore, certain objects will continue to exist in memory if bound
-    ///to certain targets similar to a reference counted smart-pointer.
-    ///
-    fn delete(self);
 
     ///
     ///Consumes an array of objects and deletes their OpenGL resources.
@@ -218,65 +308,6 @@ pub unsafe trait Resource:Sized {
     ///to certain targets similar to a reference counted smart-pointer.
     ///
     fn delete_resources(resouces: Box<[Self]>);
-
-    fn label(&self, label: &str) -> Result<(),GLError> {
-        use std::mem::MaybeUninit;
-
-        unsafe {
-            if gl::ObjectLabel::is_loaded() {
-                let mut max_length = MaybeUninit::uninit();
-                gl::GetIntegerv(gl::MAX_LABEL_LENGTH, max_length.as_mut_ptr());
-                if max_length.assume_init() >= label.len() as GLint {
-                    gl::ObjectLabel(
-                        Self::IDENTIFIER as GLenum,
-                        self.id(), label.len() as GLsizei, label.as_ptr() as *const GLchar
-                    );
-                    Ok(())
-                } else {
-                    Err(GLError::InvalidValue("object label longer than maximum allowed length".to_string()))
-                }
-            } else {
-                Err(GLError::FunctionNotLoaded("ObjectLabel"))
-            }
-        }
-    }
-
-    fn get_label(&self) -> Option<String> {
-        use std::mem::MaybeUninit;
-        use std::ptr::*;
-
-        unsafe {
-            if gl::GetObjectLabel::is_loaded() {
-                //get the length of the label
-                let mut length = MaybeUninit::uninit();
-                gl::GetObjectLabel(
-                    Self::IDENTIFIER as GLenum, self.id(), 0, length.as_mut_ptr(), null_mut()
-                );
-
-                let length = length.assume_init();
-                if length==0 { //if there is no label
-                    None
-                } else {
-                    //allocate the space for the label
-                    let mut bytes = Vec::with_capacity(length as usize);
-                    bytes.set_len(length as usize);
-
-                    //copy the label
-                    gl::GetObjectLabel(
-                        Self::IDENTIFIER as GLenum,
-                        self.id(), length as GLsizei, null_mut(), bytes.as_mut_ptr() as *mut GLchar
-                    );
-
-                    //since label() loads from a &str, we can assume the returned bytes are valid utf8
-                    Some(String::from_utf8_unchecked(bytes))
-                }
-
-            } else {
-                None
-            }
-        }
-
-    }
 
 }
 

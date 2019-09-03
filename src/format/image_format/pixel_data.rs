@@ -1,6 +1,6 @@
 
 use super::*;
-use crate::resources::*;
+use crate::object::*;
 
 use std::mem::*;
 
