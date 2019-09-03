@@ -7,8 +7,10 @@ use std::ffi::*;
 use std::os::raw::c_char;
 
 use self::logic_op::*;
+use self::debug_output::*;
 
 mod logic_op;
+mod debug_output;
 
 glenum! {
 
@@ -115,11 +117,29 @@ glenum! {
 }
 
 pub struct GLState<V:GLVersion> {
-    version: std::marker::PhantomData<V>
+    version: std::marker::PhantomData<Box<V>>,
+    debug_callback: DebugCallback
 }
 
 impl<V:GLVersion> !Send for GLState<V> {}
 impl<V:GLVersion> !Sync for GLState<V> {}
+
+impl<V:GLVersion> Drop for GLState<V> {
+    fn drop(&mut self) {
+
+        trait InnerDrop { fn inner(&mut self); }
+        impl<V:GLVersion> InnerDrop for GLState<V> { default fn inner(&mut self) {}}
+        impl<V:Supports<GL43>+Supports<GL20>> InnerDrop for GLState<V> {
+            fn inner(&mut self) {
+                //make sure the debug callback isn't called after the function is dropped
+                self.debug_message_callback_null();
+            }
+        }
+
+        self.inner()
+
+    }
+}
 
 //TODO: add the compatibility profile parameters
 
@@ -431,25 +451,6 @@ impl<V:Supports<GL32>> GLState<V> {
 
     #[allow(dead_code)]
     unsafe fn get_unsinged_integer64(&self, pname: GLenum) -> GLuint64 { self.get_integer64(pname) as GLuint64 }
-}
-
-impl<V:Supports<GL40>> GLState<V> {
-
-}
-
-impl<V:Supports<GL43>> GLState<V> {
-
-    //
-    //Debug Output
-    //
-
-    pub fn is_debug_output_enabled(&self) -> bool { unsafe {gl::IsEnabled(gl::DEBUG_OUTPUT)!= 0} }
-    pub fn enable_debug_output(&mut self) { unsafe {gl::Enable(gl::DEBUG_OUTPUT)} }
-    pub fn disable_debug_output(&mut self) { unsafe {gl::Disable(gl::DEBUG_OUTPUT)} }
-
-    pub fn is_debug_output_synchronous_enabled(&self) -> bool { unsafe {gl::IsEnabled(gl::DEBUG_OUTPUT_SYNCHRONOUS)!= 0} }
-    pub fn enable_debug_output_synchronous(&mut self) { unsafe {gl::Enable(gl::DEBUG_OUTPUT_SYNCHRONOUS)} }
-    pub fn disable_debug_output_synchronous(&mut self) { unsafe {gl::Disable(gl::DEBUG_OUTPUT_SYNCHRONOUS)} }
 }
 
 impl<V:Supports<GL45>> GLState<V> {
