@@ -24,15 +24,14 @@ macro_rules! target {
             impl GLEnum for $name {}
 
             unsafe impl TextureTarget for $name { type GL = $GL; type Dim = $dim; }
-            unsafe impl Target for $name {
-                type Resource = RawTex<Self>;
+            unsafe impl Target<RawTex<Self>> for $name {
                 #[inline] unsafe fn bind(self, id: GLuint) { gl::BindTexture(self.into(), id); }
             }
         )*
     }
 }
 
-pub unsafe trait TextureTarget: GLEnum + Default + Target<Resource=RawTex<Self>> {
+pub unsafe trait TextureTarget: GLEnum + Default + Target<RawTex<Self>> {
     type GL: GLVersion;
     type Dim: TexDim;
 

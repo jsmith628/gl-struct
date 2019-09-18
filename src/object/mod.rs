@@ -66,8 +66,7 @@ macro_rules! gl_resource{
     (@bind $ty:ident {$($tt:tt)*} target=$Target:ident $($rest:tt)*) => { gl_resource!(@bind $ty {target=$Target $($tt)*} $($rest)*); };
     (@bind $ty:ident {$($tt:tt)*} $param:ident=$gl:ident $($rest:tt)*) => { gl_resource!(@bind $ty {$($tt)*} $($rest)*); };
     (@bind $ty:ident {target=$Target:ident bind=$gl:ident}) => {
-        unsafe impl Target for $Target {
-            type Resource = $ty;
+        unsafe impl Target<$ty> for $Target {
             #[inline] unsafe fn bind(self, id:GLuint) {gl::$gl(self.into(), id)}
         }
     };
@@ -273,7 +272,7 @@ pub(self) fn get_object_label<R:Resource>(this:&R) -> Option<String>{
 ///
 pub unsafe trait Resource: Object<Raw=GLuint> {
 
-    type BindingTarget: Target<Resource=Self>;
+    type BindingTarget: Target<Self>;
 
     const IDENTIFIER: ResourceIdentifier;
 
@@ -321,9 +320,7 @@ pub unsafe trait Resource: Object<Raw=GLuint> {
 ///It is up to the implementor to make sure that the possible enum values are valid arguments to
 ///whichever glBind* function is being called
 ///
-pub unsafe trait Target: GLEnum {
-
-    type Resource: Resource<BindingTarget=Self>;
+pub unsafe trait Target<Resource: object::Resource<BindingTarget=Self>>: GLEnum {
 
     ///
     ///Binds the given resource id to this target
@@ -343,7 +340,7 @@ pub unsafe trait Target: GLEnum {
     ///It is up to the caller to guarrantee that this is the only location with the given
     ///[binding target](Target) at the given time
     #[inline]
-    unsafe fn as_loc(self) -> BindingLocation<Self::Resource> {
+    unsafe fn as_loc(self) -> BindingLocation<Resource> {
         BindingLocation(self)
     }
 }
