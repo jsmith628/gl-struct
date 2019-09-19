@@ -25,6 +25,7 @@ macro_rules! target {
 
             unsafe impl TextureTarget for $name { type GL = $GL; type Dim = $dim; }
             unsafe impl Target<RawTex<Self>> for $name {
+                #[inline] fn target_id(&self) -> GLenum {(*self).into()}
                 #[inline] unsafe fn bind(self, id: GLuint) { gl::BindTexture(self.into(), id); }
             }
         )*

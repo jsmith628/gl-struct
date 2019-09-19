@@ -13,6 +13,7 @@
 #![feature(const_fn)]
 #![feature(maybe_uninit_ref)]
 #![feature(non_exhaustive)]
+#![feature(never_type)]
 #![recursion_limit="8192"]
 
 pub extern crate gl;

@@ -38,7 +38,8 @@ macro_rules! gl_resource{
     (@fun gl=$GL:ident) => { };
 
     (@obj target=$Target:ident) => { };
-    (@fun target=$Target:ident) => { type BindingTarget = $Target; };
+    (@obj target=!) => { };
+    (@fun target=$Target:tt) => { type BindingTarget = $Target; };
 
     (@obj ident=$ident:ident) => { };
     (@fun ident=$ident:ident) => {
@@ -63,15 +64,22 @@ macro_rules! gl_resource{
     };
 
     (@bind $ty:ident {$($tt:tt)*} bind=$gl:ident $($rest:tt)*) => { gl_resource!(@bind $ty {$($tt)* bind=$gl} $($rest)*); };
-    (@bind $ty:ident {$($tt:tt)*} target=$Target:ident $($rest:tt)*) => { gl_resource!(@bind $ty {target=$Target $($tt)*} $($rest)*); };
+    (@bind $ty:ident {$($tt:tt)*} target=$Target:tt $($rest:tt)*) => { gl_resource!(@bind $ty {target=$Target $($tt)*} $($rest)*); };
     (@bind $ty:ident {$($tt:tt)*} $param:ident=$gl:ident $($rest:tt)*) => { gl_resource!(@bind $ty {$($tt)*} $($rest)*); };
     (@bind $ty:ident {target=$Target:ident bind=$gl:ident}) => {
         unsafe impl Target<$ty> for $Target {
+            #[inline] fn target_id(&self) -> GLenum {(*self).into()}
             #[inline] unsafe fn bind(self, id:GLuint) {gl::$gl(self.into(), id)}
         }
     };
+    (@bind $ty:ident {target=!}) => {
+        unsafe impl Target<$ty> for ! {
+            #[inline] fn target_id(&self) -> GLenum {unreachable!()}
+            #[inline] unsafe fn bind(self, _:GLuint) {unreachable!()}
+        }
+    };
 
-    ({$($mod:tt)*} struct $name:ident {$($fun:ident=$gl:ident),*}) => {
+    ({$($mod:tt)*} struct $name:ident {$($fun:ident=$gl:tt),*}) => {
 
         gl_resource!(@bind $name {} $($fun=$gl)*);
 
@@ -129,12 +137,14 @@ pub use self::texture::*;
 pub use self::renderbuffer::*;
 pub use self::sampler::*;
 // pub use self::sync::*;
+pub use self::query::*;
 
 pub mod buffer;
 pub mod texture;
 pub mod renderbuffer;
 pub mod sampler;
 pub mod sync;
+pub mod query;
 
 
 glenum! {
@@ -320,7 +330,9 @@ pub unsafe trait Resource: Object<Raw=GLuint> {
 ///It is up to the implementor to make sure that the possible enum values are valid arguments to
 ///whichever glBind* function is being called
 ///
-pub unsafe trait Target<Resource: object::Resource<BindingTarget=Self>>: GLEnum {
+pub unsafe trait Target<Resource: object::Resource<BindingTarget=Self>>: Copy + Eq + Hash + Debug + Display {
+
+    fn target_id(&self) -> GLenum;
 
     ///
     ///Binds the given resource id to this target
@@ -372,7 +384,7 @@ impl<R:Resource> BindingLocation<R> {
     pub fn target(&self) -> R::BindingTarget { self.0 }
 
     ///The the [GLenum] corresponding to this location's target
-    pub fn target_id(&self) -> GLenum { self.0.into() }
+    pub fn target_id(&self) -> GLenum { self.0.target_id() }
 
     ///
     ///Constructs a new binding location with the given target
