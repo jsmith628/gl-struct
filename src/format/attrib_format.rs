@@ -1,6 +1,25 @@
 
 use super::*;
+use object::buffer::GPUCopy;
+use glsl::*;
 use std::mem::transmute;
+
+pub unsafe trait AttribFormat: Sized + Clone + Copy + PartialEq + Eq + Hash + Debug {
+    fn size(self) -> usize;
+    fn attrib_count(self) -> usize {1}
+    unsafe fn bind_attribute(self, attr_id: GLuint, stride: usize, offset: usize);
+    unsafe fn set_attribute(self, attr_id: GLuint, data: *const GLvoid);
+}
+
+pub trait AttributeData<T:GLSLType>: Sized + Copy {
+    fn format() -> T::AttributeFormat;
+}
+
+pub trait AttributeValue<T:GLSLType>: GPUCopy { fn format(&self) -> T::AttributeFormat; }
+
+impl<A:AttributeData<T>, T:GLSLType> AttributeValue<T> for A {
+    #[inline] fn format(&self) -> T::AttributeFormat {A::format()}
+}
 
 pub type IntFormat = IntType;
 
@@ -313,16 +332,11 @@ unsafe impl AttribFormat for DVecFormat {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct UnsupportedFormat {
-    _private: ()
-}
-
-unsafe impl AttribFormat for UnsupportedFormat {
-    #[inline] fn size(self) -> usize { unimplemented!() }
-    #[inline] fn attrib_count(self) -> usize { unimplemented!() }
-    #[inline] unsafe fn bind_attribute(self, _attr_id: GLuint, _stride: usize, _offset: usize){ unimplemented!() }
-    #[inline] unsafe fn set_attribute(self, _attr_id: GLuint, _data: *const GLvoid){ unimplemented!() }
+unsafe impl AttribFormat for ! {
+    #[inline] fn size(self) -> usize { unreachable!() }
+    #[inline] fn attrib_count(self) -> usize { unreachable!() }
+    #[inline] unsafe fn bind_attribute(self, _attr_id: GLuint, _stride: usize, _offset: usize){ unreachable!() }
+    #[inline] unsafe fn set_attribute(self, _attr_id: GLuint, _data: *const GLvoid){ unreachable!() }
 }
 
 pub type Mat2Format = [VecFormat; 2];
@@ -362,3 +376,59 @@ macro_rules! array_format {
 array_format!{
     01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32
 }
+
+
+//
+//For specifying which types can be used as data for vertex attributes of the various glsl types
+//and what formatting to use
+//
+
+macro_rules! impl_attr_data {
+
+    (@Int $prim:ident $value:expr) => {
+        impl AttributeData<gl_bool> for $prim { fn format() -> IntFormat { $value }}
+        impl AttributeData<int> for $prim { fn format() -> IntFormat { $value }}
+        impl AttributeData<uint> for $prim { fn format() -> IntFormat { $value }}
+        impl AttributeData<float> for $prim { fn format() -> FloatFormat { FloatFormat::FromInt($value, false) }}
+    };
+
+    (@IVec $F:ident $size:tt) => { IVecFormat::IVecN($F::format(), $size) };
+    (@Vec $F:ident $size:tt) => { VecFormat::VecN($F::format(), $size) };
+    (@DVec $F:ident $size:tt) => { DVecFormat::DVecN($size) };
+    (@Mat $F:ident $size:tt) => { [$F::format(); $size] };
+
+    (@$arr:ident $vec1:ident $vec2:ident $vec3:ident $vec4:ident) => {
+        impl<F:AttributeData<$vec1>> AttributeData<$vec1> for [F; 1] { fn format() -> <$vec1 as GLSLType>::AttributeFormat { F::format()}}
+        impl<F:AttributeData<$vec1>> AttributeData<$vec2> for [F; 2] { fn format() -> <$vec2 as GLSLType>::AttributeFormat { impl_attr_data!(@$arr F 2) } }
+        impl<F:AttributeData<$vec1>> AttributeData<$vec3> for [F; 3] { fn format() -> <$vec3 as GLSLType>::AttributeFormat { impl_attr_data!(@$arr F 3) } }
+        impl<F:AttributeData<$vec1>> AttributeData<$vec4> for [F; 4] { fn format() -> <$vec4 as GLSLType>::AttributeFormat { impl_attr_data!(@$arr F 4) } }
+    };
+
+}
+
+impl_attr_data!(@Int bool IntFormat::UByte);
+impl_attr_data!(@Int gl_bool IntFormat::UInt);
+impl_attr_data!(@Int i8 IntFormat::Byte);
+impl_attr_data!(@Int u8 IntFormat::UByte);
+impl_attr_data!(@Int i16 IntFormat::Short);
+impl_attr_data!(@Int u16 IntFormat::UShort);
+impl_attr_data!(@Int i32 IntFormat::Int);
+impl_attr_data!(@Int u32 IntFormat::UInt);
+
+impl AttributeData<float> for f32 { fn format() -> FloatFormat { FloatFormat::Float(FloatType::Float) }}
+impl AttributeData<float> for f64 { fn format() -> FloatFormat { FloatFormat::Double }}
+
+impl AttributeData<double> for f64 { fn format() -> DoubleFormat {DoubleFormat}}
+
+impl_attr_data!(@IVec gl_bool bvec2 bvec3 bvec4);
+impl_attr_data!(@IVec uint uvec2 uvec3 uvec4);
+impl_attr_data!(@IVec int ivec2 ivec3 ivec4);
+impl_attr_data!(@Vec float vec2 vec3 vec4);
+impl_attr_data!(@Mat vec2 mat2 mat3x2 mat4x2);
+impl_attr_data!(@Mat vec3 mat2x3 mat3 mat4x3);
+impl_attr_data!(@Mat vec4 mat2x4 mat3x4 mat4);
+
+impl_attr_data!(@DVec double dvec2 dvec3 dvec4);
+impl_attr_data!(@Mat dvec2 dmat2 dmat3x2 dmat4x2);
+impl_attr_data!(@Mat dvec3 dmat2x3 dmat3 dmat4x3);
+impl_attr_data!(@Mat dvec4 dmat2x4 dmat3x4 dmat4);

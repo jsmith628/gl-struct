@@ -1,13 +1,29 @@
 
 use ::*;
+use gl::*;
+
+use std::ops::*;
+use std::iter::*;
 use std::slice::*;
+use std::mem::*;
+
 use crate::object::*;
 
 use crate::format::*;
 
+pub use self::c_bool::*;
+pub use self::conv::*;
+pub use self::layout::*;
+pub use self::ops::*;
+
 #[macro_use]
 mod glsl;
-pub mod glsl_type;
+
+mod c_bool;
+mod conv;
+mod layout;
+mod ops;
+mod glsl_type;
 
 pub unsafe trait GLSLType: Sized + Copy + Debug {
     type AttributeFormat: AttribFormat;
@@ -49,22 +65,91 @@ unsafe impl BlockLayout for shared {}
 pub trait GLSLData<T:GLSLType>: From<T> + Into<T> + AttributeData<T> {}
 impl<T:GLSLType, G> GLSLData<T> for G where G: From<T> + Into<T> + AttributeData<T> {}
 
-pub unsafe trait AttribFormat: Sized + Clone + Copy + PartialEq + Eq + Hash + Debug {
-    fn size(self) -> usize;
-    fn attrib_count(self) -> usize {1}
-    unsafe fn bind_attribute(self, attr_id: GLuint, stride: usize, offset: usize);
-    unsafe fn set_attribute(self, attr_id: GLuint, data: *const GLvoid);
-}
-
-pub trait AttributeData<T:GLSLType>: Sized + Copy {
-    fn format() -> T::AttributeFormat;
-}
-
-pub trait AttributeValue<T:GLSLType>: GPUCopy { fn format(&self) -> T::AttributeFormat; }
-impl<A:AttributeData<T>, T:GLSLType> AttributeValue<T> for A {
-    #[inline] fn format(&self) -> T::AttributeFormat {A::format()}
-}
-
 pub trait GLSLSubroutine: Copy + Eq {
     fn function_name(&self) -> &'static ::std::ffi::CStr;
+}
+
+
+macro_rules! glsl_type {
+
+    () => {};
+
+    ($(#[$attr:meta])* type $name:ident = $prim:ty; $($rest:tt)*) => {
+        $(#[$attr])* #[allow(non_camel_case_types)] pub type $name = $prim;
+        glsl_type!($($rest)*);
+    };
+
+    ( $(#[$attr:meta])* $name:ident = $prim:ty; $($rest:tt)*) => {
+        $(#[$attr])*
+        #[repr(C)]
+        #[derive(Clone, Copy, PartialEq, Debug, Default)]
+        #[allow(non_camel_case_types)]
+        pub struct $name { value: $prim }
+
+        // impl From<$prim> for $name { #[inline] fn from(v: $prim) -> Self { $name{value: v} } }
+        // impl From<$name> for $prim { #[inline] fn from(v: $name) -> Self { v.value } }
+
+        impl<G:GLSLType> AttributeData<G> for $name where $prim: AttributeData<G> {
+            #[inline] fn format() -> G::AttributeFormat { <$prim as AttributeData<G>>::format() }
+        }
+
+        glsl_type!($($rest)*);
+    };
+
+    (#$align:literal $($rest:tt)*) => {glsl_type!(#[repr(align($align))] $($rest)*);};
+
+}
+
+glsl_type!{
+    type void = ();
+    type gl_bool = c_bool::c_bool;
+    #8 bvec2 = [gl_bool; 2];
+    #16 bvec3 = [gl_bool; 3];
+    #16 bvec4 = [gl_bool; 4];
+
+    type uint = GLuint;
+    #8 uvec2 = [uint; 2];
+    #16 uvec3 = [uint; 3];
+    #16 uvec4 = [uint; 4];
+
+    type int = GLint;
+    #8 ivec2 = [int; 2];
+    #16 ivec3 = [int; 3];
+    #16 ivec4 = [int; 4];
+
+    type float = GLfloat;
+    #8 vec2 = [float; 2];
+    #16 vec3 = [float; 3];
+    #16 vec4 = [float; 4];
+    mat2x2 = [vec2; 2];
+    mat3x2 = [vec2; 3];
+    mat4x2 = [vec2; 4];
+    mat2x3 = [vec3; 2];
+    mat3x3 = [vec3; 3];
+    mat4x3 = [vec3; 4];
+    mat2x4 = [vec4; 2];
+    mat3x4 = [vec4; 3];
+    mat4x4 = [vec4; 4];
+
+    type double = GLdouble;
+    #16 dvec2 = [double; 2];
+    #32 dvec3 = [double; 3];
+    #32 dvec4 = [double; 4];
+    dmat2x2 = [dvec2; 2];
+    dmat3x2 = [dvec2; 3];
+    dmat4x2 = [dvec2; 4];
+    dmat2x3 = [dvec3; 2];
+    dmat3x3 = [dvec3; 3];
+    dmat4x3 = [dvec3; 4];
+    dmat2x4 = [dvec4; 2];
+    dmat3x4 = [dvec4; 3];
+    dmat4x4 = [dvec4; 4];
+
+    type mat2 = mat2x2;
+    type mat3 = mat3x3;
+    type mat4 = mat4x4;
+    type dmat2 = dmat2x2;
+    type dmat3 = dmat3x3;
+    type dmat4 = dmat4x4;
+
 }

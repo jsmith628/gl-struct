@@ -77,7 +77,6 @@ pub use gl_enum::*;
 #[macro_use] mod gl_enum;
 
 pub use program::*;
-pub use glsl::*;
 
 #[macro_use] pub mod glsl;
 

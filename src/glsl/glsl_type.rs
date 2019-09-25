@@ -1,280 +1,111 @@
-
 use super::*;
-use std::mem::*;
 
-///
-///A macro constucting the gl functions for managing uniforms using the
-///concat_idents! macro. Note that this can only be used in expressions,
-///and as such, you must both import the function name into the current module
-///AND borrow the function as a pointer in order to use.
-///
-///Also, while this only does glUniform* stuff, in the future I may expand it if
-///it would be of use.
-///
-macro_rules! gl_builder {
-
-    ({$($gl:ident)*} c_bool @ty_suffix $($tail:tt)*) => { gl_builder!({$($gl)* ui} $($tail)*) };
-    ({$($gl:ident)*} GLuint @ty_suffix $($tail:tt)*) => { gl_builder!({$($gl)* ui} $($tail)*) };
-    ({$($gl:ident)*} GLint @ty_suffix $($tail:tt)*) => { gl_builder!({$($gl)* i} $($tail)*) };
-    ({$($gl:ident)*} GLfloat @ty_suffix $($tail:tt)*) => { gl_builder!({$($gl)* f} $($tail)*) };
-    ({$($gl:ident)*} GLdouble @ty_suffix $($tail:tt)*) => { gl_builder!({$($gl)* d} $($tail)*) };
-
-    ({$($gl:ident)*} 1 @uni_vec $($tail:tt)*) => { gl_builder!({$($gl)* Uniform1} $($tail)*) };
-    ({$($gl:ident)*} 2 @uni_vec $($tail:tt)*) => { gl_builder!({$($gl)* Uniform2} $($tail)*) };
-    ({$($gl:ident)*} 3 @uni_vec $($tail:tt)*) => { gl_builder!({$($gl)* Uniform3} $($tail)*) };
-    ({$($gl:ident)*} 4 @uni_vec $($tail:tt)*) => { gl_builder!({$($gl)* Uniform4} $($tail)*) };
-
-    ({$($gl:ident)*} 2 @uni_mat $($tail:tt)*) => { gl_builder!({$($gl)* UniformMatrix2} $($tail)*) };
-    ({$($gl:ident)*} 3 @uni_mat $($tail:tt)*) => { gl_builder!({$($gl)* UniformMatrix3} $($tail)*) };
-    ({$($gl:ident)*} 4 @uni_mat $($tail:tt)*) => { gl_builder!({$($gl)* UniformMatrix4} $($tail)*) };
-
-    ({$($gl:ident)*} 2 @mat_xN $($tail:tt)*) => { gl_builder!({$($gl)* x2} $($tail)*) };
-    ({$($gl:ident)*} 3 @mat_xN $($tail:tt)*) => { gl_builder!({$($gl)* x3} $($tail)*) };
-    ({$($gl:ident)*} 4 @mat_xN $($tail:tt)*) => { gl_builder!({$($gl)* x4} $($tail)*) };
-
-    ({$($gl:ident)*} @v $($tail:tt)*) => { gl_builder!({$($gl)* v} $($tail)*) };
-
-    ({$($gl:ident)*} @concat) => { concat_idents!($($gl),*) };
-
-    (@get $prim:ident) => { gl_builder!({GetUniform} $prim @ty_suffix @v @concat) };
-    (@get [$prim:ident; $c:tt]) => { gl_builder!(@get $prim) };
-    (@get [[$prim:ident; $c1:tt]; $c2:tt]) => { gl_builder!(@get $prim) };
-
-    (@set $prim:ident) => { gl_builder!(@set [$prim; 1]) };
-    (@set [$prim:ident; $c:tt]) => { gl_builder!({} $c @uni_vec $prim @ty_suffix @v @concat) };
-    (@set [[$prim:ident; $c1:tt]; $c2:tt]) => {
-        macro_program! (
-            [$c1] @hex {[$c2] @hex} @eval @eq
-            { gl_builder @pass_to {} $c2 @uni_mat }
-            { gl_builder @pass_to {} $c2 @uni_mat $c1 @mat_xN }
-            @if @eval
-            $prim @ty_suffix @v @concat
-        )
-    };
-
-
-
+unsafe impl GLSLType for void {
+    type AttributeFormat = !;
+    unsafe fn load_uniforms(_: GLint, _: &[Self]){}
+    unsafe fn get_uniform(_: GLuint, _:GLint) -> Self {}
 }
 
-macro_rules! glsl_type {
+macro_rules! impl_glsl_type {
 
-    //
-    //In order to make all the primitives and the like fit the std430 layout
-    //(and allow type checking for std140), we need to set the alignment of each type accordingly
-    //
+    () => {};
 
-    //all scalars besides double (which has 8) require an alignment of 4bytes, fitstd140,
-    //but they cannot satisfy sdt140 if they are in an array
-    (GLdouble @align $($tail:tt)*) => { glsl_type!({8} false true true $($tail)*); };
-    ($prim:ident @align $($tail:tt)*) => { glsl_type!({4} false true true $($tail)*); };
+    ($ty:ident $set:ident $get:ident [$attr:ident; $num:tt] $($rest:tt)*) => {
 
-    //for vectors, the alignment is 2N for vec2 and 4N for vec3 and vec4, and hence,
-    //all BUT vec2/ivec2/uvec2/bvec2 can be put into std140 arrays
-    ({4} false true true 2 @align_vec $($tail:tt)*) => { glsl_type!({8} false $($tail)*); };
-    ({8} false true true 2 @align_vec $($tail:tt)*) => { glsl_type!({16} true $($tail)*); }; //dvec2's have an alignent equal to that of vec4
-    ({4} false true true 3 @align_vec $($tail:tt)*) => { glsl_type!({16} true $($tail)*); };
-    ({8} false true true 3 @align_vec $($tail:tt)*) => { glsl_type!({32} true $($tail)*); };
-    ({4} false true true 4 @align_vec $($tail:tt)*) => { glsl_type!({16} true $($tail)*); };
-    ({8} false true true 4 @align_vec $($tail:tt)*) => { glsl_type!({32} true $($tail)*); };
-
-    //all vecs are std140 complient
-    ([$prim:ident; $c:tt] @align $($tail:tt)*) => { glsl_type!($prim @align $c @align_vec true true $($tail)*); };
-
-    //matrices are considered as arrays over their columns, so all matNx2 and matNx4 are std430 and all matNx4 are 140,
-    //However, since we're storing matNx3's as [[T; 3]; N], the columns are not vec4 aligned, so they aren't std430 OR std140
-    ([[GLfloat; 2]; $c2:tt] @align $($tail:tt)*) => { glsl_type!({8} false false true $($tail)*); };
-    ([[$prim:ident; 3]; $c2:tt] @align $($tail:tt)*) => { glsl_type!({8} false false false $($tail)*); };
-    ([[$prim:ident; $c1:tt]; $c2:tt] @align $($tail:tt)*) => { glsl_type!($prim @align $c1 @align_vec true true $($tail)*); };
-
-    //determine if the type is a scalar or matrix or neither
-    ({$a:expr} $b1:tt $b2:tt $b3:tt $prim:ident @type $($tail:tt)*) => { glsl_type!({$a} $b1 $b2 $b3 true false $($tail)*); };
-    ({$a:expr} $b1:tt $b2:tt $b3:tt [$prim:ident; $c:tt] @type $($tail:tt)*) => { glsl_type!({$a} $b1 $b2 $b3 false false $($tail)*); };
-    ({$a:expr} $b1:tt $b2:tt $b3:tt [[$prim:ident; $c1:tt]; $c2:tt] @type $($tail:tt)*) => { glsl_type!({$a} $b1 $b2 $b3 false true $($tail)*); };
-
-    //the initial macro call
-    ({$fmt:ty} $name:ident = $($ty:tt)*) => {
-        glsl_type!($($ty)* @align $($ty)* @type {$fmt} {$($ty)*} {gl_builder!(@set $($ty)*)} {gl_builder!(@get $($ty)*)} $name);
-        glsl_type!(@index $name = $($ty)*);
-    };
-
-    (@index $name:ident = $prim:ident) => {};
-    (@index $name:ident = [$T:ty; $c:tt]) => {
-        impl Index<usize> for $name {
-            type Output = $T;
-            #[inline] fn index(&self, i: usize) -> &$T { &self.value[i] }
-        }
-
-        impl IndexMut<usize> for $name {
-            #[inline] fn index_mut(&mut self, i: usize) -> &mut $T { &mut self.value[i] }
-        }
-    };
-
-    ({$a:expr} $align_vec4:tt $std140:tt $std430:tt $scalar:tt $mat:tt {$fmt:ty} {$prim:ty} {$set:expr} {$get:expr} $name:ident) => {
-
-        macro_program! {
-            [$scalar] @not [
-                #[repr(C)]
-                #[repr(align($a))]
-                #[derive(Clone, Copy, PartialEq, Debug, Default)]
-                #[allow(non_camel_case_types)]
-                pub struct $name {
-                    pub value: $prim
-                }
-
-                impl From<$prim> for $name { #[inline] fn from(v: $prim) -> Self { $name{value: v} } }
-                impl From<$name> for $prim { #[inline] fn from(v: $name) -> Self { v.value } }
-
-                impl<G:GLSLType> AttributeData<G> for $name where $prim: AttributeData<G> {
-                    #[inline] fn format() -> G::AttributeFormat { <$prim as AttributeData<G>>::format() }
-                }
-            ]
-            [ #[allow(non_camel_case_types)] pub type $name = $prim; ]
-            @if @quote
-        }
-
-        unsafe impl GLSLType for $name {
-            type AttributeFormat = $fmt;
+        unsafe impl GLSLType for $ty {
+            type AttributeFormat = [$attr; $num];
 
             unsafe fn load_uniforms(id: GLint, data: &[Self]){
-                let f = &$set;
-                macro_program!{
-                    [$mat]
-                    [f(id, data.len() as GLint, false as GLboolean, transmute(&data[0][0][0]));]
-                    [f(id, data.len() as GLint, transmute(&data[0]));]
-                    @if @quote
-                }
+                $set(id, data.len() as GLint, false as GLboolean, transmute(&data[0][0][0]))
             }
 
             unsafe fn get_uniform(p: GLuint, id:GLint) -> Self {
                 let mut data = MaybeUninit::<Self>::uninit();
-                let f = &$get;
-                f(p, id, transmute(data.as_mut_ptr()));
+                $get(p, id, transmute(data.as_mut_ptr()));
                 data.assume_init()
             }
         }
 
-        macro_program!{
-            [$std430] [unsafe impl Layout<std430> for $name {}] [] @if @quote
-        }
-
-        macro_program!{
-            [$std140] [unsafe impl Layout<std140> for $name {}] [] @if @quote
-        }
-
-        macro_program!{
-            [$align_vec4] [unsafe impl AlignedVec4 for $name {}] [] @if @quote
-        }
-
+        impl_glsl_type!($($rest)*);
 
     };
 
+    ($ty:ident $set:ident $get:ident $attr:ident $($rest:tt)*) => {
+        unsafe impl GLSLType for $ty {
+            type AttributeFormat = $attr;
+
+            unsafe fn load_uniforms(id: GLint, data: &[Self]){
+                $set(id, data.len() as GLint, transmute(&data[0]))
+            }
+
+            unsafe fn get_uniform(p: GLuint, id:GLint) -> Self {
+                let mut data = MaybeUninit::<Self>::uninit();
+                $get(p, id, transmute(data.as_mut_ptr()));
+                data.assume_init()
+            }
+        }
+
+        impl_glsl_type!($($rest)*);
+
+    }
 }
 
-//we want to throw everything in a module since these are kindof really common data type names
-//and we're kinda not 100% following rust naming convention, so we don't want literally everything
-//to get pulled into the crate module by default
+impl_glsl_type! {
+    gl_bool Uniform1uiv GetUniformuiv IntFormat
+    bvec2   Uniform2uiv GetUniformuiv IVecFormat
+    bvec3   Uniform3uiv GetUniformuiv IVecFormat
+    bvec4   Uniform4uiv GetUniformuiv IVecFormat
 
-pub use gl::types::*;
-use gl::*;
-use ::*;
+    uint  Uniform1uiv GetUniformuiv IntFormat
+    uvec2 Uniform2uiv GetUniformuiv IVecFormat
+    uvec3 Uniform3uiv GetUniformuiv IVecFormat
+    uvec4 Uniform4uiv GetUniformuiv IVecFormat
 
-use std::mem::transmute;
-use std::ops::*;
+    int   Uniform1iv GetUniformiv IntFormat
+    ivec2 Uniform2iv GetUniformiv IVecFormat
+    ivec3 Uniform3iv GetUniformiv IVecFormat
+    ivec4 Uniform4iv GetUniformiv IVecFormat
 
-#[repr(align(4))]
-#[allow(non_camel_case_types)]
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash, Default)]
-pub struct c_bool(GLuint);
+    float Uniform1fv GetUniformfv FloatFormat
+    vec2  Uniform2fv GetUniformfv VecFormat
+    vec3  Uniform3fv GetUniformfv VecFormat
+    vec4  Uniform4fv GetUniformfv VecFormat
 
-macro_rules! impl_c_bool {
-    ($($Trait:ident.$fun:ident $op:tt),*) => {$(
-        impl $Trait<Self> for c_bool { type Output = Self; #[inline] fn $fun(self, r:Self) -> Self {c_bool(self.0 $op r.0)} }
-        impl $Trait<bool> for c_bool { type Output = Self; #[inline] fn $fun(self, r:bool) -> Self {c_bool(self.0 $op r as u32)} }
-        impl $Trait<c_bool> for bool { type Output = c_bool; #[inline] fn $fun(self, r:c_bool) -> c_bool {c_bool(self as u32 $op r.0)} }
-    )*}
+    mat2x2 UniformMatrix2fv   GetUniformfv [VecFormat; 2]
+    mat2x3 UniformMatrix2x3fv GetUniformfv [VecFormat; 2]
+    mat2x4 UniformMatrix2x4fv GetUniformfv [VecFormat; 2]
+    mat3x2 UniformMatrix3x2fv GetUniformfv [VecFormat; 3]
+    mat3x3 UniformMatrix3fv   GetUniformfv [VecFormat; 3]
+    mat3x4 UniformMatrix3x4fv GetUniformfv [VecFormat; 3]
+    mat4x2 UniformMatrix4x2fv GetUniformfv [VecFormat; 4]
+    mat4x3 UniformMatrix4x3fv GetUniformfv [VecFormat; 4]
+    mat4x4 UniformMatrix4fv   GetUniformfv [VecFormat; 4]
+
+    double Uniform1dv GetUniformdv DoubleFormat
+    dvec2  Uniform2dv GetUniformdv DVecFormat
+    dvec3  Uniform3dv GetUniformdv DVecFormat
+    dvec4  Uniform4dv GetUniformdv DVecFormat
+
+    dmat2x2 UniformMatrix2dv   GetUniformdv [DVecFormat; 2]
+    dmat2x3 UniformMatrix2x3dv GetUniformdv [DVecFormat; 2]
+    dmat2x4 UniformMatrix2x4dv GetUniformdv [DVecFormat; 2]
+    dmat3x2 UniformMatrix3x2dv GetUniformdv [DVecFormat; 3]
+    dmat3x3 UniformMatrix3dv   GetUniformdv [DVecFormat; 3]
+    dmat3x4 UniformMatrix3x4dv GetUniformdv [DVecFormat; 3]
+    dmat4x2 UniformMatrix4x2dv GetUniformdv [DVecFormat; 4]
+    dmat4x3 UniformMatrix4x3dv GetUniformdv [DVecFormat; 4]
+    dmat4x4 UniformMatrix4dv  GetUniformdv [DVecFormat; 4]
 }
-
-macro_rules! impl_c_bool_assign {
-    ($($Trait:ident.$fun:ident $op:tt),*) => {$(
-        impl $Trait<Self> for c_bool { #[inline] fn $fun(&mut self, r:Self) {self.0 $op r.0;} }
-        impl $Trait<bool> for c_bool { #[inline] fn $fun(&mut self, r:bool) {self.0 $op r as u32;} }
-        impl $Trait<c_bool> for bool { #[inline] fn $fun(&mut self, r:c_bool) {*self $op r.0>0;} }
-    )*}
-}
-
-impl_c_bool!(BitAnd.bitand &, BitOr.bitor |, BitXor.bitxor &);
-impl_c_bool_assign!(BitAndAssign.bitand_assign &=, BitOrAssign.bitor_assign |=, BitXorAssign.bitxor_assign &=);
-
-impl From<bool> for c_bool { #[inline] fn from(b: bool) -> Self {c_bool(b as GLuint)} }
-impl From<c_bool> for bool { #[inline] fn from(b: c_bool) -> Self {b.0>0} }
-impl From<GLuint> for c_bool { #[inline] fn from(b: GLuint) -> Self {c_bool(b)} }
-impl From<c_bool> for GLuint { #[inline] fn from(b: c_bool) -> Self {b.0} }
-impl From<GLboolean> for c_bool { #[inline] fn from(b: GLboolean) -> Self {c_bool(b as GLuint)} }
-impl From<c_bool> for GLboolean { #[inline] fn from(b: c_bool) -> Self {b.0 as GLboolean} }
-
-#[allow(non_camel_case_types)]
-pub type void = ();
-
-//booleans
-glsl_type!({IntFormat} gl_bool = c_bool);
-glsl_type!({IVecFormat} bvec2 = [c_bool; 2]);
-glsl_type!({IVecFormat} bvec3 = [c_bool; 3]);
-glsl_type!({IVecFormat} bvec4 = [c_bool; 4]);
-
-//integers
-glsl_type!({IntFormat} int = GLint);
-glsl_type!({IVecFormat} ivec2 = [GLint; 2]);
-glsl_type!({IVecFormat} ivec3 = [GLint; 3]);
-glsl_type!({IVecFormat} ivec4 = [GLint; 4]);
-
-//unsigned integers
-glsl_type!({IntFormat} uint = GLuint);
-glsl_type!({IVecFormat} uvec2 = [GLuint; 2]);
-glsl_type!({IVecFormat} uvec3 = [GLuint; 3]);
-glsl_type!({IVecFormat} uvec4 = [GLuint; 4]);
-
-//floats
-glsl_type!({FloatFormat} float = GLfloat);
-glsl_type!({VecFormat} vec2 = [GLfloat; 2]);
-glsl_type!({VecFormat} vec3 = [GLfloat; 3]);
-glsl_type!({VecFormat} vec4 = [GLfloat; 4]);
-glsl_type!({[VecFormat; 2]} mat2   = [[GLfloat; 2]; 2]);
-glsl_type!({[VecFormat; 2]} mat2x3 = [[GLfloat; 3]; 2]);
-glsl_type!({[VecFormat; 2]} mat2x4 = [[GLfloat; 4]; 2]);
-glsl_type!({[VecFormat; 3]} mat3x2 = [[GLfloat; 2]; 3]);
-glsl_type!({[VecFormat; 3]} mat3   = [[GLfloat; 3]; 3]);
-glsl_type!({[VecFormat; 3]} mat3x4 = [[GLfloat; 4]; 3]);
-glsl_type!({[VecFormat; 4]} mat4x2 = [[GLfloat; 2]; 4]);
-glsl_type!({[VecFormat; 4]} mat4x3 = [[GLfloat; 3]; 4]);
-glsl_type!({[VecFormat; 4]} mat4   = [[GLfloat; 4]; 4]);
-
-//doubles
-glsl_type!({DoubleFormat} double = GLdouble);
-glsl_type!({DVecFormat} dvec2 = [GLdouble; 2]);
-glsl_type!({DVecFormat} dvec3 = [GLdouble; 3]);
-glsl_type!({DVecFormat} dvec4 = [GLdouble; 4]);
-glsl_type!({[DVecFormat; 2]} dmat2   = [[GLdouble; 2]; 2]);
-glsl_type!({[DVecFormat; 2]} dmat2x3 = [[GLdouble; 3]; 2]);
-glsl_type!({[DVecFormat; 2]} dmat2x4 = [[GLdouble; 4]; 2]);
-glsl_type!({[DVecFormat; 3]} dmat3x2 = [[GLdouble; 2]; 3]);
-glsl_type!({[DVecFormat; 3]} dmat3   = [[GLdouble; 3]; 3]);
-glsl_type!({[DVecFormat; 3]} dmat3x4 = [[GLdouble; 4]; 3]);
-glsl_type!({[DVecFormat; 4]} dmat4x2 = [[GLdouble; 2]; 4]);
-glsl_type!({[DVecFormat; 4]} dmat4x3 = [[GLdouble; 3]; 4]);
-glsl_type!({[DVecFormat; 4]} dmat4   = [[GLdouble; 4]; 4]);
-
 
 macro_rules! impl_array_type {
+
+    (@attrib true $ty:ty) => {$ty};
+    (@attrib false $ty:ty) => {!};
 
     ($attrib_support:tt $($num:tt)*) => {
         $(
             unsafe impl<T:GLSLType> GLSLType for [T; $num] {
-                macro_program!{
-                    [$attrib_support]
-                        [type AttributeFormat = [T::AttributeFormat; $num];]
-                        [type AttributeFormat = UnsupportedFormat;]
-                    @if @quote
-                }
+                type AttributeFormat = impl_array_type!(@attrib $attrib_support [T::AttributeFormat; $num]);
 
                 unsafe fn load_uniforms(id: GLint, data: &[Self]){
                     let flattened = from_raw_parts(&data[0][0] as *const T, data.len() * $num);
@@ -294,13 +125,8 @@ macro_rules! impl_array_type {
 
             }
 
-            unsafe impl<T:AlignedVec4> AlignedVec4 for [T; $num] {}
-            unsafe impl<T:AlignedVec4+Layout<std140>> Layout<std140> for [T; $num] {}
-            unsafe impl<T:Layout<std430>> Layout<std430> for [T; $num] {}
-
         )*
     }
-
 
 }
 
@@ -352,115 +178,3 @@ impl_array_type! { false
     0993 0994 0995 0996 0997 0998 0999 1000 1001 1002 1003 1004 1005 1006 1007 1008
     1009 1010 1011 1012 1013 1014 1015 1016 1017 1018 1019 1020 1021 1022 1023 1024
 }
-
-unsafe impl<T:Layout<std430>> Layout<std430> for [T] {}
-unsafe impl<T:AlignedVec4> Layout<std140> for [T] {}
-unsafe impl<T:AlignedVec4> AlignedVec4 for [T] {}
-
-//for uniforms defined with an unnamed struct as a type
-macro_rules! impl_tuple_type {
-    ($var:ident @first $T0:ident $($T:ident)*) => {$T0::first_element_name($var)};
-    ($($T:ident:$t:ident)*) => {
-
-        unsafe impl<$($T:GLSLType),*> GLSLType for ($($T),*) {
-
-            //tuples aren't allowed to be attributes
-            type AttributeFormat = UnsupportedFormat;
-
-            unsafe fn load_uniforms(id: GLint, data: &[Self]){
-                let mut i = id;
-                for ($($t),*) in data {
-                    $(
-                        $T::load_uniform(i, $t);
-                        *(&mut i) = i + $T::uniform_locations() as GLint;
-                    )*
-                }
-            }
-
-            unsafe fn get_uniform(p: GLuint, id:GLint) -> Self {
-                let ($(mut $t),*) = ($(MaybeUninit::<$T>::uninit()),*);
-                let mut i = id;
-                $(
-                    *$t.get_mut() = $T::get_uniform(p, i);
-                    *(&mut i) = i + $T::uniform_locations() as GLint;
-                )*
-                ($($t.assume_init()),*)
-            }
-
-            #[inline] fn uniform_locations() -> GLuint { 0 $(+ $T::uniform_locations())* }
-            #[inline] fn first_element_name(var: String) -> String {impl_tuple_type!(var @first $($T)*)}
-
-        }
-
-    }
-}
-
-macro_rules! impl_tuple_layout {
-
-    ({$($T:ident:$t0:ident)*} $Last:ident:$last:ident) => {
-
-        //TODO fix to where a tuple is vec4 aligned if at least one of its members is
-        unsafe impl<$($T:Sized+AlignedVec4, )* $Last:?Sized+AlignedVec4> AlignedVec4 for ($($T,)* $Last) {}
-        unsafe impl<$($T:Sized+Layout<std140>, )* $Last:?Sized+Layout<std140>> Layout<std140> for ($($T,)* $Last) {}
-        unsafe impl<$($T:Sized+Layout<std430>, )* $Last:?Sized+Layout<std430>> Layout<std430> for ($($T,)* $Last) {}
-
-    };
-}
-
-impl_tuple!(impl_tuple_type);
-impl_tuple!(impl_tuple_layout @with_last);
-
-//
-//For specifying which types can be used as data for vertex attributes of the various glsl types
-//and what formatting to use
-//
-
-macro_rules! impl_attr_data {
-
-    (@Int $prim:ident $value:expr) => {
-        impl AttributeData<gl_bool> for $prim { fn format() -> IntFormat { $value }}
-        impl AttributeData<int> for $prim { fn format() -> IntFormat { $value }}
-        impl AttributeData<uint> for $prim { fn format() -> IntFormat { $value }}
-        impl AttributeData<float> for $prim { fn format() -> FloatFormat { FloatFormat::FromInt($value, false) }}
-    };
-
-    (@IVec $F:ident $size:tt) => { IVecFormat::IVecN($F::format(), $size) };
-    (@Vec $F:ident $size:tt) => { VecFormat::VecN($F::format(), $size) };
-    (@DVec $F:ident $size:tt) => { DVecFormat::DVecN($size) };
-    (@Mat $F:ident $size:tt) => { [$F::format(); $size] };
-
-    (@$arr:ident $vec1:ident $vec2:ident $vec3:ident $vec4:ident) => {
-        impl<F:AttributeData<$vec1>> AttributeData<$vec1> for [F; 1] { fn format() -> <$vec1 as GLSLType>::AttributeFormat { F::format()}}
-        impl<F:AttributeData<$vec1>> AttributeData<$vec2> for [F; 2] { fn format() -> <$vec2 as GLSLType>::AttributeFormat { impl_attr_data!(@$arr F 2) } }
-        impl<F:AttributeData<$vec1>> AttributeData<$vec3> for [F; 3] { fn format() -> <$vec3 as GLSLType>::AttributeFormat { impl_attr_data!(@$arr F 3) } }
-        impl<F:AttributeData<$vec1>> AttributeData<$vec4> for [F; 4] { fn format() -> <$vec4 as GLSLType>::AttributeFormat { impl_attr_data!(@$arr F 4) } }
-    };
-
-}
-
-impl_attr_data!(@Int bool IntFormat::UByte);
-impl_attr_data!(@Int gl_bool IntFormat::UInt);
-impl_attr_data!(@Int i8 IntFormat::Byte);
-impl_attr_data!(@Int u8 IntFormat::UByte);
-impl_attr_data!(@Int i16 IntFormat::Short);
-impl_attr_data!(@Int u16 IntFormat::UShort);
-impl_attr_data!(@Int i32 IntFormat::Int);
-impl_attr_data!(@Int u32 IntFormat::UInt);
-
-impl AttributeData<float> for f32 { fn format() -> FloatFormat { FloatFormat::Float(FloatType::Float) }}
-impl AttributeData<float> for f64 { fn format() -> FloatFormat { FloatFormat::Double }}
-
-impl AttributeData<double> for f64 { fn format() -> DoubleFormat {DoubleFormat}}
-
-impl_attr_data!(@IVec gl_bool bvec2 bvec3 bvec4);
-impl_attr_data!(@IVec uint uvec2 uvec3 uvec4);
-impl_attr_data!(@IVec int ivec2 ivec3 ivec4);
-impl_attr_data!(@Vec float vec2 vec3 vec4);
-impl_attr_data!(@Mat vec2 mat2 mat3x2 mat4x2);
-impl_attr_data!(@Mat vec3 mat2x3 mat3 mat4x3);
-impl_attr_data!(@Mat vec4 mat2x4 mat3x4 mat4);
-
-impl_attr_data!(@DVec double dvec2 dvec3 dvec4);
-impl_attr_data!(@Mat dvec2 dmat2 dmat3x2 dmat4x2);
-impl_attr_data!(@Mat dvec3 dmat2x3 dmat3 dmat4x3);
-impl_attr_data!(@Mat dvec4 dmat2x4 dmat3x4 dmat4);
