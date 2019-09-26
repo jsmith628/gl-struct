@@ -377,12 +377,6 @@ array_format!{
     01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32
 }
 
-
-//
-//For specifying which types can be used as data for vertex attributes of the various glsl types
-//and what formatting to use
-//
-
 macro_rules! impl_attr_data {
 
     (@Int $prim:ident $value:expr) => {

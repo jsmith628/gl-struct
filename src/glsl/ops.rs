@@ -1,10 +1,45 @@
 use super::*;
 
+pub trait GenType: GLSLType {
+    type Component: GLSLType;
 
+    fn coord(&self, i:uint) -> &Self::Component;
+    fn coord_mut(&mut self, i:uint) -> &mut Self::Component;
+    fn length(&self) -> uint;
+}
+
+pub trait GenBType = GenType<Component=gl_bool>;
+pub trait GenUType = GenType<Component=uint>;
+pub trait GenIType = GenType<Component=int>;
+pub trait GenFType = GenType<Component=float>;
+pub trait GenDType = GenType<Component=double>;
+
+macro_rules! impl_scalar {
+    ($($ty:ident)*) => {
+        $(
+            impl GenType for $ty {
+                type Component = $ty;
+                fn coord(&self, _:uint) -> &Self::Component {self}
+                fn coord_mut(&mut self, _:uint) -> &mut Self::Component {self}
+                fn length(&self) -> uint {1}
+            }
+        )*
+    }
+}
+
+impl_scalar!(gl_bool uint int float double);
 
 macro_rules! impl_index {
     ($($ty:ident:$item:ident)*) => {
         $(
+
+            impl GenType for $ty {
+                type Component = $item;
+
+                fn coord(&self, i:uint) -> &$item {&self[i as usize]}
+                fn coord_mut(&mut self, i:uint) -> &mut $item {&mut self[i as usize]}
+                fn length(&self) -> uint {self.len() as uint}
+            }
 
             impl $ty {
                 pub fn len(&self) -> usize {self.value.len()}

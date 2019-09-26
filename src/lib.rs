@@ -14,6 +14,7 @@
 #![feature(maybe_uninit_ref)]
 #![feature(non_exhaustive)]
 #![feature(never_type)]
+#![feature(trait_alias)]
 #![recursion_limit="8192"]
 
 pub extern crate gl;
