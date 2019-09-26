@@ -11,8 +11,6 @@ use std::convert::TryInto;
 use std::ptr::*;
 use std::mem::*;
 
-use trait_arith::{Boolean, True, False};
-
 pub use self::raw::*;
 pub use self::hint::*;
 pub use self::access::*;

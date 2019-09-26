@@ -21,10 +21,7 @@ pub extern crate gl;
 #[cfg(feature = "glfw-context")] pub extern crate glfw;
 #[cfg(feature = "glutin-context")] pub extern crate glutin;
 
-#[macro_use] extern crate macro_program;
 #[macro_use] extern crate bitflags;
-
-extern crate trait_arith;
 
 use gl::types::*;
 use std::convert::TryFrom;
@@ -86,6 +83,13 @@ pub mod object;
 pub mod program;
 
 pub mod format;
+
+pub trait Bit { const VALUE:bool; }
+pub struct High;
+pub struct Low;
+
+impl Bit for High { const VALUE:bool = true; }
+impl Bit for Low { const VALUE:bool = false; }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 #[non_exhaustive]

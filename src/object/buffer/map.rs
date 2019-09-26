@@ -23,7 +23,7 @@ impl<'a,T:?Sized,A:BufferAccess> Drop for Map<'a,T,A> {
             let status;
             let mut target = BufferTarget::CopyWriteBuffer.as_loc();
 
-            if !<A::Persistent as Boolean>::VALUE {
+            if !<A::Persistent as Bit>::VALUE {
                 //if the map is not persistent, we need to fully unmap the buffer
                 if gl::UnmapNamedBuffer::is_loaded() {
                     status = gl::UnmapNamedBuffer(self.id);
@@ -33,7 +33,7 @@ impl<'a,T:?Sized,A:BufferAccess> Drop for Map<'a,T,A> {
             } else {
                 //else, we need to flush any writes that happened in this range
                 status = 1;
-                if <A::Write as Boolean>::VALUE {
+                if <A::Write as Bit>::VALUE {
                     if gl::FlushMappedNamedBufferRange::is_loaded() {
                         gl::FlushMappedNamedBufferRange(
                             target.bind_raw(self.id).unwrap().target_id(),
@@ -106,7 +106,7 @@ unsafe fn check_allignment(map:*const GLvoid, align: usize) {
 //
 
 unsafe fn map_access<B:BufferAccess>() -> GLenum {
-    match (<B::Read as Boolean>::VALUE, <B::Write as Boolean>::VALUE) {
+    match (<B::Read as Bit>::VALUE, <B::Write as Bit>::VALUE) {
         (true, false) => gl::READ_ONLY,
         (false, true) => gl::WRITE_ONLY,
         (true, true) => gl::READ_WRITE,
@@ -142,9 +142,9 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
 
 unsafe fn map_range_flags<B:BufferAccess>() -> GLbitfield {
     let mut flags = 0;
-    if <B::Read as Boolean>::VALUE {flags |= gl::MAP_READ_BIT;}
-    if <B::Write as Boolean>::VALUE {flags |= gl::MAP_WRITE_BIT;}
-    if <B::Persistent as Boolean>::VALUE {flags |= gl::MAP_PERSISTENT_BIT;}
+    if <B::Read as Bit>::VALUE {flags |= gl::MAP_READ_BIT;}
+    if <B::Write as Bit>::VALUE {flags |= gl::MAP_WRITE_BIT;}
+    if <B::Persistent as Bit>::VALUE {flags |= gl::MAP_PERSISTENT_BIT;}
     flags
 }
 
@@ -174,7 +174,7 @@ impl<'a,T:?Sized,A:BufferAccess> SliceMut<'a,T,A> {
         let mut target = BufferTarget::CopyWriteBuffer.as_loc();
         let mut ptr = BufPtr { rust_mut: self.ptr };
 
-        if <B::Persistent as Boolean>::VALUE || gl::MapBufferRange::is_loaded() || gl::MapNamedBufferRange::is_loaded() {
+        if <B::Persistent as Bit>::VALUE || gl::MapBufferRange::is_loaded() || gl::MapNamedBufferRange::is_loaded() {
 
             let flags = map_range_flags::<B>();
             if gl::MapNamedBufferRange::is_loaded() {
@@ -269,7 +269,7 @@ impl<'a,T:?Sized,A:BufferAccess> Slice<'a,T,A> {
 
         }
 
-        if <B::Read as Boolean>::VALUE {gl::MemoryBarrier(gl::CLIENT_MAPPED_BUFFER_BARRIER_BIT);}
+        if <B::Read as Bit>::VALUE {gl::MemoryBarrier(gl::CLIENT_MAPPED_BUFFER_BARRIER_BIT);}
 
         Map {
             ptr: BufPtr{gl_mut: ptr.assume_init()}.rust_mut,
