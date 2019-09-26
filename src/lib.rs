@@ -18,8 +18,8 @@
 #![recursion_limit="8192"]
 
 pub extern crate gl;
-#[cfg(feature = "glfw-context")] pub extern crate glfw;
-#[cfg(feature = "glutin-context")] pub extern crate glutin;
+#[cfg(feature = "glfw-context")] extern crate glfw;
+#[cfg(feature = "glutin-context")] extern crate glutin;
 
 #[macro_use] extern crate bitflags;
 

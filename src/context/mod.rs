@@ -44,7 +44,7 @@ pub trait ContextProvider {
     fn make_current(self) -> Result<GLContext<GL10>,Self::ContextError>;
 }
 
-#[cfg(feature = "glfw_context")]
+#[cfg(feature = "glfw-context")]
 mod glfw_impl {
 
     use super::*;
@@ -61,7 +61,7 @@ mod glfw_impl {
 
 }
 
-#[cfg(feature = "glutin_context")]
+#[cfg(feature = "glutin-context")]
 mod glutin_impl {
 
     use super::*;
