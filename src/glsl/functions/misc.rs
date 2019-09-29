@@ -7,7 +7,7 @@ macro_rules! component_wrapping_fn {
     ($gen_type:ident; $name:ident:$fun:ident($v:ident $(, $args:ident)*) $($rest:tt)*) => {
 
         pub fn $name<V:$gen_type>(mut $v:V, $($args:V),*) -> V {
-            for i in 0..$v.length() {
+            for i in 0..V::COUNT {
                 *$v.coord_mut(i) = $v.coord(i).$fun($(*$args.coord(i)),*);
             }
             return $v;
@@ -33,7 +33,7 @@ component_wrapping_fn!{GenFType;
 }
 
 pub fn inversesqrt<V:GenFType>(mut x:V) -> V {
-    for i in 0..x.length() {
+    for i in 0..V::COUNT {
         *x.coord_mut(i) = x.coord(i).sqrt().recip();
     }
     return x;
@@ -45,7 +45,7 @@ component_wrapping_fn!{GenFloatType;
 
 #[allow(non_snake_case)]
 pub fn roundEven<V:GenFloatType>(mut x:V) -> V {
-    for i in 0..x.length() {
+    for i in 0..V::COUNT {
         let two = V::Component::one() + One::one();
         if x.coord(i).fract() == two.recip() {
             if x.coord(i).floor() % two == Zero::zero() {
@@ -65,7 +65,7 @@ component_wrapping_fn!{GenSignType; abs:abs sign:signum}
 pub fn isnan<V:GenFloatType+GenFamily>(x:V) -> V::BVec {
     unsafe {
         let mut dest = MaybeUninit::<V::BVec>::uninit();
-        for i in 0..x.length() {
+        for i in 0..V::COUNT {
             *dest.get_mut().coord_mut(i) = (x.coord(i).is_nan()).into();
         }
         dest.assume_init()
@@ -75,7 +75,7 @@ pub fn isnan<V:GenFloatType+GenFamily>(x:V) -> V::BVec {
 pub fn isinf<V:GenFloatType+GenFamily>(x:V) -> V::BVec {
     unsafe {
         let mut dest = MaybeUninit::<V::BVec>::uninit();
-        for i in 0..x.length() {
+        for i in 0..V::COUNT {
             *dest.get_mut().coord_mut(i) = (x.coord(i).is_infinite()).into();
         }
         dest.assume_init()
@@ -86,7 +86,7 @@ pub fn isinf<V:GenFloatType+GenFamily>(x:V) -> V::BVec {
 pub fn floatBitsToInt<V:GenFType+GenFamily>(x:V) -> V::IVec {
     unsafe {
         let mut dest = MaybeUninit::<V::IVec>::uninit();
-        for i in 0..x.length() {
+        for i in 0..V::COUNT {
             *dest.get_mut().coord_mut(i) = transmute(*x.coord(i));
         }
         dest.assume_init()
@@ -97,7 +97,7 @@ pub fn floatBitsToInt<V:GenFType+GenFamily>(x:V) -> V::IVec {
 pub fn floatBitsToUint<V:GenFType+GenFamily>(x:V) -> V::UVec {
     unsafe {
         let mut dest = MaybeUninit::<V::UVec>::uninit();
-        for i in 0..x.length() {
+        for i in 0..V::COUNT {
             *dest.get_mut().coord_mut(i) = transmute(*x.coord(i));
         }
         dest.assume_init()
@@ -108,7 +108,7 @@ pub fn floatBitsToUint<V:GenFType+GenFamily>(x:V) -> V::UVec {
 pub fn intBitsToFloat<V:GenIType+GenFamily>(x:V) -> V::Vec {
     unsafe {
         let mut dest = MaybeUninit::<V::Vec>::uninit();
-        for i in 0..x.length() {
+        for i in 0..V::COUNT {
             *dest.get_mut().coord_mut(i) = transmute(*x.coord(i));
         }
         dest.assume_init()
@@ -119,7 +119,7 @@ pub fn intBitsToFloat<V:GenIType+GenFamily>(x:V) -> V::Vec {
 pub fn uintBitsToFloat<V:GenUType+GenFamily>(x:V) -> V::UVec {
     unsafe {
         let mut dest = MaybeUninit::<V::UVec>::uninit();
-        for i in 0..x.length() {
+        for i in 0..V::COUNT {
             *dest.get_mut().coord_mut(i) = transmute(*x.coord(i));
         }
         dest.assume_init()

@@ -4,16 +4,9 @@ macro_rules! impl_index {
     ($($ty:ident:$item:ident)*) => {
         $(
 
-            impl GenType for $ty {
-                type Component = $item;
-
-                fn coord(&self, i:uint) -> &$item {&self[i as usize]}
-                fn coord_mut(&mut self, i:uint) -> &mut $item {&mut self[i as usize]}
-                fn length(&self) -> uint {self.len() as uint}
-            }
-
             impl $ty {
-                pub fn len(&self) -> usize {self.value.len()}
+                pub const fn length(&self) -> uint {self.len() as uint}
+                pub const fn len(&self) -> usize {self.value.len()}
                 pub fn iter(&self) -> ::std::slice::Iter<$item> {self.value.iter()}
                 pub fn iter_mut(&mut self) -> ::std::slice::IterMut<$item> {self.value.iter_mut()}
             }

@@ -2,10 +2,40 @@ use super::*;
 
 pub trait GenType: GLSLType {
     type Component: GenType;
+    const COUNT: uint;
 
     fn coord(&self, i:uint) -> &Self::Component;
     fn coord_mut(&mut self, i:uint) -> &mut Self::Component;
-    fn length(&self) -> uint;
+}
+
+
+macro_rules! impl_gen_type {
+    ($($ty:ident:$item:ident:$COUNT:tt)*) => {
+        $(
+            impl GenType for $ty {
+                type Component = $item;
+                const COUNT: uint = $COUNT;
+                fn coord(&self, i:uint) -> &$item {&self[i as usize]}
+                fn coord_mut(&mut self, i:uint) -> &mut $item {&mut self[i as usize]}
+            }
+        )*
+    }
+}
+
+impl_gen_type!{
+    bvec2:gl_bool:2 bvec3:gl_bool:3 bvec4:gl_bool:4
+    uvec2:uint:2 uvec3:uint:3 uvec4:uint:4
+    ivec2:int:2 ivec3:int:3 ivec4:int:4
+
+    vec2:float:2 vec3:float:3 vec4:float:4
+    mat2x2:vec2:2 mat3x2:vec2:3 mat4x2:vec2:4
+    mat2x3:vec3:2 mat3x3:vec3:3 mat4x3:vec3:4
+    mat2x4:vec4:2 mat3x4:vec4:3 mat4x4:vec4:4
+
+    dvec2:double:2 dvec3:double:3 dvec4:double:4
+    dmat2x2:dvec2:2 dmat3x2:dvec2:3 dmat4x2:dvec2:4
+    dmat2x3:dvec3:2 dmat3x3:dvec3:3 dmat4x3:dvec3:4
+    dmat2x4:dvec4:2 dmat3x4:dvec4:3 dmat4x4:dvec4:4
 }
 
 pub trait GenBType = GenType<Component=gl_bool>;
@@ -43,9 +73,9 @@ macro_rules! impl_gen_type_scalar {
         $(
             impl GenType for $ty {
                 type Component = $ty;
+                const COUNT:uint = 1;
                 fn coord(&self, _:uint) -> &Self::Component {self}
                 fn coord_mut(&mut self, _:uint) -> &mut Self::Component {self}
-                fn length(&self) -> uint {1}
             }
         )*
     }

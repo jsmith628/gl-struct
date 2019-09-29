@@ -28,7 +28,7 @@ pub fn length<V:GenFloatType>(v:V) -> V::Component { dot(v,v).sqrt() }
 pub fn distance<V:GenFloatType>(p0:V, p1:V) -> V::Component { length(p0-p1) }
 
 pub fn dot<V:GenFloatType>(x:V, y:V) -> V::Component {
-    (0..x.length()).fold(num_traits::Zero::zero(), |d,i| d+ *x.coord(i)**y.coord(i))
+    (0..V::COUNT).fold(num_traits::Zero::zero(), |d,i| d+ *x.coord(i)**y.coord(i))
 }
 
 pub fn cross<V:CrossProduct>(x:V, y:V) -> V { x.cross(y) }

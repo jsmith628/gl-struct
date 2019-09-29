@@ -83,7 +83,7 @@ impl_outer_product!{
 
 #[allow(non_snake_case)]
 pub fn matrixCompMult<M:Mat>(mut x:M, y:M) -> M {
-    for i in 0..x.length() { *x.coord_mut(i) *= *y.coord(i); } x
+    for i in 0..M::COUNT { *x.coord_mut(i) *= *y.coord(i); } x
 }
 
 #[allow(non_snake_case)]
@@ -100,11 +100,11 @@ pub fn determinant<M:Mat>(m:M) -> Scalar<M> {
         m[i][k+r]*m[j][j+r]*m[k][i+r] - m[j][k+r]*m[k][j+r]*m[i][i+r] - m[k][k+r]*m[i][j+r]*m[j][i+r]
     }
 
-    if m.length() == 2 {
+    if M::COUNT == 2 {
         m[0][0]*m[1][1] - m[0][1]*m[0][1]
-    } else if m.length()==3 {
+    } else if M::COUNT==3 {
         cofactor_det_3d(m, 0,1,2, 0)
-    } else if m.length()==4 {
+    } else if M::COUNT==4 {
         m[0][0]*cofactor_det_3d(m, 1,2,3, 1) -
         m[2][0]*cofactor_det_3d(m, 0,2,3, 1) +
         m[3][0]*cofactor_det_3d(m, 0,1,3, 1) -
@@ -117,14 +117,14 @@ pub fn determinant<M:Mat>(m:M) -> Scalar<M> {
 pub fn inverse<M:SquareMat>(mut a:M) -> M {
 
     fn row_mul<M:SquareMat>(a: &mut M, b:&mut M, row:usize, col:usize, factor:Scalar<M>) {
-        for k in col..(a.length() as usize) {
+        for k in col..(M::COUNT as usize) {
             a[k as usize][row] *= factor;
             b[k as usize][row] *= factor;
         }
     }
 
     fn row_sum<M:SquareMat>(a: &mut M, b:&mut M, row:usize, col:usize, factor:Scalar<M>, dest:usize) {
-        for k in col..(a.length() as usize) {
+        for k in col..(M::COUNT as usize) {
             let (a_r, b_r) = (a[k][row], b[k][row]);
             a[k][dest] += factor*a_r;
             b[k][dest] += factor*b_r;
@@ -132,7 +132,7 @@ pub fn inverse<M:SquareMat>(mut a:M) -> M {
     }
 
     fn swap_rows<M:SquareMat>(a: &mut M, b:&mut M, row1:usize, row2:usize, col:usize) {
-        for k in col..(a.length() as usize) {
+        for k in col..(M::COUNT as usize) {
             let temp = (a[k][row1], b[k][row1]);
             a[k][row1] = a[k][row2];
             b[k][row1] = b[k][row2];
@@ -141,7 +141,7 @@ pub fn inverse<M:SquareMat>(mut a:M) -> M {
         }
     }
 
-    let size = a.length() as usize;
+    let size = M::COUNT as usize;
     let mut b = One::one();
 
     //Gauss-Jordon elimination
