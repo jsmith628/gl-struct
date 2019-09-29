@@ -1,5 +1,7 @@
 use super::*;
 
+use num_traits::cast::AsPrimitive;
+
 macro_rules! impl_arr_conv {
     ($vec1:ident $vec2:ident $vec3:ident $vec4:ident; $($to:ty),*) => {
         impl<T:Into<$vec1>> From<[T; 2]> for $vec2 {
@@ -24,7 +26,6 @@ macro_rules! impl_arr_conv {
         }
 
         $(
-
             impl From<$vec2> for [$to; 2] {
                 fn from(arr: $vec2) -> Self { [arr[0].into(), arr[1].into()] }
             }
@@ -36,7 +37,6 @@ macro_rules! impl_arr_conv {
             impl From<$vec4> for [$to; 4] {
                 fn from(arr: $vec4) -> Self { [arr[0].into(), arr[1].into(), arr[2].into(), arr[3].into()] }
             }
-
         )*
 
     }
@@ -62,6 +62,10 @@ macro_rules! impl_conv {
             impl From<$ty2> for $ty1 {
                 fn from(obj:$ty2) -> $ty1 { $ty1 { value: obj.into() } }
             }
+
+            impl AsPrimitive<$ty1> for $ty2 {
+                fn as_(self) -> $ty1 { $ty1 { value: self.into() } }
+            }
         )*
     }
 }
@@ -76,4 +80,46 @@ impl_conv!{
     dmat2x3:mat2x3 dmat3x3:mat3x3 dmat4x3:mat4x3
     dmat2x4:mat2x4 dmat3x4:mat3x4 dmat4x4:mat4x4
 
+}
+
+macro_rules! implicit_conv {
+
+    () => {};
+
+    (
+        $avec2:ident as $bvec2:ident,
+        $avec3:ident as $bvec3:ident,
+        $avec4:ident as $bvec4:ident; $($rest:tt)*
+    ) => {
+        impl AsPrimitive<$bvec2> for $avec2 {
+            fn as_(self) -> $bvec2 { $bvec2 { value: [self[0].as_(), self[1].as_()] } }
+        }
+
+        impl AsPrimitive<$bvec3> for $avec3 {
+            fn as_(self) -> $bvec3 {
+                $bvec3 { value: [self[0].as_(), self[1].as_(), self[2].as_()] }
+            }
+        }
+
+        impl AsPrimitive<$bvec4> for $avec4 {
+            fn as_(self) -> $bvec4 {
+                $bvec4 { value: [self[0].as_(), self[1].as_(), self[2].as_(), self[3].as_()] }
+            }
+        }
+        implicit_conv!($($rest)*);
+    }
+}
+
+implicit_conv! {
+    ivec2 as ivec2, ivec3 as ivec3, ivec4 as ivec4;
+    ivec2 as uvec2, ivec3 as uvec3, ivec4 as uvec4;
+    ivec2 as vec2,  ivec3 as vec3,  ivec4 as vec4;
+
+    uvec2 as uvec2, uvec3 as uvec3, uvec4 as uvec4;
+    uvec2 as vec2,  uvec3 as vec3,  uvec4 as vec4;
+
+    vec2 as vec2, vec3 as vec3, vec4 as vec4;
+    mat2x2 as mat2x2, mat3x2 as mat3x2, mat4x2 as mat4x2;
+    mat2x3 as mat2x3, mat3x3 as mat3x3, mat4x3 as mat4x3;
+    mat2x4 as mat2x4, mat3x4 as mat3x4, mat4x4 as mat4x4;
 }
