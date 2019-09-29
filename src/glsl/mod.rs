@@ -6,6 +6,8 @@ use std::ops::*;
 use std::slice::*;
 use std::mem::*;
 
+use num_traits::{Zero,One};
+
 use crate::object::*;
 
 use crate::format::*;

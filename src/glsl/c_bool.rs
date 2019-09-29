@@ -24,6 +24,8 @@ macro_rules! impl_c_bool_assign {
 impl_c_bool!(BitAnd.bitand &, BitOr.bitor |, BitXor.bitxor &);
 impl_c_bool_assign!(BitAndAssign.bitand_assign &=, BitOrAssign.bitor_assign |=, BitXorAssign.bitxor_assign &=);
 
+impl Not for c_bool { type Output = Self; #[inline] fn not(self) -> Self { c_bool(!self.0) } }
+
 impl From<bool> for c_bool { #[inline] fn from(b: bool) -> Self {c_bool(b as GLuint)} }
 impl From<c_bool> for bool { #[inline] fn from(b: c_bool) -> Self {b.0>0} }
 impl From<GLuint> for c_bool { #[inline] fn from(b: GLuint) -> Self {c_bool(b)} }

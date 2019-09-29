@@ -1,34 +1,5 @@
 use super::*;
 
-pub trait GenType: GLSLType {
-    type Component: GLSLType;
-
-    fn coord(&self, i:uint) -> &Self::Component;
-    fn coord_mut(&mut self, i:uint) -> &mut Self::Component;
-    fn length(&self) -> uint;
-}
-
-pub trait GenBType = GenType<Component=gl_bool>;
-pub trait GenUType = GenType<Component=uint>;
-pub trait GenIType = GenType<Component=int>;
-pub trait GenFType = GenType<Component=float>;
-pub trait GenDType = GenType<Component=double>;
-
-macro_rules! impl_scalar {
-    ($($ty:ident)*) => {
-        $(
-            impl GenType for $ty {
-                type Component = $ty;
-                fn coord(&self, _:uint) -> &Self::Component {self}
-                fn coord_mut(&mut self, _:uint) -> &mut Self::Component {self}
-                fn length(&self) -> uint {1}
-            }
-        )*
-    }
-}
-
-impl_scalar!(gl_bool uint int float double);
-
 macro_rules! impl_index {
     ($($ty:ident:$item:ident)*) => {
         $(
@@ -191,6 +162,92 @@ impl_unary_op!{ Not.not !;
     uvec2 uvec3 uvec4
     ivec2 ivec3 ivec4
 }
+
+macro_rules! impl_zero {
+    ($($ty:ident)*) => {
+        $(
+            impl Zero for $ty {
+                fn zero() -> Self {
+                    unsafe {
+                        let mut dest = MaybeUninit::<Self>::uninit();
+                        dest.get_mut().set_zero();
+                        dest.assume_init()
+                    }
+                }
+
+                fn set_zero(&mut self) { for i in 0..self.len() { self[i].set_zero(); } }
+
+                fn is_zero(&self) -> bool{
+                    for i in 0..self.len() { if !self[i].is_zero() {return false;} }
+                    true
+                }
+            }
+        )*
+    }
+}
+
+impl_zero!(
+    uvec2 uvec3 uvec4 ivec2 ivec3 ivec4 vec2 vec3 vec4 dvec2 dvec3 dvec4
+    mat2x2 mat3x2 mat4x2 mat2x3 mat3x3 mat4x3 mat2x4 mat3x4 mat4x4
+    dmat2x2 dmat3x2 dmat4x2 dmat2x3 dmat3x3 dmat4x3 dmat2x4 dmat3x4 dmat4x4
+);
+
+macro_rules! impl_one {
+    ($($ty:ident)*) => {
+        $(
+            impl One for $ty {
+                fn one() -> Self {
+                    unsafe {
+                        let mut dest = MaybeUninit::<Self>::uninit();
+                        dest.get_mut().set_one();
+                        dest.assume_init()
+                    }
+                }
+
+                fn set_one(&mut self) {
+                    for i in 0..self.len() {
+                        for j in 0..self[i].len() {
+                            self[i][j] = if i==j {1.0} else {0.0};
+                        }
+                    }
+                }
+
+                fn is_one(&self) -> bool{
+                    for i in 0..self.len() {
+                        for j in 0..self[i].len() {
+                            if (i==j && !self[i][j].is_zero()) || (i!=j && !self[i][j].is_one()) {
+                                return false;
+                            }
+                        }
+                    }
+                    true
+                }
+            }
+        )*
+    }
+}
+
+impl_one!(mat2x2 mat3x3 mat4x4 dmat2x2 dmat3x3 dmat4x4);
+
+macro_rules! impl_matrix_scalar_mul {
+    ($scalar:ident; $($mat:ident)*) => {
+        $(
+            impl Mul<$scalar> for $mat {
+                type Output = $mat;
+                fn mul(mut self, rhs:$scalar) -> $mat { self *= rhs; self}
+            }
+
+            impl MulAssign<$scalar> for $mat {
+                fn mul_assign(&mut self, rhs:$scalar) {
+                    for i in 0..self.len() { self[i] *= rhs; }
+                }
+            }
+        )*
+    }
+}
+
+impl_matrix_scalar_mul!(float; mat2x2 mat2x3 mat2x4 mat3x2 mat3x3 mat3x4 mat4x2 mat4x3 mat4x4);
+impl_matrix_scalar_mul!(double; dmat2x2 dmat2x3 dmat2x4 dmat3x2 dmat3x3 dmat3x4 dmat4x2 dmat4x3 dmat4x4);
 
 macro_rules! impl_matrix_vector_mul {
 

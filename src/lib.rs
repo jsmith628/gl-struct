@@ -18,6 +18,7 @@
 #![recursion_limit="8192"]
 
 pub extern crate gl;
+pub extern crate num_traits;
 #[cfg(feature = "glfw-context")] extern crate glfw;
 #[cfg(feature = "glutin-context")] extern crate glutin;
 
