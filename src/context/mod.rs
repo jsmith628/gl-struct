@@ -19,7 +19,7 @@ pub struct GLContext<V:GLVersion> {
 }
 
 impl GLContext<GL10> {
-    pub unsafe fn load_with<F:Fn(&str) -> *const GLvoid>(api_addr: F) -> Self {
+    pub unsafe fn load_with<F:FnMut(&str) -> *const GLvoid>(api_addr: F) -> Self {
         gl::load_with(api_addr);
         GLContext {version: GL10::assume_loaded(), _private: ()}
     }
@@ -54,7 +54,7 @@ mod glfw_impl {
         fn make_current(self) -> Result<GLContext<GL10>,!> {
             unsafe {
                 glfw::Context::make_current(self);
-                Some(GLContext::load_with(|name| self.get_proc_address(name)))
+                Ok(GLContext::load_with(|name| self.get_proc_address(name)))
             }
         }
     }
@@ -72,7 +72,7 @@ mod glutin_impl {
             unsafe {
                 glutin::Context::<T>::make_current(self).map(
                     |context| GLContext::load_with(|name| context.get_proc_address(name) as *const GLvoid)
-                );
+                )
             }
         }
     }
