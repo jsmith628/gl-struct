@@ -339,6 +339,13 @@ unsafe impl AttribFormat for ! {
     #[inline] unsafe fn set_attribute(self, _attr_id: GLuint, _data: *const GLvoid){ unreachable!() }
 }
 
+unsafe impl AttribFormat for void {
+    #[inline] fn size(self) -> usize { 0 }
+    #[inline] fn attrib_count(self) -> usize { 1 }
+    #[inline] unsafe fn bind_attribute(self, _: GLuint, _: usize, _: usize) { }
+    #[inline] unsafe fn set_attribute(self, _: GLuint, _: *const GLvoid) { }
+}
+
 pub type Mat2Format = [VecFormat; 2];
 pub type Mat3Format = [VecFormat; 3];
 pub type Mat4Format = [VecFormat; 4];

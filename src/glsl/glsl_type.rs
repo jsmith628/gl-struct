@@ -1,9 +1,10 @@
 use super::*;
 
 unsafe impl GLSLType for void {
-    type AttributeFormat = !;
+    type AttributeFormat = ();
     unsafe fn load_uniforms(_: GLint, _: &[Self]){}
     unsafe fn get_uniform(_: GLuint, _:GLint) -> Self {}
+    fn uniform_locations() -> GLuint { 1 }
 }
 
 macro_rules! impl_glsl_type {
@@ -97,6 +98,41 @@ impl_glsl_type! {
     dmat4x4 UniformMatrix4dv  GetUniformdv [DVecFormat; 4]
 }
 
+macro_rules! impl_tuple_type {
+    ($($A:ident:$a:ident)*) => {
+        unsafe impl<$($A:GLSLType),*> GLSLType for ($($A,)*) {
+            type AttributeFormat = !;
+
+            #[allow(unused_assignments)]
+            unsafe fn load_uniforms(id: GLint, data: &[Self]){
+                let mut i = id;
+                for ($($a,)*) in data.iter() {
+                    $(
+                        $A::load_uniform(i, $a);
+                        i += $A::uniform_locations() as GLint;
+                    )*
+                }
+            }
+
+            #[allow(unused_assignments)]
+            unsafe fn get_uniform(p: GLuint, id:GLint) -> Self {
+                let mut i = id;
+                (
+                    $({
+                        let val = $A::get_uniform(p, i);
+                        i += $A::uniform_locations() as GLint;
+                        val
+                    },)*
+                )
+            }
+
+            #[inline] fn uniform_locations() -> GLuint { 0 $( + $A::uniform_locations())*}
+        }
+    }
+}
+
+impl_tuple!(impl_tuple_type);
+
 macro_rules! impl_array_type {
 
     (@attrib true $ty:ty) => {$ty};
@@ -121,7 +157,7 @@ macro_rules! impl_array_type {
                 }
 
                 #[inline] fn uniform_locations() -> GLuint { T::uniform_locations() * $num }
-                #[inline] fn first_element_name(var: String) -> String { T::first_element_name(var + "[0]") }
+                // #[inline] fn first_element_name(var: String) -> String { T::first_element_name(var + "[0]") }
 
             }
 

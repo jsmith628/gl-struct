@@ -28,11 +28,11 @@ mod ops;
 mod glsl_type;
 mod functions;
 
-pub unsafe trait GLSLType: Sized + Copy + Debug {
+pub unsafe trait GLSLType: Sized + Copy {
     type AttributeFormat: AttribFormat;
 
     #[inline] fn uniform_locations() -> GLuint {1}
-    #[inline] fn first_element_name(var: String) -> String { var }
+    // #[inline] fn first_element_name(var: String) -> String { var }
 
     unsafe fn load_uniform(id: GLint, data: &Self) { Self::load_uniforms(id, from_ref(data)); }
     unsafe fn load_uniforms(id: GLint, data: &[Self]);
