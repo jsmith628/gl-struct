@@ -16,7 +16,7 @@
 #![feature(never_type)]
 #![feature(trait_alias)]
 #![feature(const_slice_len)]
-#![recursion_limit="8192"]
+#![recursion_limit="32768"]
 
 pub extern crate gl;
 pub extern crate num_traits;

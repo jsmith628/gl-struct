@@ -123,3 +123,227 @@ implicit_conv! {
     mat2x3 as mat2x3, mat3x3 as mat3x3, mat4x3 as mat4x3;
     mat2x4 as mat2x4, mat3x4 as mat3x4, mat4x4 as mat4x4;
 }
+
+macro_rules! impl_mat_conv {
+    ($scalar:ident; $($mat:ident:$c:literal:$r:literal)*) => {
+        $(
+            impl From<[$scalar;$r*$c]> for $mat {
+                fn from(arr:[$scalar;$r*$c]) -> $mat {
+                    unsafe { transmute::<_,[[$scalar;$r];$c]>(arr) }.into()
+                }
+            }
+
+            impl From<$mat> for [$scalar;$r*$c] {
+                fn from(mat:$mat) -> [$scalar;$r*$c] {
+                    unsafe { transmute::<[[$scalar;$r];$c],_>(mat.into()) }
+                }
+            }
+        )*
+    }
+}
+
+impl_mat_conv!{float;
+    mat2x2:2:2 mat2x3:2:3 mat2x4:2:4
+    mat3x2:3:2 mat3x3:3:3 mat3x4:3:4
+    mat4x2:4:2 mat4x3:4:3 mat4x4:4:4
+}
+
+impl_mat_conv!{double;
+    dmat2x2:2:2 dmat2x3:2:3 dmat2x4:2:4
+    dmat3x2:3:2 dmat3x3:3:3 dmat3x4:3:4
+    dmat4x2:4:2 dmat4x3:4:3 dmat4x4:4:4
+}
+
+macro_rules! impl_scalar_conv {
+    ($scalar:ident; $($vec:ident)*; $($mat:ident)*) => {
+        $(
+            impl From<$scalar> for $vec {
+                fn from(x:$scalar) -> $vec {
+                    unsafe {
+                        let mut dest = MaybeUninit::<$vec>::uninit();
+                        for i in 0..dest.get_ref().len() { dest.get_mut()[i] = x; }
+                        dest.assume_init()
+                    }
+                }
+            }
+        )*
+
+        $(
+            impl From<$scalar> for $mat {
+                fn from(x:$scalar) -> $mat {
+                    unsafe {
+                        let mut dest = MaybeUninit::<$mat>::uninit();
+                        for i in 0..dest.get_ref().len() {
+                            for j in 0..dest.get_ref()[i].len() {
+                                dest.get_mut()[i][j] = if i==j { x } else { Zero::zero() };
+                            }
+                        }
+                        dest.assume_init()
+                    }
+                }
+            }
+        )*
+    }
+}
+
+impl_scalar_conv!(gl_bool; bvec2 bvec3 bvec4;);
+impl_scalar_conv!(uint; uvec2 uvec3 uvec4;);
+impl_scalar_conv!(int; ivec2 ivec3 ivec4;);
+impl_scalar_conv!(float; vec2 vec3 vec4; mat2 mat3 mat4);
+impl_scalar_conv!(double; dvec2 dvec3 dvec4; dmat2 dmat3 dmat4);
+
+// trait CopyIntoSlice<T> {
+//     const LEN:u32;
+//     fn copy_into_slice(self, dest: &mut [T]);
+// }
+//
+// impl<T:GenType<Component=T>,V:GenType<Component=T>> CopyIntoSlice<T> for V {
+//     const LEN:u32 = V::COUNT;
+//     default fn copy_into_slice(self, dest: &mut [T]) {
+//         for i in 0..V::COUNT {
+//             dest[i as usize] = *self.coord(i);
+//         }
+//     }
+// }
+//
+// impl<T:GenType<Component=T>> CopyIntoSlice<T> for T {
+//     fn copy_into_slice(self, dest: &mut [T]) { dest[0] = self; }
+// }
+//
+// macro_rules! impl_copy_slice {
+//     () => {};
+//     (@next $T0:ident:$t0:ident $($T:ident:$t:ident)*) => {impl_copy_slice!($($T:$t)*);};
+//     ($($T:ident:$t:ident)*) => {
+//
+//         impl<T, $($T:CopyIntoSlice<T>),*> CopyIntoSlice<T> for ($($T,)*) {
+//             const LEN:u32 = 1;
+//
+//             #[allow(unused_assignments)]
+//             fn copy_into_slice(self, dest: &mut [T]) {
+//                 let ($($t,)*) = self;
+//                 let mut index = 0;
+//                 $(
+//                     $t.copy_into_slice(&mut dest[index..]);
+//                     index += $T::LEN as usize;
+//                 )*
+//             }
+//         }
+//
+//         impl_copy_slice!(@next $($T:$t)*);
+//     }
+// }
+//
+// impl_copy_slice!(A:a B:b C:c D:d E:e F:f G:g H:h I:i J:j K:k L:l M:m N:n O:o P:p);
+//
+//
+// macro_rules! impl_tuple_conv {
+//
+//     (2 @num $($tt:tt)*) => {impl_tuple_conv!([,,] $($tt)*);};
+//     (3 @num $($tt:tt)*) => {impl_tuple_conv!([,,,] $($tt)*);};
+//     (4 @num $($tt:tt)*) => {impl_tuple_conv!([,,,,] $($tt)*);};
+//     (5 @num $($tt:tt)*) => {impl_tuple_conv!([,,,,,] $($tt)*);};
+//     (6 @num $($tt:tt)*) => {impl_tuple_conv!([,,,,,,] $($tt)*);};
+//     (7 @num $($tt:tt)*) => {impl_tuple_conv!([,,,,,,,] $($tt)*);};
+//     (8 @num $($tt:tt)*) => {impl_tuple_conv!([,,,,,,,,] $($tt)*);};
+//     (9 @num $($tt:tt)*) => {impl_tuple_conv!([,,,,,,,,,] $($tt)*);};
+//     (10 @num $($tt:tt)*) => {impl_tuple_conv!([,,,,,,,,,,] $($tt)*);};
+//     (11 @num $($tt:tt)*) => {impl_tuple_conv!([,,,,,,,,,,,] $($tt)*);};
+//     (12 @num $($tt:tt)*) => {impl_tuple_conv!([,,,,,,,,,,,,] $($tt)*);};
+//     (13 @num $($tt:tt)*) => {impl_tuple_conv!([,,,,,,,,,,,,,] $($tt)*);};
+//     (14 @num $($tt:tt)*) => {impl_tuple_conv!([,,,,,,,,,,,,,,] $($tt)*);};
+//     (15 @num $($tt:tt)*) => {impl_tuple_conv!([,,,,,,,,,,,,,,,] $($tt)*);};
+//     (16 @num $($tt:tt)*) => {impl_tuple_conv!([,,,,,,,,,,,,,,,,] $($tt)*);};
+//
+//     ($n:tt $m:tt @map $($tt:tt)*) => {impl_tuple_conv!($n $m [] @map $($tt)*);};
+//     ([] $m:tt [$($l:tt)*] @map $($tt:tt)*) => {impl_tuple_conv!([$($l)*] $($tt)*);};
+//     ([$n0:tt $($n:tt)*] $m:tt [$($l:tt)*] @map $($tt:tt)*) => {
+//         impl_tuple_conv!([$($n)*] $m [$m $($l)*] @map $($tt)*);
+//     };
+//
+//     ($n:tt {$($code:tt)*} @swap_unwrap $($tt:tt)*) => { impl_tuple_conv!($($code)* $n $($tt)*); };
+//
+//     ($v1:ident:$v2:ident:$v3:ident:$v4:ident;) => {};
+//     ($v1:ident:$v2:ident:$v3:ident:$v4:ident; $t0:ident:$n:tt:$m:tt $($rest:tt)*) => {
+//         impl_tuple_conv!($m @num {$n @num} @swap_unwrap @map {$v1:$v2:$v3:$v4 {}} @swap_unwrap () @gen $t0 ($n*$m) @impl);
+//         impl_tuple_conv!($v1:$v2:$v3:$v4; $($rest)*);
+//     };
+//     ($v1:ident:$v2:ident:$v3:ident:$v4:ident; $t0:ident:$n:tt $($rest:tt)*) => {
+//         impl_tuple_conv!($n @num {$v1:$v2:$v3:$v4 {}} @swap_unwrap () @gen $t0 $n @impl);
+//         impl_tuple_conv!($v1:$v2:$v3:$v4; $($rest)*);
+//     };
+//
+//     ($v1:ident:$v2:ident:$v3:ident:$v4:ident {$($ty:tt)*} [,,,, $($n:tt)*] ($($tuple:tt)*) @gen $($tt:tt)*) => {
+//         impl_tuple_conv!($v1:$v2:$v3:$v4 {$($ty)*}
+//             [$($n)*] ($($tuple)* $v4,) @gen
+//             [, $($n)*] ($($tuple)* $v3,) @gen
+//             [,, $($n)*] ($($tuple)* $v2,) @gen
+//             [,,, $($n)*] ($($tuple)* $v1,) @gen
+//             $($tt)*
+//         );
+//     };
+//
+//     ($v1:ident:$v2:ident:$v3:ident:$v4:ident {$($ty:tt)*} [,,, $($n:tt)*] ($($tuple:tt)*) @gen $($tt:tt)*) => {
+//         impl_tuple_conv!($v1:$v2:$v3:$v4  {$($ty)*}
+//             [$($n)*] ($($tuple)* $v3,) @gen
+//             [, $($n)*] ($($tuple)* $v2,) @gen
+//             [,, $($n)*] ($($tuple)* $v1,) @gen
+//             $($tt)*
+//         );
+//     };
+//
+//     ($v1:ident:$v2:ident:$v3:ident:$v4:ident {$($ty:tt)*} [,, $($n:tt)*] ($($tuple:tt)*) @gen $($tt:tt)*) => {
+//         impl_tuple_conv!($v1:$v2:$v3:$v4  {$($ty)*}
+//             [$($n)*] ($($tuple)* $v2,) @gen
+//             [, $($n)*] ($($tuple)* $v1,) @gen
+//             $($tt)*
+//         );
+//     };
+//
+//     ($v1:ident:$v2:ident:$v3:ident:$v4:ident {$($ty:tt)*} [, $($n:tt)*] ($($tuple:tt)*) @gen $($tt:tt)*) => {
+//         impl_tuple_conv!($v1:$v2:$v3:$v4  {$($ty)*}
+//             [$($n)*] ($($tuple)* $v1,) @gen
+//             $($tt)*
+//         );
+//     };
+//
+//     ($v1:ident:$v2:ident:$v3:ident:$v4:ident {$($ty:tt)*} [[$($m:tt)*] $($n:tt)*] ($($tuple:tt)*) @gen $($tt:tt)*) => {
+//         impl_tuple_conv!($v1:$v2:$v3:$v4 {$($ty)*} [$($m)* $($n)*] ($($tuple)*) @gen $($tt)*);
+//     };
+//
+//     ($v1:ident:$v2:ident:$v3:ident:$v4:ident {$($ty:tt)*} [] ($($tuple:tt)*) @gen $($tt:tt)*) => {
+//         impl_tuple_conv!($v1:$v2:$v3:$v4 {$($ty)* ($($tuple)*),} $($tt)*);
+//     };
+//
+//     ($v1:ident:$v2:ident:$v3:ident:$v4:ident {$($ty:ty,)*} $name:ident $num:tt @impl ) => {
+//         $(
+//             impl From<$ty> for $name {
+//                 fn from(obj:$ty) -> $name {
+//                     unsafe {
+//                         let mut dest = MaybeUninit::<[$v1;$num]>::uninit();
+//                         obj.copy_into_slice(dest.get_mut());
+//                         return dest.assume_init().into();
+//                     }
+//                 }
+//             }
+//         )*
+//     }
+//
+// }
+//
+// impl_tuple_conv!(gl_bool:bvec2:bvec3:bvec4; bvec2:2 bvec3:3 bvec4:4);
+// impl_tuple_conv!(uint:uvec2:uvec3:uvec4; uvec2:2 uvec3:3 uvec4:4);
+// impl_tuple_conv!(int:ivec2:ivec3:ivec4; ivec2:2 ivec3:3 ivec4:4);
+//
+// impl_tuple_conv!{float:vec2:vec3:vec4;
+//     vec2:2 vec3:3 vec4:4
+//     mat2x2:2:2 mat2x3:2:3 mat2x4:2:4
+//     mat3x2:3:2 mat3x3:3:3 mat3x4:3:4
+//     mat4x2:4:2 mat4x3:4:3 mat4x4:4:4
+// }
+//
+// impl_tuple_conv!{double:dvec2:dvec3:dvec4;
+//     dvec2:2 dvec3:3 dvec4:4
+//     dmat2x2:2:2 dmat2x3:2:3 dmat2x4:2:4
+//     dmat3x2:3:2 dmat3x3:3:3 dmat3x4:3:4
+//     dmat4x2:4:2 dmat4x3:4:3 dmat4x4:4:4
+// }

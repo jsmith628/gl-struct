@@ -6,6 +6,7 @@ pub trait GenType: GLSLType {
 
     fn coord(&self, i:uint) -> &Self::Component;
     fn coord_mut(&mut self, i:uint) -> &mut Self::Component;
+    fn count(&self) -> uint {Self::COUNT}
 }
 
 
