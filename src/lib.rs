@@ -12,10 +12,8 @@
 #![feature(coerce_unsized)]
 #![feature(const_fn)]
 #![feature(maybe_uninit_ref)]
-#![feature(non_exhaustive)]
 #![feature(never_type)]
 #![feature(trait_alias)]
-#![feature(const_slice_len)]
 #![recursion_limit="32768"]
 
 pub extern crate gl;
