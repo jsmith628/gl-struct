@@ -74,8 +74,8 @@ macro_rules! gl_resource{
     };
     (@bind $ty:ident {target=!}) => {
         unsafe impl Target<$ty> for ! {
-            #[inline] fn target_id(&self) -> GLenum {unreachable!()}
-            #[inline] unsafe fn bind(self, _:GLuint) {unreachable!()}
+            #[inline] fn target_id(&self) -> GLenum {*self}
+            #[inline] unsafe fn bind(self, _:GLuint) {self}
         }
     };
 
@@ -136,15 +136,15 @@ pub use self::buffer::*;
 pub use self::texture::*;
 pub use self::renderbuffer::*;
 pub use self::sampler::*;
-// pub use self::sync::*;
 pub use self::query::*;
+// pub use self::sync::*;
 
 pub mod buffer;
 pub mod texture;
 pub mod renderbuffer;
 pub mod sampler;
-pub mod sync;
 pub mod query;
+pub mod sync;
 
 
 glenum! {

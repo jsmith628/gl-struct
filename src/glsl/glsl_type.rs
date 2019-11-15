@@ -3,7 +3,7 @@ use super::*;
 unsafe impl GLSLType for void {
     type AttributeFormat = ();
     unsafe fn load_uniforms(_: GLint, _: &[Self]){}
-    unsafe fn get_uniform(_: GLuint, _:GLint) -> Self {}
+    unsafe fn get_uniform(_: GLuint, _:GLint) -> Self {()}
     fn uniform_locations() -> GLuint { 1 }
 }
 
