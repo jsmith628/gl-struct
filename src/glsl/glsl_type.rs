@@ -52,22 +52,22 @@ macro_rules! impl_glsl_type {
 }
 
 impl_glsl_type! {
-    gl_bool Uniform1uiv GetUniformuiv IntFormat
+    gl_bool Uniform1uiv GetUniformuiv IVecFormat
     bvec2   Uniform2uiv GetUniformuiv IVecFormat
     bvec3   Uniform3uiv GetUniformuiv IVecFormat
     bvec4   Uniform4uiv GetUniformuiv IVecFormat
 
-    uint  Uniform1uiv GetUniformuiv IntFormat
+    uint  Uniform1uiv GetUniformuiv IVecFormat
     uvec2 Uniform2uiv GetUniformuiv IVecFormat
     uvec3 Uniform3uiv GetUniformuiv IVecFormat
     uvec4 Uniform4uiv GetUniformuiv IVecFormat
 
-    int   Uniform1iv GetUniformiv IntFormat
+    int   Uniform1iv GetUniformiv IVecFormat
     ivec2 Uniform2iv GetUniformiv IVecFormat
     ivec3 Uniform3iv GetUniformiv IVecFormat
     ivec4 Uniform4iv GetUniformiv IVecFormat
 
-    float Uniform1fv GetUniformfv FloatFormat
+    float Uniform1fv GetUniformfv VecFormat
     vec2  Uniform2fv GetUniformfv VecFormat
     vec3  Uniform3fv GetUniformfv VecFormat
     vec4  Uniform4fv GetUniformfv VecFormat
@@ -82,7 +82,7 @@ impl_glsl_type! {
     mat4x3 UniformMatrix4x3fv GetUniformfv [VecFormat; 4]
     mat4x4 UniformMatrix4fv   GetUniformfv [VecFormat; 4]
 
-    double Uniform1dv GetUniformdv DoubleFormat
+    double Uniform1dv GetUniformdv DVecFormat
     dvec2  Uniform2dv GetUniformdv DVecFormat
     dvec3  Uniform3dv GetUniformdv DVecFormat
     dvec4  Uniform4dv GetUniformdv DVecFormat

@@ -38,15 +38,15 @@ pub unsafe trait GLSLType: Sized + Copy {
     unsafe fn load_uniforms(id: GLint, data: &[Self]);
     unsafe fn get_uniform(p: GLuint, id:GLint) -> Self;
 
-    #[inline]
-    unsafe fn bind_attribute(attr: GLuint, format: Self::AttributeFormat, stride: usize, offset: usize) {
-        format.bind_attribute(attr, stride, offset);
-    }
+    // #[inline]
+    // unsafe fn bind_attribute(attr: GLuint, format: Self::AttributeFormat, stride: usize, offset: usize) {
+    //     format.bind_attribute(attr, stride, offset);
+    // }
 
-    #[inline]
-    unsafe fn set_attribute(attr: GLuint, format: Self::AttributeFormat, data: *const GLvoid) {
-        format.set_attribute(attr, data);
-    }
+    // #[inline]
+    // unsafe fn set_attribute(attr: GLuint, format: Self::AttributeFormat, data: *const GLvoid) {
+    //     format.set_attribute(attr, data);
+    // }
 
 }
 
@@ -64,9 +64,6 @@ pub unsafe trait GLSLFunction<ReturnType, Params> { const SRC: &'static str; }
 unsafe impl BlockLayout for std140 {}
 unsafe impl BlockLayout for std430 {}
 unsafe impl BlockLayout for shared {}
-
-pub trait GLSLData<T:GLSLType>: From<T> + Into<T> + AttributeData<T> {}
-impl<T:GLSLType, G> GLSLData<T> for G where G: From<T> + Into<T> + AttributeData<T> {}
 
 pub trait GLSLSubroutine: Copy + Eq {
     fn function_name(&self) -> &'static ::std::ffi::CStr;
@@ -92,8 +89,9 @@ macro_rules! glsl_type {
         // impl From<$prim> for $name { #[inline] fn from(v: $prim) -> Self { $name{value: v} } }
         // impl From<$name> for $prim { #[inline] fn from(v: $name) -> Self { v.value } }
 
-        impl<G:GLSLType> AttributeData<G> for $name where $prim: AttributeData<G> {
-            #[inline] fn format() -> G::AttributeFormat { <$prim as AttributeData<G>>::format() }
+        unsafe impl<A:AttribFormat> AttributeData<A> for $name where $prim: AttributeData<A> {
+            #[inline] fn format() -> A { <$prim as AttributeData<A>>::format() }
+            #[inline] fn offset(i: usize) -> usize { <$prim as AttributeData<A>>::offset(i) }
         }
 
         glsl_type!($($rest)*);

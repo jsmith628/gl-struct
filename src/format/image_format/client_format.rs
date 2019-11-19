@@ -143,7 +143,7 @@ impl ClientFormat for ClientFormatInt {
     #[inline]
     fn size(self) -> usize {
         match self {
-            Self::Integer(format, ty) => format.components() * ty.size(),
+            Self::Integer(format, ty) => format.components() * ty.size_of(),
             Self::UShort4_4_4_4 | Self::UShort4_4_4_4Rev | Self::UShort5_5_5_1 | Self::UShort1_5_5_5Rev => 2,
             Self::UInt8_8_8_8 | Self::UInt8_8_8_8Rev | Self::UInt10_10_10_2 | Self::UInt10_10_10_2Rev => 4
         }

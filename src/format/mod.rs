@@ -18,7 +18,7 @@ glenum! {
 
     pub enum FloatType {
         [Half HALF_FLOAT "Half"],
-        [Float FLOAT "FLoat"]
+        [Float FLOAT "Float"]
     }
 }
 
