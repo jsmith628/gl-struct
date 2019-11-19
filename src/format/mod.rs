@@ -2,10 +2,8 @@
 use super::*;
 
 pub use self::image_format::*;
-pub use self::attrib_format::*;
 
 pub mod image_format;
-pub mod attrib_format;
 
 
 glenum! {

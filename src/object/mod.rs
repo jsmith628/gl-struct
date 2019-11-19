@@ -135,6 +135,7 @@ macro_rules! gl_resource{
 pub use self::buffer::*;
 pub use self::texture::*;
 pub use self::renderbuffer::*;
+pub use self::vertex_array::*;
 pub use self::sampler::*;
 pub use self::query::*;
 // pub use self::sync::*;
@@ -142,6 +143,7 @@ pub use self::query::*;
 pub mod buffer;
 pub mod texture;
 pub mod renderbuffer;
+pub mod vertex_array;
 pub mod sampler;
 pub mod query;
 pub mod sync;
