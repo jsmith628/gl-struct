@@ -61,9 +61,9 @@ macro_rules! impl_tuple_layout {
     ({$($T:ident:$t0:ident)*} $Last:ident:$last:ident) => {
 
         //TODO fix to where a tuple is vec4 aligned if at least one of its members is
-        unsafe impl<$($T:Sized+AlignedVec4, )* $Last:?Sized+AlignedVec4> AlignedVec4 for ($($T,)* $Last) {}
-        unsafe impl<$($T:Sized+Layout<std140>, )* $Last:?Sized+Layout<std140>> Layout<std140> for ($($T,)* $Last) {}
-        unsafe impl<$($T:Sized+Layout<std430>, )* $Last:?Sized+Layout<std430>> Layout<std430> for ($($T,)* $Last) {}
+        unsafe impl<$($T:Sized+AlignedVec4, )* $Last:?Sized+AlignedVec4> AlignedVec4 for ($($T,)* $Last,) {}
+        unsafe impl<$($T:Sized+Layout<std140>, )* $Last:?Sized+Layout<std140>> Layout<std140> for ($($T,)* $Last,) {}
+        unsafe impl<$($T:Sized+Layout<std430>, )* $Last:?Sized+Layout<std430>> Layout<std430> for ($($T,)* $Last,) {}
 
     };
 }

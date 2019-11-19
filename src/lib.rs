@@ -53,7 +53,7 @@ macro_rules! impl_tuple {
     //the end of the loop
     ({} $callback:ident) => {};
     // ({} $T0:ident:$t0:ident $callback:ident ) => {};
-    ({} $T0:ident:$t0:ident $callback:ident @$($options:tt)*) => {};
+    ({} $callback:ident @$($options:tt)*) => {};
 
     ({$($A:ident:$a:ident)*} $T0:ident:$t0:ident $callback:ident) => {
         $callback!($($A:$a)* $T0:$t0);

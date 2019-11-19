@@ -75,7 +75,7 @@ unsafe impl<T:Copy> GPUCopy for [T] {}
 
 macro_rules! impl_tuple_gpucopy {
     ({$($T:ident:$t:ident)*} $Last:ident:$l:ident) => {
-        unsafe impl<$($T:GPUCopy,)* $Last: GPUCopy+?Sized> GPUCopy for ($($T,)* $Last) {}
+        unsafe impl<$($T:GPUCopy,)* $Last: GPUCopy+?Sized> GPUCopy for ($($T,)* $Last,) {}
     };
 }
 impl_tuple!(impl_tuple_gpucopy @with_last);
