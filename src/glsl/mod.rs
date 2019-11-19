@@ -53,9 +53,9 @@ pub unsafe trait GLSLType: Sized + Copy {
 pub unsafe trait GLSLStruct { const SRC: &'static str; }
 pub unsafe trait GLSLFunction<ReturnType, Params> { const SRC: &'static str; }
 
-pub unsafe trait BlockLayout: Sized + Copy {}
-pub unsafe trait Layout<B:BlockLayout> {}
-pub unsafe trait AlignedVec4 {}
+#[marker] pub unsafe trait BlockLayout: Sized + Copy {}
+#[marker] pub unsafe trait Layout<B:BlockLayout> {}
+#[marker] pub unsafe trait AlignedVec4 {}
 
 #[derive(Clone, Copy, Debug)] #[allow(non_camel_case_types)] pub struct std140;
 #[derive(Clone, Copy, Debug)] #[allow(non_camel_case_types)] pub struct std430;
