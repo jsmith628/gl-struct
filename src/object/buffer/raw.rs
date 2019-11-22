@@ -70,6 +70,7 @@ impl BindingLocation<RawBuffer> {
 ///Any type that can be cloned within a [buffer](super::Buffer) by simple byte-wise copies of its data.
 ///
 #[marker] pub unsafe trait GPUCopy {}
+
 unsafe impl<T:Copy> GPUCopy for T {}
 unsafe impl<T:Copy> GPUCopy for [T] {}
 
@@ -81,8 +82,22 @@ macro_rules! impl_tuple_gpucopy {
 impl_tuple!(impl_tuple_gpucopy @with_last);
 
 ///Gives a hint as to if the given value needs its destructor run
-pub(super) trait NeedsDropVal { fn needs_drop_val(&self) -> bool; }
+pub(super) unsafe trait NeedsDropVal { fn needs_drop_val(&self) -> bool; }
 
-impl<T:?Sized> NeedsDropVal for T { #[inline] default fn needs_drop_val(&self) -> bool {true} }
-impl<T:Sized> NeedsDropVal for [T] { #[inline] fn needs_drop_val(&self) -> bool {self.len()>0 && needs_drop::<T>()} }
-impl<T:Sized> NeedsDropVal for T { #[inline] fn needs_drop_val(&self) -> bool {needs_drop::<T>()} }
+unsafe impl<T:?Sized> NeedsDropVal for T { #[inline] default fn needs_drop_val(&self) -> bool {true} }
+unsafe impl<T:Sized> NeedsDropVal for T { #[inline] fn needs_drop_val(&self) -> bool {needs_drop::<T>()} }
+unsafe impl<T:Sized> NeedsDropVal for [T] {
+    #[inline] fn needs_drop_val(&self) -> bool {self.len()>0 && needs_drop::<T>()}
+}
+
+macro_rules! impl_tuple_needs_drop {
+    ({$($T:ident:$t:ident)*} $Last:ident:$l:ident) => {
+        unsafe impl<$($T,)* $Last> NeedsDropVal for ($($T,)* [$Last],) {
+            #[inline] fn needs_drop_val(&self) -> bool {
+                let (.., $l) = self;
+                $(needs_drop::<$T>() || )* $l.needs_drop_val()
+            }
+        }
+    };
+}
+impl_tuple!(impl_tuple_needs_drop @with_last);
