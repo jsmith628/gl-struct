@@ -13,11 +13,9 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
         //get the size of the object
         let size = size_of_val(&*data);
 
-        //swap out the first half of the data pointer with the buffer id in order to get the void ptr
-        //half and to construct the pointer for the buffer object
-        let mut conv = BufPtr{ rust: data };
-        let ptr = conv.gl;
-        conv.buf = raw.id();
+
+        let inner = BufPtr::new(raw.id(), data as *mut T);
+        let ptr = data as *const GLvoid;
 
         //get the creation flags
         let mut flags = 0;
@@ -41,7 +39,7 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
         //now, constuct a buffer with that pointer, where the leading half is the buffer id and the
         //latter half is any object metadata
         Buffer {
-            ptr: conv.rust_mut,
+            ptr: inner,
             access: PhantomData
         }
 
@@ -51,11 +49,8 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
         //get the size of the object
         let size = size_of_val(&*data);
 
-        //swap out the first half of the data pointer with the buffer id in order to get the void ptr
-        //half and to construct the pointer for the buffer object
-        let mut conv = BufPtr{ rust: data };
-        let ptr = conv.gl;
-        conv.buf = raw.id();
+        let inner = BufPtr::new(raw.id(), data as *mut T);
+        let ptr = data as *const GLvoid;
 
         //upload the data
         if gl::NamedBufferData::is_loaded() {
@@ -72,7 +67,7 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
         //now, constuct a buffer with that pointer, where the leading half is the buffer id and the
         //latter half is any object metadata
         Buffer {
-            ptr: conv.rust_mut,
+            ptr: inner,
             access: PhantomData
         }
     }

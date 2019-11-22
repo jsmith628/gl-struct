@@ -31,5 +31,5 @@ map_fmt!(Display);
 
 
 impl<'a, T:?Sized, A:BufferAccess> Pointer for Map<'a,T,A> {
-    fn fmt(&self, f:&mut Formatter) -> Result { Pointer::fmt(&Map::as_ptr(self), f) }
+    fn fmt(&self, f:&mut Formatter) -> Result { Pointer::fmt(&self.ptr, f) }
 }

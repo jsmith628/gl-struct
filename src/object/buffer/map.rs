@@ -6,7 +6,7 @@ use std::slice::SliceIndex;
 use std::ops::{Deref, DerefMut, CoerceUnsized};
 
 pub struct Map<'a, T:?Sized, A:BufferAccess> {
-    ptr: *mut T,
+    pub(super) ptr: *mut T,
     offset: usize,
     id: GLuint,
     buf: PhantomData<&'a mut Buffer<T,A>>
@@ -60,9 +60,6 @@ impl<'a,T:?Sized,A:BufferAccess> Drop for Map<'a,T,A> {
 }
 
 impl<'a,T:?Sized,A:BufferAccess> Map<'a,T,A> {
-    pub fn as_ptr(this: &Self) -> *const T { this.ptr }
-    pub fn as_mut_ptr(this: &mut Self) -> *mut T { this.ptr }
-
     pub fn id(this: &Self) -> GLuint { this.id }
     pub fn size(this: &Self) -> usize { unsafe {size_of_val(&*this.ptr)} }
     pub fn align(this: &Self) -> usize { unsafe {align_of_val(&*this.ptr)} }
@@ -116,19 +113,18 @@ unsafe fn map_access<B:BufferAccess>() -> GLenum {
 
 impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
     unsafe fn map_raw<'a,B:BufferAccess>(&'a mut self) -> Map<'a,T,B> {
-        let mut ptr = BufPtr { rust_mut: self.ptr };
-
-        if gl::MapNamedBuffer::is_loaded() {
-            ptr.gl_mut = gl::MapNamedBuffer(self.id(), map_access::<B>());
-        } else {
-            let mut target = BufferTarget::CopyWriteBuffer.as_loc();
-            ptr.gl_mut = gl::MapBuffer(target.bind_buf(self).target_id(), map_access::<B>());
-        }
-
-        check_allignment(ptr.gl, self.align());
+        let ptr = self.ptr.swap_mut_ptr(
+            if gl::MapNamedBuffer::is_loaded() {
+                gl::MapNamedBuffer(self.id(), map_access::<B>())
+            } else {
+                let mut target = BufferTarget::CopyWriteBuffer.as_loc();
+                let binding = target.bind_buf(self);
+                gl::MapBuffer(binding.target_id(), map_access::<B>())
+            }
+        );
 
         Map {
-            ptr: ptr.rust_mut,
+            ptr: ptr,
             id: self.id(),
             offset: 0,
             buf: PhantomData
@@ -172,38 +168,35 @@ impl<T:?Sized, A:ReadAccess+WriteAccess+NonPersistentAccess> Buffer<T,A> {
 impl<'a,T:?Sized,A:BufferAccess> SliceMut<'a,T,A> {
     unsafe fn map_range_raw<'b,B:BufferAccess>(self) -> Map<'b,T,B> {
         let mut target = BufferTarget::CopyWriteBuffer.as_loc();
-        let mut ptr = BufPtr { rust_mut: self.ptr };
+        let ptr = self.ptr.swap_mut_ptr(
+            if
+                <B::Persistent as Bit>::VALUE ||
+                gl::MapBufferRange::is_loaded() ||
+                gl::MapNamedBufferRange::is_loaded()
+            {
+                let flags = map_range_flags::<B>();
+                if gl::MapNamedBufferRange::is_loaded() {
+                    gl::MapNamedBufferRange(
+                        self.id(), self.offset() as GLintptr, self.size() as GLsizeiptr, flags
+                    )
+                } else {
+                    gl::MapBufferRange(
+                        target.bind_slice_mut(&self).target_id(),
+                        self.offset() as GLintptr, self.size() as GLsizeiptr, flags
+                    )
+                }
 
-        if <B::Persistent as Bit>::VALUE || gl::MapBufferRange::is_loaded() || gl::MapNamedBufferRange::is_loaded() {
-
-            let flags = map_range_flags::<B>();
-            if gl::MapNamedBufferRange::is_loaded() {
-                ptr.gl_mut = gl::MapNamedBufferRange(
-                    self.id(), self.offset() as GLintptr, self.size() as GLsizeiptr, flags
-                );
             } else {
-                ptr.gl_mut = gl::MapBufferRange(
-                    target.bind_slice_mut(&self).target_id(),
-                    self.offset() as GLintptr, self.size() as GLsizeiptr, flags
-                );
-            }
-
-        } else {
-
-            ptr.gl_mut = {
                 if gl::MapNamedBuffer::is_loaded() {
                     gl::MapNamedBuffer(self.id(), map_access::<B>())
                 } else {
                     gl::MapBuffer(target.bind_slice_mut(&self).target_id(), map_access::<B>())
-                }
-            }.offset(self.offset() as isize);
-
-        }
-
-        check_allignment(ptr.gl, self.align());
+                }.offset(self.offset() as isize)
+            }
+        );
 
         Map {
-            ptr: &mut *ptr.rust_mut,
+            ptr: ptr,
             id: self.id(),
             offset: self.offset(),
             buf: PhantomData
@@ -272,7 +265,7 @@ impl<'a,T:?Sized,A:BufferAccess> Slice<'a,T,A> {
         if <B::Read as Bit>::VALUE {gl::MemoryBarrier(gl::CLIENT_MAPPED_BUFFER_BARRIER_BIT);}
 
         Map {
-            ptr: BufPtr{gl_mut: ptr.assume_init()}.rust_mut,
+            ptr: (&*this).ptr.swap_mut_ptr(ptr.assume_init()),
             id: (&*this).id(),
             offset: (&*this).offset(),
             buf: PhantomData

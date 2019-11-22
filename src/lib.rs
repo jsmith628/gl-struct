@@ -12,7 +12,6 @@
 #![feature(coerce_unsized)]
 #![feature(const_fn)]
 #![feature(maybe_uninit_ref)]
-#![feature(never_type)]
 #![feature(trait_alias)]
 #![feature(marker_trait_attr)]
 #![recursion_limit="32768"]
@@ -23,6 +22,7 @@ pub extern crate num_traits;
 #[cfg(feature = "glutin-context")] extern crate glutin;
 
 #[macro_use] extern crate bitflags;
+#[macro_use] extern crate derivative;
 
 use gl::types::*;
 use std::convert::TryFrom;

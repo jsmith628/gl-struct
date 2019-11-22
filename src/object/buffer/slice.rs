@@ -5,13 +5,13 @@ use std::slice::*;
 
 #[derive(Clone, Copy)]
 pub struct Slice<'a, T:?Sized, A:BufferAccess> {
-    ptr: *const T,
+    pub(super) ptr: BufPtr<T>,
     offset: usize,
     buf: PhantomData<&'a Buffer<T, A>>
 }
 
 pub struct SliceMut<'a, T:?Sized, A:BufferAccess> {
-    pub(super) ptr: *mut T,
+    pub(super) ptr: BufPtr<T>,
     offset: usize,
     buf: PhantomData<&'a mut Buffer<T, A>>
 }
@@ -45,16 +45,15 @@ impl<'a, T:?Sized, A:BufferAccess> From<&'a mut Buffer<T,A>> for SliceMut<'a,T,A
 }
 
 impl<'a,T:Sized,A:BufferAccess> Slice<'a,[T],A> {
-    #[inline] pub fn len(&self) -> usize {self.map_buf(|buf| buf.len())}
+    #[inline] pub fn len(&self) -> usize {self.ptr.len()}
 
+    #[inline]
     unsafe fn from_raw_parts(id:GLuint, len:usize, offset:usize) -> Self {
-        let mut slice = BufPtr { rust: from_raw_parts(NonNull::dangling().as_ptr(), len)};
-        slice.buf = id;
-        Slice{ptr:slice.rust, offset: offset, buf:PhantomData}
+        Slice{ptr: BufPtr::from_raw_parts(id, len), offset: offset, buf:PhantomData}
     }
 
     pub fn split_at(&self, mid:usize) -> (Slice<'a,[T],A>, Slice<'a,[T],A>) {
-        assert!(mid<=self.len(), "split midpoint larger than slice length");
+        assert!(mid<=self.len(), "Split midpoint larger than slice length");
         unsafe {
             (
                 Self::from_raw_parts(self.id(), mid, self.offset),
@@ -88,10 +87,10 @@ impl<'a,T:Sized,A:BufferAccess> Slice<'a,[T],A> {
             let dangling_slice = from_raw_parts(NonNull::dangling().as_ptr(), self.len());
             let indexed = &dangling_slice[i];
 
-            let offset = BufPtr{rust:indexed}.c.offset_from(dangling_slice.as_ptr() as *const u8);
+            let offset = (indexed as *const U as *const u8).offset_from(dangling_slice.as_ptr() as *const u8);
 
             Slice {
-                ptr: BufPtr{rust:indexed}.rust_mut,
+                ptr: BufPtr::new(self.id(), indexed as *const U as *mut U),
                 offset: self.offset + offset as usize,
                 buf: PhantomData
             }
@@ -152,21 +151,13 @@ impl<'a,T:Sized,A:BufferAccess> SliceMut<'a,[T],A> {
 impl<'a,T:?Sized,A:BufferAccess> Slice<'a,T,A> {
 
     #[inline]
-    fn map_buf<F:for<'b> FnOnce(&'b Buffer<T,A>)->U, U>(&self, f:F) -> U {
-        let buf = Buffer{ptr: self.ptr as *mut T, access:PhantomData};
-        let res = f(&buf);
-        forget(buf);
-        res
-    }
-
-    #[inline]
     unsafe fn into_mut(self) -> SliceMut<'a,T,A> {
-        SliceMut{ ptr:self.ptr as *mut T, offset:self.offset, buf:PhantomData }
+        SliceMut{ ptr:self.ptr, offset:self.offset, buf:PhantomData }
     }
 
-    #[inline] pub fn id(&self) -> GLuint {self.map_buf(|buf| buf.id())}
-    #[inline] pub fn size(&self) -> usize {self.map_buf(|buf| buf.size())}
-    #[inline] pub fn align(&self) -> usize {self.map_buf(|buf| buf.align())}
+    #[inline] pub fn id(&self) -> GLuint {self.ptr.id()}
+    #[inline] pub fn size(&self) -> usize {self.ptr.size()}
+    #[inline] pub fn align(&self) -> usize {self.ptr.align()}
     #[inline] pub fn offset(&self) -> usize {self.offset}
 
     #[inline] pub(super) unsafe fn _read_into_box(&self) -> Box<T> {
@@ -193,9 +184,9 @@ impl<'a,T:?Sized,A:BufferAccess> Slice<'a,T,A> {
 
 impl<'a,T:?Sized,A:BufferAccess> SliceMut<'a,T,A> {
 
-    #[inline] pub fn id(&self) -> GLuint {self.as_immut().id()}
-    #[inline] pub fn size(&self) -> usize {self.as_immut().size()}
-    #[inline] pub fn align(&self) -> usize {self.as_immut().align()}
+    #[inline] pub fn id(&self) -> GLuint {self.ptr.id()}
+    #[inline] pub fn size(&self) -> usize {self.ptr.size()}
+    #[inline] pub fn align(&self) -> usize {self.ptr.align()}
     #[inline] pub fn offset(&self) -> usize {self.offset}
 
     #[inline] pub unsafe fn get_subdata_raw(&self, data: *mut T) { self.as_immut().get_subdata_raw(data) }
@@ -250,17 +241,15 @@ impl<'a,T:GPUCopy+Sized,A:BufferAccess> SliceMut<'a,T,A> {
 
 impl<'a, T:?Sized, A:WriteAccess> SliceMut<'a,T,A> {
     pub unsafe fn subdata_raw(&mut self, data: *const T) {
+        let void = data as *const GLvoid;
+        let size = self.size().min(size_of_val(&*data)) as GLsizeiptr;
+
         if gl::NamedBufferSubData::is_loaded() {
-            gl::NamedBufferSubData(
-                self.id(), self.offset as GLintptr, self.size() as GLsizeiptr, BufPtr{rust:data}.gl
-            );
+            gl::NamedBufferSubData(self.id(), self.offset as GLintptr, size, void);
         } else {
             let mut target = BufferTarget::CopyWriteBuffer.as_loc();
             gl::BufferSubData(
-                target.bind_slice_mut(self).target_id(),
-                self.offset as GLintptr,
-                self.size() as GLsizeiptr,
-                BufPtr{rust:data}.gl
+                target.bind_slice_mut(self).target_id(), self.offset as GLintptr, size, void
             );
         }
 

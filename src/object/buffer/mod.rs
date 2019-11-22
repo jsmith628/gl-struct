@@ -36,23 +36,12 @@ mod pixel_transfer;
 mod attrib_array;
 
 pub type Buf<T,A> = Buffer<T,A>;
-pub type RawBuf = RawBuffer;
 pub type BufSlice<'a,T,A> = Slice<'a,T,A>;
 pub type BufSliceMut<'a,T,A> = SliceMut<'a,T,A>;
 pub type BufMap<'a,T,A> = Map<'a,T,A>;
 
-pub(self) union BufPtr<T:?Sized> {
-    gl: *const GLvoid,
-    gl_mut: *mut GLvoid,
-    c: *const u8,
-    c_mut: *mut u8,
-    rust: *const T,
-    rust_mut: *mut T,
-    buf: GLuint,
-}
-
 pub struct Buffer<T:?Sized, A:BufferAccess> {
-    ptr: *mut T,
+    ptr: BufPtr<T>,
     access: PhantomData<A>
 }
 
@@ -66,9 +55,9 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
     //Basic information methods
     //
 
-    #[inline] pub fn id(&self) -> GLuint { unsafe {BufPtr{rust_mut: self.ptr}.buf} }
-    #[inline] pub fn size(&self) -> usize { unsafe {size_of_val(&*self.ptr)} }
-    #[inline] pub fn align(&self) -> usize { unsafe {align_of_val(&*self.ptr)} }
+    #[inline] pub fn id(&self) -> GLuint { self.ptr.id() }
+    #[inline] pub fn size(&self) -> usize { self.ptr.size() }
+    #[inline] pub fn align(&self) -> usize { self.ptr.align() }
 
     #[inline] pub fn gl(&self) -> GL15 { unsafe { assume_supported::<GL15>() } }
 
@@ -112,7 +101,7 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
 use std::slice::SliceIndex;
 
 impl<T:Sized, A:BufferAccess> Buffer<[T],A> {
-    #[inline] pub fn len(&self) -> usize { unsafe {(&*self.ptr).len()} }
+    #[inline] pub fn len(&self) -> usize { self.ptr.len() }
 
     #[inline] pub fn split_at(&self, mid:usize) -> (Slice<[T],A>, Slice<[T],A>) { self.as_slice().split_at(mid) }
     #[inline] pub fn split_at_mut(&mut self, mid:usize) -> (SliceMut<[T],A>, SliceMut<[T],A>) {
@@ -161,21 +150,20 @@ pub(self) fn map_dealloc<T:?Sized, U, F:FnOnce(*mut T)->U>(data: Box<T>, f:F) ->
     }
 }
 
-pub(self) fn map_alloc<T:?Sized, F:FnOnce(*mut T)>(meta: *const T, f:F) -> Box<T> {
+pub(self) fn map_alloc<T:?Sized, F:FnOnce(*mut T)>(buf: BufPtr<T>, f:F) -> Box<T> {
     unsafe {
         //Manually allocate a pointer on the head that we will store the data in
-        let data = Global.alloc(::std::alloc::Layout::for_value(&*meta)).unwrap().as_ptr();
+        let data = Global.alloc(Layout::from_size_align_unchecked(buf.size(), buf.align())).unwrap().as_ptr();
 
         //next, construct a *mut T pointer from the u8 pointer we just allocated using the metadata
         //stored in this buf
-        let mut ptr = BufPtr{ rust: meta };
-        ptr.c_mut = data;
+        let ptr = buf.swap_mut_ptr_unchecked(data as *mut GLvoid);
 
         //next, run the thing on the pointer
-        f(ptr.rust_mut);
+        f(ptr);
 
         //finally, make and return a Box to own the heap data
-        Box::from_raw(ptr.rust_mut)
+        Box::from_raw(ptr)
     }
 }
 
@@ -231,25 +219,21 @@ impl<T:?Sized+GPUCopy,A:BufferAccess> Clone for Buffer<T,A> {
                 impl<U:?Sized,B:BufferAccess> Mirror for Buffer<U,B> {
                     default unsafe fn _mirror(&self) -> Self {
                         let raw = RawBuffer::gen(&self.gl());
+                        let ptr = self.ptr.swap_ptr_unchecked(null());
 
-                        let mut ptr = BufPtr { rust_mut: self.ptr};
-                        ptr.c = null();
-
-                        Self::storage_raw(&assume_supported(), raw, ptr.rust, Some(self.storage_flags()))
+                        Self::storage_raw(&assume_supported(), raw, ptr, Some(self.storage_flags()))
                     }
                 }
 
                 impl<U:?Sized,B:NonPersistentAccess> Mirror for Buffer<U,B>  {
                     unsafe fn _mirror(&self) -> Self {
                         let raw = RawBuffer::gen(&self.gl());
-
-                        let mut ptr = BufPtr { rust_mut: self.ptr};
-                        ptr.c = null();
+                        let ptr = self.ptr.swap_ptr_unchecked(null());
 
                         if self.immutable_storage() {
-                            Self::storage_raw(&assume_supported(), raw, ptr.rust, Some(self.storage_flags()))
+                            Self::storage_raw(&assume_supported(), raw, ptr, Some(self.storage_flags()))
                         } else {
-                            Self::data_raw(raw, ptr.rust, Some(self.usage()))
+                            Self::data_raw(raw, ptr, Some(self.usage()))
                         }
                     }
                 }
@@ -270,7 +254,7 @@ impl<T:?Sized, A:BufferAccess> Drop for Buffer<T,A> {
         unsafe {
             //if the data needs to be dropped, read the data into a box so
             //that the box's destructor can run the object's destructor
-            if (&*self.ptr).needs_drop_val() {
+            if self.ptr.needs_drop() {
                 drop(self._read_into_box());
             }
 
