@@ -171,7 +171,7 @@ impl<V:Supports<GL43>+Supports<GL20>> GLState<V> {
             let mut boxed: Box<Arc<Mutex<dyn FnMut(DebugMessage)+Send+Sync+'static>>> =
                 Box::new(Arc::new(Mutex::new(callback)));
             gl::DebugMessageCallback(
-                debug_callback_async,
+                Some(debug_callback_async),
                 &mut *boxed as *mut Arc<Mutex<dyn FnMut(DebugMessage)+Send+Sync+'static>> as *mut GLvoid
             );
             self.debug_callback = DebugCallback::Asynchronous(boxed);
@@ -184,7 +184,7 @@ impl<V:Supports<GL43>+Supports<GL20>> GLState<V> {
             let mut boxed: Box<Box<dyn FnMut(DebugMessage)+'static>> = Box::new(Box::new(callback));
             self.enable_debug_output_synchronous();
             gl::DebugMessageCallback(
-                debug_callback_sync,
+                Some(debug_callback_sync),
                 &mut *boxed as *mut Box<dyn FnMut(DebugMessage)+'static> as *mut GLvoid
             );
             self.debug_callback = DebugCallback::Synchronous(boxed);
