@@ -62,36 +62,13 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
     #[inline] pub fn align(&self) -> usize { self.ptr.align() }
 
     //
-    //Wrappers for glGetParameteriv
+    //Wrappers for glGetBufferParameter*
     //
 
-    unsafe fn get_parameter_iv(&self, value:GLenum) -> GLint {
-        let mut dest = MaybeUninit::uninit();
-        if gl::GetNamedBufferParameteriv::is_loaded() {
-            gl::GetNamedBufferParameteriv(self.id(), value, dest.as_mut_ptr());
-        } else {
-            BufferTarget::CopyReadBuffer.as_loc().map_bind(self,
-                |binding| gl::GetBufferParameteriv(binding.target_id(), value, dest.as_mut_ptr())
-            );
-        }
-        dest.assume_init()
-    }
-
-    #[inline] pub fn immutable_storage(&self) -> bool {
-        unsafe {self.get_parameter_iv(gl::BUFFER_IMMUTABLE_STORAGE) != 0}
-    }
-
-    #[inline] pub fn storage_flags(&self) -> StorageFlags {
-        unsafe {StorageFlags::from_bits(self.get_parameter_iv(gl::BUFFER_STORAGE_FLAGS) as GLbitfield).unwrap()}
-    }
-
-    #[inline] pub fn usage(&self) -> BufferUsage {
-        unsafe {(self.get_parameter_iv(gl::BUFFER_USAGE) as GLenum).try_into().unwrap()}
-    }
-
-    #[inline] pub fn creation_flags(&self) -> BufferCreationFlags {
-        BufferCreationFlags(self.usage(), self.storage_flags())
-    }
+    #[inline] pub fn immutable_storage(&self) -> bool { self.ptr.immutable_storage() }
+    #[inline] pub fn storage_flags(&self) -> StorageFlags { self.ptr.storage_flags() }
+    #[inline] pub fn usage(&self) -> BufferUsage { self.ptr.usage() }
+    #[inline] pub fn creation_flags(&self) -> BufferCreationFlags { self.ptr.creation_flags() }
 
 }
 

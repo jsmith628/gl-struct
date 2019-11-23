@@ -121,6 +121,50 @@ impl<T:?Sized> BufPtr<T> {
         union.rust_mut
     }
 
+    unsafe fn get_parameter_iv(&self, value:GLenum) -> GLint {
+        let mut dest = MaybeUninit::uninit();
+        if gl::GetNamedBufferParameteriv::is_loaded() {
+            gl::GetNamedBufferParameteriv(self.id(), value, dest.as_mut_ptr());
+        } else {
+            BufferTarget::CopyReadBuffer.as_loc().map_bind(self,
+                |binding| gl::GetBufferParameteriv(binding.target_id(), value, dest.as_mut_ptr())
+            );
+        }
+        dest.assume_init()
+    }
+
+    unsafe fn get_parameter_i64v(&self, value:GLenum) -> GLint64 {
+        let mut dest = MaybeUninit::uninit();
+        if gl::GetNamedBufferParameteri64v::is_loaded() {
+            gl::GetNamedBufferParameteri64v(self.id(), value, dest.as_mut_ptr());
+        } else {
+            BufferTarget::CopyReadBuffer.as_loc().map_bind(self,
+                |binding| gl::GetBufferParameteri64v(binding.target_id(), value, dest.as_mut_ptr())
+            );
+        }
+        dest.assume_init()
+    }
+
+    pub fn buffer_size(&self) -> usize {
+        unsafe {self.get_parameter_i64v(gl::BUFFER_SIZE) as usize}
+    }
+
+    pub fn immutable_storage(&self) -> bool {
+        unsafe {self.get_parameter_iv(gl::BUFFER_IMMUTABLE_STORAGE) != 0}
+    }
+
+    pub fn storage_flags(&self) -> StorageFlags {
+        unsafe {StorageFlags::from_bits(self.get_parameter_iv(gl::BUFFER_STORAGE_FLAGS) as GLbitfield).unwrap()}
+    }
+
+    pub fn usage(&self) -> BufferUsage {
+        unsafe {(self.get_parameter_iv(gl::BUFFER_USAGE) as GLenum).try_into().unwrap()}
+    }
+
+    pub fn creation_flags(&self) -> BufferCreationFlags {
+        BufferCreationFlags(self.usage(), self.storage_flags())
+    }
+
 }
 
 impl<T> BufPtr<[T]> {
