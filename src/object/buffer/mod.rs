@@ -5,7 +5,7 @@ use crate::gl;
 
 use std::alloc::{Global, Alloc, Layout};
 use std::marker::{PhantomData, Unsize};
-use std::slice::from_raw_parts;
+use std::slice::{from_raw_parts, SliceIndex};
 use std::ops::CoerceUnsized;
 use std::convert::TryInto;
 use std::ptr::*;
@@ -70,13 +70,39 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
     #[inline] pub fn usage(&self) -> BufferUsage { self.ptr.usage() }
     #[inline] pub fn creation_flags(&self) -> BufferCreationFlags { self.ptr.creation_flags() }
 
+    //
+    //Slice creation
+    //
+
+    #[inline] pub fn as_slice(&self) -> Slice<T,A> {Slice::from(self)}
+    #[inline] pub fn as_slice_mut(&mut self) -> SliceMut<T,A> {SliceMut::from(self)}
+
+
+    //
+    //Reading a buffer into a box
+    //
+
+    ///deallocates the buffer data without running the data's destructor
+    #[inline] unsafe fn forget_data(self) {gl::DeleteBuffers(1, &self.id()); forget(self);}
+
+    #[inline] unsafe fn _read_into_box(&self) -> Box<T> {
+        map_alloc(self.ptr, |ptr| self.as_slice().get_subdata_raw(ptr))
+    }
+
+    pub fn into_box(self) -> Box<T> {
+        unsafe {
+            //read the data into a box
+            let data = self._read_into_box();
+
+            //next, delete the buffer and forget the handle without running the object destructor
+            self.forget_data();
+
+            //finally, return the box
+            return data;
+        }
+    }
+
 }
-
-//
-//Methods for arrays
-//
-
-use std::slice::SliceIndex;
 
 impl<T:Sized, A:BufferAccess> Buffer<[T],A> {
     #[inline] pub fn len(&self) -> usize { self.ptr.len() }
@@ -103,9 +129,30 @@ impl<T:Sized, A:BufferAccess> Buffer<[T],A> {
 
 }
 
-impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
-    #[inline] pub fn as_slice(&self) -> Slice<T,A> {Slice::from(self)}
-    #[inline] pub fn as_slice_mut(&mut self) -> SliceMut<T,A> {SliceMut::from(self)}
+impl<T:Sized, A:BufferAccess> Buffer<T,A> {
+
+    //
+    //Read into a sized stack value
+    //
+
+    unsafe fn _read(&self) -> T {
+        let mut data = MaybeUninit::uninit();
+        self.as_slice().get_subdata_raw(data.get_mut() as *mut T);
+        data.assume_init()
+    }
+
+    pub fn into_inner(self) -> T {
+        unsafe {
+            //read the data
+            let data = self._read();
+
+            //next, delete the buffer and forget the handle without running the object destructor
+            self.forget_data();
+
+            //return the data
+            data
+        }
+    }
 }
 
 //
@@ -142,55 +189,6 @@ pub(self) fn map_alloc<T:?Sized, F:FnOnce(*mut T)>(buf: BufPtr<T>, f:F) -> Box<T
 
         //finally, make and return a Box to own the heap data
         Box::from_raw(ptr)
-    }
-}
-
-//
-//Reading a buffer into its interior value
-//
-
-impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
-
-    ///deallocates the buffer data without running the data's destructor
-    #[inline] unsafe fn forget_data(self) {gl::DeleteBuffers(1, &self.id()); forget(self);}
-
-    #[inline] unsafe fn _read_into_box(&self) -> Box<T> {
-        map_alloc(self.ptr, |ptr| self.as_slice().get_subdata_raw(ptr))
-    }
-
-    pub fn into_box(self) -> Box<T> {
-        unsafe {
-            //read the data into a box
-            let data = self._read_into_box();
-
-            //next, delete the buffer and forget the handle without running the object destructor
-            self.forget_data();
-
-            //finally, return the box
-            return data;
-        }
-    }
-}
-
-impl<T:Sized, A:BufferAccess> Buffer<T,A> {
-
-    unsafe fn _read(&self) -> T {
-        let mut data = MaybeUninit::uninit();
-        self.as_slice().get_subdata_raw(data.get_mut() as *mut T);
-        data.assume_init()
-    }
-
-    pub fn into_inner(self) -> T {
-        unsafe {
-            //read the data
-            let data = self._read();
-
-            //next, delete the buffer and forget the handle without running the object destructor
-            self.forget_data();
-
-            //return the data
-            data
-        }
     }
 }
 

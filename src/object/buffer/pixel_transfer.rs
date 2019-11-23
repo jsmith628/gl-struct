@@ -1,4 +1,4 @@
-use super::*;
+// use super::*;
 // use format::{ClientFormat,PixelType,PixelData,PixelDataMut,PixelRowAlignment};
 
 // unsafe impl<'a,F:ClientFormat,T:PixelType<F>,A:BufferAccess> PixelData<F> for Slice<'a,[T],A> {
