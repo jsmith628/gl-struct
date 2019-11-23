@@ -40,26 +40,26 @@ pub type BufSlice<'a,T,A> = Slice<'a,T,A>;
 pub type BufSliceMut<'a,T,A> = SliceMut<'a,T,A>;
 pub type BufMap<'a,T,A> = Map<'a,T,A>;
 
-pub struct Buffer<T:?Sized, A:BufferAccess> {
+pub struct Buffer<T:?Sized, A> {
     ptr: BufPtr<T>,
     access: PhantomData<A>
 }
 
 impl<U:?Sized, T:?Sized+Unsize<U>, A:BufferAccess> CoerceUnsized<Buffer<U,A>> for Buffer<T,A> {}
-impl<T:?Sized, A:BufferAccess> !Sync for Buffer<T,A> {}
-impl<T:?Sized, A:BufferAccess> !Send for Buffer<T,A> {}
+
+impl<T:?Sized, A> Buffer<T,A> {
+    #[inline] pub fn id(&self) -> GLuint { self.ptr.id() }
+    #[inline] pub fn gl(&self) -> GL15 { unsafe { assume_supported::<GL15>() } }
+}
 
 impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
 
     //
-    //Basic information methods
+    //basic memory information
     //
 
-    #[inline] pub fn id(&self) -> GLuint { self.ptr.id() }
     #[inline] pub fn size(&self) -> usize { self.ptr.size() }
     #[inline] pub fn align(&self) -> usize { self.ptr.align() }
-
-    #[inline] pub fn gl(&self) -> GL15 { unsafe { assume_supported::<GL15>() } }
 
     //
     //Wrappers for glGetParameteriv
@@ -174,7 +174,7 @@ pub(self) fn map_alloc<T:?Sized, F:FnOnce(*mut T)>(buf: BufPtr<T>, f:F) -> Box<T
 impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
 
     ///deallocates the buffer data without running the data's destructor
-    #[inline] unsafe fn delete_data(self) {gl::DeleteBuffers(1, &self.id()); forget(self);}
+    #[inline] unsafe fn forget_data(self) {gl::DeleteBuffers(1, &self.id()); forget(self);}
 
     #[inline] unsafe fn _read_into_box(&self) -> Box<T> {
         map_alloc(self.ptr, |ptr| self.as_slice().get_subdata_raw(ptr))
@@ -186,7 +186,7 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
             let data = self._read_into_box();
 
             //next, delete the buffer and forget the handle without running the object destructor
-            self.delete_data();
+            self.forget_data();
 
             //finally, return the box
             return data;
@@ -195,17 +195,23 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
 }
 
 impl<T:Sized, A:BufferAccess> Buffer<T,A> {
+
+    unsafe fn _read(&self) -> T {
+        let mut data = MaybeUninit::uninit();
+        self.as_slice().get_subdata_raw(data.get_mut() as *mut T);
+        data.assume_init()
+    }
+
     pub fn into_inner(self) -> T {
         unsafe {
             //read the data
-            let mut data = MaybeUninit::uninit();
-            self.as_slice().get_subdata_raw(data.get_mut() as *mut T);
+            let data = self._read();
 
             //next, delete the buffer and forget the handle without running the object destructor
-            self.delete_data();
+            self.forget_data();
 
             //return the data
-            data.assume_init()
+            data
         }
     }
 }
@@ -249,17 +255,29 @@ impl<T:?Sized+GPUCopy,A:BufferAccess> Clone for Buffer<T,A> {
     }
 }
 
-impl<T:?Sized, A:BufferAccess> Drop for Buffer<T,A> {
-    fn drop(&mut self) {
-        unsafe {
-            //if the data needs to be dropped, read the data into a box so
-            //that the box's destructor can run the object's destructor
-            if self.ptr.needs_drop() {
-                drop(self._read_into_box());
-            }
+impl<T:?Sized, A> Drop for Buffer<T,A> {
+    default fn drop(&mut self) {
 
-            //and finally, delete the buffer
-            gl::DeleteBuffers(1, &self.id());
+        trait _Drop { unsafe fn _drop(&mut self); }
+
+        impl<T:?Sized, A> _Drop for Buffer<T, A> { default unsafe fn _drop(&mut self) {} }
+        impl<T:?Sized, A:BufferAccess> _Drop for Buffer<T, A> {
+            default unsafe fn _drop(&mut self) {
+                if self.ptr.needs_drop() { drop(self._read_into_box()); }
+            }
+        }
+
+        impl<T:Sized, A:BufferAccess> _Drop for Buffer<T, A> {
+            unsafe fn _drop(&mut self) { if self.ptr.needs_drop() { drop(self._read()); } }
+        }
+
+
+        unsafe {
+            //run the destructor on the stored data if necessary
+            self._drop();
+
+            //finally, delete the buffer
+            gl::DeleteBuffers(1, &self.ptr.id());
         }
 
     }
