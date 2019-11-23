@@ -35,11 +35,6 @@ mod fmt;
 mod pixel_transfer;
 mod attrib_array;
 
-pub type Buf<T,A> = Buffer<T,A>;
-pub type BufSlice<'a,T,A> = Slice<'a,T,A>;
-pub type BufSliceMut<'a,T,A> = SliceMut<'a,T,A>;
-pub type BufMap<'a,T,A> = Map<'a,T,A>;
-
 pub struct Buffer<T:?Sized, A> {
     ptr: BufPtr<T>,
     access: PhantomData<A>
