@@ -24,9 +24,10 @@ macro_rules! target {
             impl GLEnum for $name {}
 
             unsafe impl TextureTarget for $name { type GL = $GL; type Dim = $dim; }
-            unsafe impl Target<RawTex<Self>> for $name {
-                #[inline] fn target_id(&self) -> GLenum {(*self).into()}
-                #[inline] unsafe fn bind(self, id: GLuint) { gl::BindTexture(self.into(), id); }
+            impl Target<RawTex<Self>> for $name {
+                #[inline] fn target_id(self) -> GLenum { self.into() }
+                #[inline] unsafe fn bind(self, tex:&RawTex<Self>) { gl::BindTexture(self.into(), tex.id()); }
+                #[inline] unsafe fn unbind(self) { gl::BindTexture(self.into(), 0); }
             }
         )*
     }
@@ -37,7 +38,7 @@ pub unsafe trait TextureTarget: GLEnum + Default + Target<RawTex<Self>> {
     type Dim: TexDim;
 
     #[inline] fn glenum() -> GLenum {Self::default().into()}
-    #[inline] unsafe fn binding_location() -> BindingLocation<RawTex<Self>> {Self::default().as_loc()}
+    #[inline] unsafe fn binding_location() -> BindingLocation<RawTex<Self>,Self> {Self::default().as_loc()}
 
     #[inline]
     fn multisampled() -> bool {

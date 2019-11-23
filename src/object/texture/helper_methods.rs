@@ -46,8 +46,7 @@ pub unsafe fn tex_image<T:Texture>(
     tex: GLuint, level: GLuint, dim: T::Dim, fmt:GLenum, ty:GLenum, data:*const GLvoid
 ) {
     //bind the texture
-    let mut target = T::Target::binding_location();
-    let binding = target.bind_unchecked(tex);
+    gl::BindTexture(T::Target::glenum(), tex);
 
     //convert and rename params
     let int_fmt = T::InternalFormat::glenum() as GLint;
@@ -56,11 +55,13 @@ pub unsafe fn tex_image<T:Texture>(
 
     //now, select the right function based on the dimensionality of the texture
     match coords {
-        1 => gl::TexImage1D(binding.target_id(), level as GLint, int_fmt, w, 0, fmt, ty, data),
-        2 => gl::TexImage2D(binding.target_id(), level as GLint, int_fmt, w, h, 0, fmt, ty, data),
-        3 => gl::TexImage3D(binding.target_id(), level as GLint, int_fmt, w, h, d, 0, fmt, ty, data),
+        1 => gl::TexImage1D(T::Target::glenum(), level as GLint, int_fmt, w, 0, fmt, ty, data),
+        2 => gl::TexImage2D(T::Target::glenum(), level as GLint, int_fmt, w, h, 0, fmt, ty, data),
+        3 => gl::TexImage3D(T::Target::glenum(), level as GLint, int_fmt, w, h, d, 0, fmt, ty, data),
         _ => panic!("{}D Textures not currently supported", coords)
     }
+
+    gl::BindTexture(T::Target::glenum(), 0);
 }
 
 pub unsafe fn tex_image_multisample<T:Texture>(

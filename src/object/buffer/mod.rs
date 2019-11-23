@@ -70,8 +70,9 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
         if gl::GetNamedBufferParameteriv::is_loaded() {
             gl::GetNamedBufferParameteriv(self.id(), value, dest.as_mut_ptr());
         } else {
-            let mut target = BufferTarget::CopyReadBuffer.as_loc();
-            gl::GetBufferParameteriv(target.bind_buf(self).target_id(), value, dest.as_mut_ptr());
+            BufferTarget::CopyReadBuffer.as_loc().map_bind(self,
+                |binding| gl::GetBufferParameteriv(binding.target_id(), value, dest.as_mut_ptr())
+            );
         }
         dest.assume_init()
     }

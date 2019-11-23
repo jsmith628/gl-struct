@@ -1,6 +1,8 @@
 use super::*;
 use context::*;
 
+use std::marker::PhantomData;
+
 macro_rules! gl_resource{
 
     (@obj gen=$gl:ident) => {};
@@ -67,15 +69,17 @@ macro_rules! gl_resource{
     (@bind $ty:ident {$($tt:tt)*} target=$Target:tt $($rest:tt)*) => { gl_resource!(@bind $ty {target=$Target $($tt)*} $($rest)*); };
     (@bind $ty:ident {$($tt:tt)*} $param:ident=$gl:ident $($rest:tt)*) => { gl_resource!(@bind $ty {$($tt)*} $($rest)*); };
     (@bind $ty:ident {target=$Target:ident bind=$gl:ident}) => {
-        unsafe impl Target<$ty> for $Target {
-            #[inline] fn target_id(&self) -> GLenum {(*self).into()}
-            #[inline] unsafe fn bind(self, id:GLuint) {gl::$gl(self.into(), id)}
+        impl Target<$ty> for $Target {
+            #[inline] fn target_id(self) -> GLenum {self.into()}
+            #[inline] unsafe fn bind(self, obj:&$ty) {gl::$gl(self.into(), $crate::object::Resource::id(obj))}
+            #[inline] unsafe fn unbind(self) {gl::$gl(self.into(), 0)}
         }
     };
     (@bind $ty:ident {target=!}) => {
-        unsafe impl Target<$ty> for ! {
-            #[inline] fn target_id(&self) -> GLenum {*self}
-            #[inline] unsafe fn bind(self, _:GLuint) {self}
+        impl Target<$ty> for ! {
+            #[inline] fn target_id(self) -> GLenum {self}
+            #[inline] unsafe fn bind(self, _:&$ty) {self}
+            #[inline] unsafe fn unbind(self) {self}
         }
     };
 
@@ -324,28 +328,12 @@ pub unsafe trait Resource: Object<Raw=GLuint> {
 
 }
 
-///
-///An OpenGL Enum that corresponds to target arguments in the glBind* functions
-///
-///# Unsafety
-///
-///It is up to the implementor to make sure that the possible enum values are valid arguments to
-///whichever glBind* function is being called
-///
-pub unsafe trait Target<Resource: object::Resource<BindingTarget=Self>>: Copy + Eq + Hash + Debug + Display {
+pub trait Target<R>: Copy + Eq + Hash + Debug + Display {
 
-    fn target_id(&self) -> GLenum;
+    fn target_id(self) -> GLenum;
 
-    ///
-    ///Binds the given resource id to this target
-    ///
-    ///# Unsafety
-    ///
-    ///The caller must make sure that the id corresponds to a valid resource id of a type valid for
-    ///this particlular glBind* function. Furthermore, the caller must guarrantee that this target is
-    ///valid for the configuration of the resource
-    ///
-    unsafe fn bind(self, id: GLuint);
+    unsafe fn bind(self, obj: &R);
+    unsafe fn unbind(self);
 
     ///
     ///Constructs a new binding location with the given target
@@ -353,37 +341,35 @@ pub unsafe trait Target<Resource: object::Resource<BindingTarget=Self>>: Copy + 
     ///# Unsafety
     ///It is up to the caller to guarrantee that this is the only location with the given
     ///[binding target](Target) at the given time
-    #[inline]
-    unsafe fn as_loc(self) -> BindingLocation<Resource> {
-        BindingLocation(self)
-    }
+    #[inline] unsafe fn as_loc(self) -> BindingLocation<R,Self> { BindingLocation(self, PhantomData) }
 }
 
 ///An object that owns a [Target] to a glBind* function for a resource `R`
 #[derive(PartialEq, Eq, Hash)]
-pub struct BindingLocation<R:Resource>(pub(crate) R::BindingTarget);
+pub struct BindingLocation<R,T:Target<R>>(pub(crate) T, PhantomData<R>);
 
 ///An object that owns a binding of a [Resource] to a particular [BindingLocation] and unbinds it when leaving scope
-pub struct Binding<'a,R:Resource>(pub(crate) &'a BindingLocation<R>, pub(crate) GLuint);
+pub struct Binding<'a,R,T:Target<R>>(pub(crate) &'a BindingLocation<R,T>, pub(crate) &'a R);
 
-impl<'a,R:Resource> Binding<'a,R> {
-    #[inline] pub fn target(&self) -> R::BindingTarget { self.0.target() }
+impl<'a,R,T:Target<R>> Binding<'a,R,T> {
+    #[inline] pub fn target(&self) -> T { self.0.target() }
+    #[inline] pub fn resource(&self) -> &R { self.1 }
     #[inline] pub fn target_id(&self) -> GLenum { self.0.target_id() }
-    #[inline] pub fn resource_id(&self) -> GLuint { self.1 }
 }
 
-impl<'a,R:Resource> !Sync for Binding<'a,R> {}
-impl<'a,R:Resource> !Send for Binding<'a,R> {}
-impl<'a,R:Resource> Drop for Binding<'a,R> {
-    #[inline] fn drop(&mut self) { unsafe { self.target().bind(0) } }
+impl<'a,R,T:Target<R>> !Sync for Binding<'a,R,T> {}
+impl<'a,R,T:Target<R>> !Send for Binding<'a,R,T> {}
+impl<'a,R,T:Target<R>> Drop for Binding<'a,R,T> {
+    #[inline] fn drop(&mut self) { unsafe { self.target().unbind() } }
 }
 
-impl<R:Resource> !Sync for BindingLocation<R> {}
-impl<R:Resource> !Send for BindingLocation<R> {}
-impl<R:Resource> BindingLocation<R> {
+impl<R,T:Target<R>> !Sync for BindingLocation<R,T> {}
+impl<R,T:Target<R>> !Send for BindingLocation<R,T> {}
+
+impl<R,T:Target<R>> BindingLocation<R,T> {
 
     ///The [target](Target) of this location
-    pub fn target(&self) -> R::BindingTarget { self.0 }
+    pub fn target(&self) -> T { self.0 }
 
     ///The the [GLenum] corresponding to this location's target
     pub fn target_id(&self) -> GLenum { self.0.target_id() }
@@ -394,45 +380,9 @@ impl<R:Resource> BindingLocation<R> {
     ///# Unsafety
     ///It is up to the caller to guarrantee that this is the only location with the given
     ///[binding target](Target) at the given time
-    #[inline]
-    pub unsafe fn new(target: R::BindingTarget) -> Self {BindingLocation(target)}
-
-    ///
-    ///A wrapper of glBind* for `R` using a raw resource id
-    ///
-    ///# Safety
-    ///
-    ///Do note that This method is actually _safe_. While it certainly appears as if it wouldn't be,
-    ///all possible unsafe sources are already accounted for:
-    /// * We already know that this is the only [BindingLocation] for its [Target] as its construction
-    ///   is marked as unsafe
-    /// * This does not violate memory safety as any object modification must happen from an unsafe
-    ///   OpenGL call
-    /// * Even if the `id` is not a valid resource name for `R`, we can easily check with
-    ///   a glIs* function
-    /// * While not really unsafe _per se_, the resource will never remain bound outside its lifetime
-    ///   due to the implementation of [Drop] on [Binding]
-    /// * The buffer cannot be deleted before being unbound without running unsafe fuctions
-    ///
-    ///# Errors
-    ///
-    ///A [GLError::InvalidOperation] is returned if `id` is not a name of a resource of type `R`
     ///
     #[inline]
-    pub fn bind_raw<'a>(&'a mut self, id: GLuint) -> Result<Binding<'a,R>, GLError> {
-        if R::is(id) {
-            unsafe { self.target().bind(id); }
-            Ok(Binding(self, id))
-        } else {
-            Err(GLError::InvalidOperation("Cannot bind resource to the given target".to_string()))
-        }
-    }
-
-    #[inline]
-    pub unsafe fn bind_unchecked<'a>(&'a mut self, id: GLuint) -> Binding<'a,R> {
-        self.target().bind(id);
-        Binding(self, id)
-    }
+    pub unsafe fn new(target: T) -> Self {BindingLocation(target, PhantomData)}
 
     ///
     ///A wrapper of glBind* for `R` using an owned resource
@@ -441,9 +391,16 @@ impl<R:Resource> BindingLocation<R> {
     ///id. Furthermore, for the same reasons as [bind_raw](BindingLocation::bind_raw), this method is actually safe
     ///
     #[inline]
-    pub fn bind<'a>(&'a mut self, resource: &'a R) -> Binding<'a,R> {
-        unsafe { self.target().bind(resource.id()); }
-        Binding(self, resource.id())
+    pub fn bind<'a>(&'a mut self, resource: &'a R) -> Binding<'a,R,T> {
+        unsafe { self.target().bind(resource); }
+        Binding(self, resource)
     }
+
+    #[inline]
+    pub fn map_bind<'a, U, F:FnOnce(Binding<'a,R,T>)->U>(&'a mut self, resource: &'a R, f:F) -> U {
+        f(self.bind(resource))
+    }
+
+
 
 }

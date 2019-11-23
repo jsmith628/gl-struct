@@ -30,6 +30,31 @@ glenum!{
     }
 }
 
+impl<T:?Sized,A> Target<Buffer<T,A>> for BufferTarget {
+    fn target_id(self) -> GLenum { self as GLenum }
+    unsafe fn bind(self, buf:&Buffer<T,A>) { gl::BindBuffer(self.into(), buf.id()) }
+    unsafe fn unbind(self) { gl::BindBuffer(self.into(), 0) }
+}
+
+impl<T:?Sized> Target<BufPtr<T>> for BufferTarget {
+    fn target_id(self) -> GLenum { self as GLenum }
+    unsafe fn bind(self, buf:&BufPtr<T>) { gl::BindBuffer(self.into(), buf.id()) }
+    unsafe fn unbind(self) { gl::BindBuffer(self.into(), 0) }
+}
+
+impl<'a,T:?Sized,A:BufferAccess> Target<Slice<'a,T,A>> for BufferTarget {
+    fn target_id(self) -> GLenum { self as GLenum }
+    unsafe fn bind(self, buf:&Slice<T,A>) { gl::BindBuffer(self.into(), buf.id()) }
+    unsafe fn unbind(self) { gl::BindBuffer(self.into(), 0) }
+}
+
+impl<'a,T:?Sized,A:BufferAccess> Target<SliceMut<'a,T,A>> for BufferTarget {
+    fn target_id(self) -> GLenum { self as GLenum }
+    unsafe fn bind(self, buf:&SliceMut<T,A>) { gl::BindBuffer(self.into(), buf.id()) }
+    unsafe fn unbind(self) { gl::BindBuffer(self.into(), 0) }
+}
+
+
 
 union BufUnion<T:?Sized> {
     gl: *const GLvoid,
@@ -123,27 +148,6 @@ gl_resource! {
 
 impl !Send for RawBuffer {}
 impl !Sync for RawBuffer {}
-
-impl BindingLocation<RawBuffer> {
-    #[inline]
-    pub fn bind_buf<'a,T:?Sized,A:BufferAccess>(&'a mut self, buf: &'a Buffer<T,A>) -> Binding<'a,RawBuffer> {
-        unsafe { self.target().bind(buf.id()); }
-        Binding(self, buf.id())
-    }
-
-    #[inline]
-    pub fn bind_slice<'a,T:?Sized,A:BufferAccess>(&'a mut self, buf: &'a Slice<'a,T,A>) -> Binding<'a,RawBuffer> {
-        unsafe { self.target().bind(buf.id()); }
-        Binding(self, buf.id())
-    }
-
-    #[inline]
-    pub fn bind_slice_mut<'a,T:?Sized,A:BufferAccess>(&'a mut self, buf: &'a SliceMut<'a,T,A>) -> Binding<'a,RawBuffer> {
-        unsafe { self.target().bind(buf.id()); }
-        Binding(self, buf.id())
-    }
-}
-
 
 ///
 ///Any type that can be cloned within a [buffer](super::Buffer) by simple byte-wise copies of its data.

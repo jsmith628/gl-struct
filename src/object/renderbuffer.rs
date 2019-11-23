@@ -36,7 +36,8 @@ gl_resource!{
     }
 }
 
-static mut TARGET: BindingLocation<RawRenderbuffer> = BindingLocation(RenderbufferTarget::Renderbuffer);
+static mut TARGET: BindingLocation<RawRenderbuffer,RenderbufferTarget> =
+    BindingLocation(RenderbufferTarget::Renderbuffer, PhantomData);
 
 pub struct Renderbuffer<T:InternalFormat> {
     raw: RawRenderbuffer,

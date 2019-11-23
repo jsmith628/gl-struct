@@ -170,12 +170,13 @@ impl<'a,T:?Sized,A:BufferAccess> Slice<'a,T,A> {
                 self.id(), self.offset() as GLintptr, self.size() as GLintptr, data as *mut GLvoid
             );
         } else {
-            let mut target = BufferTarget::CopyReadBuffer.as_loc();
-            gl::GetBufferSubData(
-                target.bind_slice(self).target_id(),
-                self.offset() as GLintptr,
-                self.size() as GLintptr,
-                data as *mut GLvoid
+            BufferTarget::CopyReadBuffer.as_loc().map_bind(self, |b|
+                gl::GetBufferSubData(
+                    b.target_id(),
+                    self.offset() as GLintptr,
+                    self.size() as GLintptr,
+                    data as *mut GLvoid
+                )
             );
         }
     }
@@ -247,9 +248,8 @@ impl<'a, T:?Sized, A:WriteAccess> SliceMut<'a,T,A> {
         if gl::NamedBufferSubData::is_loaded() {
             gl::NamedBufferSubData(self.id(), self.offset as GLintptr, size, void);
         } else {
-            let mut target = BufferTarget::CopyWriteBuffer.as_loc();
-            gl::BufferSubData(
-                target.bind_slice_mut(self).target_id(), self.offset as GLintptr, size, void
+            BufferTarget::CopyWriteBuffer.as_loc().map_bind(self,
+                |b| gl::BufferSubData( b.target_id(), self.offset as GLintptr, size, void)
             );
         }
 
@@ -320,15 +320,15 @@ impl<'a,T:GPUCopy+?Sized,A:WriteAccess> SliceMut<'a,T,A> {
 
 impl<'a,T:?Sized,A:BufferAccess> Slice<'a,T,A> {
     pub unsafe fn copy_subdata_unchecked(&self, dest:&mut SliceMut<'a,T,A>) {
-        let mut t1 = BufferTarget::CopyReadBuffer.as_loc();
-        let mut t2 = BufferTarget::CopyWriteBuffer.as_loc();
-        gl::CopyBufferSubData(
-            t1.bind_slice(self).target_id(),
-            t2.bind_slice_mut(dest).target_id(),
-            self.offset as GLintptr,
-            dest.offset as GLintptr,
-            self.size() as GLsizeiptr
-        );
+        BufferTarget::CopyReadBuffer.as_loc().map_bind(self, |b1|
+            BufferTarget::CopyWriteBuffer.as_loc().map_bind(dest, |b2|
+                gl::CopyBufferSubData(
+                    b1.target_id(), b2.target_id(),
+                    self.offset as GLintptr, dest.offset as GLintptr,
+                    self.size() as GLsizeiptr
+                )
+            )
+        )
     }
 }
 
