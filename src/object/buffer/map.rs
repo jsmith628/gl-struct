@@ -262,6 +262,8 @@ impl<'a,T:?Sized,A:BufferAccess> Slice<'a,T,A> {
 
         }
 
+        //TODO: there needs to be a memory barrier and fenceSync to make sure all writes are done before
+        //the map is written to
         if <B::Read as Bit>::VALUE {gl::MemoryBarrier(gl::CLIENT_MAPPED_BUFFER_BARRIER_BIT);}
 
         Map {

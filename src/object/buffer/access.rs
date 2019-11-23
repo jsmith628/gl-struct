@@ -16,20 +16,16 @@ pub trait BufferAccess {
 }
 
 ///Any [BufferAccess] allowing readable mappings of Buffer contents
-pub trait ReadAccess: BufferAccess<Read=High> {}
-impl<A:BufferAccess<Read=High>> ReadAccess for A {}
+pub trait ReadAccess = BufferAccess<Read=High>;
 
 ///Any [BufferAccess] allowing client-side writes of Buffer contents
-pub trait WriteAccess: BufferAccess<Write=High> {}
-impl<A:BufferAccess<Write=High>> WriteAccess for A {}
+pub trait WriteAccess = BufferAccess<Write=High>;
 
 ///Any [BufferAccess] allowing persistent mapping
-pub trait PersistentAccess: BufferAccess<Persistent=High> {}
-impl<A:BufferAccess<Persistent=High>> PersistentAccess for A {}
+pub trait PersistentAccess = BufferAccess<Persistent=High>;
 
 ///Any [BufferAccess] that doesn't persistently map buffers
-pub trait NonPersistentAccess: BufferAccess<Persistent=Low> {}
-impl<A:BufferAccess<Persistent=Low>> NonPersistentAccess for A {}
+pub trait NonPersistentAccess = BufferAccess<Persistent=Low>;
 
 ///A [BufferAccess] allowing no client-side access
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
