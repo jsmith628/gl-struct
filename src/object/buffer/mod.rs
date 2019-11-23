@@ -200,22 +200,21 @@ impl<T:?Sized+GPUCopy,A:BufferAccess> Clone for Buffer<T,A> {
                 trait Mirror { unsafe fn _mirror(&self) -> Self; }
                 impl<U:?Sized,B:BufferAccess> Mirror for Buffer<U,B> {
                     default unsafe fn _mirror(&self) -> Self {
-                        let raw = RawBuffer::gen(&self.gl());
+                        let raw = UninitBuf::gen(&self.gl());
                         let ptr = self.ptr.swap_ptr_unchecked(null());
-
-                        Self::storage_raw(&assume_supported(), raw, ptr, Some(self.storage_flags()))
+                        raw.storage_raw(&assume_supported(), ptr, Some(self.storage_flags()))
                     }
                 }
 
                 impl<U:?Sized,B:NonPersistentAccess> Mirror for Buffer<U,B>  {
                     unsafe fn _mirror(&self) -> Self {
-                        let raw = RawBuffer::gen(&self.gl());
+                        let raw = UninitBuf::gen(&self.gl());
                         let ptr = self.ptr.swap_ptr_unchecked(null());
 
                         if self.immutable_storage() {
-                            Self::storage_raw(&assume_supported(), raw, ptr, Some(self.storage_flags()))
+                            raw.storage_raw(&assume_supported(), ptr, Some(self.storage_flags()))
                         } else {
-                            Self::data_raw(raw, ptr, Some(self.usage()))
+                            raw.data_raw(ptr, Some(self.usage()))
                         }
                     }
                 }

@@ -92,8 +92,8 @@ impl<T:?Sized> BufPtr<T> {
     #[inline] pub fn align(self) -> usize { unsafe {align_of_val(&*self.ptr)} }
     #[inline] pub fn needs_drop(self) -> bool { unsafe { (&*self.ptr).needs_drop_val() } }
 
-    #[inline] pub fn dangling(self) -> *const T { self.swap_ptr(NonNull::dangling().as_ptr()) }
-    #[inline] pub fn dangling_mut(self) -> *mut T { self.swap_mut_ptr(NonNull::dangling().as_ptr()) }
+    #[inline] pub fn dangling(self) -> *const T { self.swap_ptr_unchecked(NonNull::dangling().as_ptr()) }
+    #[inline] pub fn dangling_mut(self) -> *mut T { self.swap_mut_ptr_unchecked(NonNull::dangling().as_ptr()) }
 
     #[inline]
     pub fn swap_ptr(self, ptr: *const GLvoid) -> *const T {

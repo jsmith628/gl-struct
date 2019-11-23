@@ -1,20 +1,55 @@
 use super::*;
 
 
-//
-//Wrappers for glBufferStorage and glBufferData
-//(ie Buffer creation methods)
-//
+pub type UninitBuf = Buffer<(), !>;
 
-impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
+impl UninitBuf {
 
-    pub unsafe fn storage_raw(_gl: &GL44, raw: RawBuffer, data: *const T, hint:StorageHint) -> Self {
+    unsafe fn from_id(id:GLuint) -> Self { Buffer { ptr: BufPtr::new(id, null_mut()), access: PhantomData } }
 
-        //get the size of the object
-        let size = size_of_val(&*data);
+    pub fn gen(#[allow(unused_variables)] gl: &GL15) -> UninitBuf {
+        let mut id = MaybeUninit::uninit();
+        unsafe {
+            gl::GenBuffers(1, id.as_mut_ptr());
+            Self::from_id(id.assume_init())
+        }
+    }
 
+    pub fn gen_buffers(#[allow(unused_variables)] gl: &GL15, n:GLuint) -> Box<[UninitBuf]> {
+        if n==0 { return Box::new([]); }
+        let mut ids = Box::new_uninit_slice(n as usize);
+        unsafe {
+            gl::GenBuffers(n as GLsizei, ids[0].as_mut_ptr());
+            ids.into_iter().map(|id| Self::from_id(id.assume_init())).collect()
+        }
+    }
 
-        let inner = BufPtr::new(raw.id(), data as *mut T);
+    pub fn create(#[allow(unused_variables)] gl: &GL45) -> UninitBuf {
+        let mut id = MaybeUninit::uninit();
+        unsafe {
+            gl::CreateBuffers(1, id.as_mut_ptr());
+            Self::from_id(id.assume_init())
+        }
+    }
+
+    pub fn create_buffers(#[allow(unused_variables)] gl: &GL45, n:GLuint) -> Box<[UninitBuf]> {
+        if n==0 { return Box::new([]); }
+        let mut ids = Box::new_uninit_slice(n as usize);
+        unsafe {
+            gl::CreateBuffers(n as GLsizei, ids[0].as_mut_ptr());
+            ids.into_iter().map(|id| Self::from_id(id.assume_init())).collect()
+        }
+    }
+
+    pub unsafe fn storage_raw<T:?Sized,A:BufferAccess>(
+        self,
+        #[allow(unused_variables)] gl: &GL44,
+        data: *const T,
+        hint:StorageHint
+    ) -> Buffer<T,A> {
+
+        //get the size and pointer of the object
+        let size = size_of_val(&*data) as GLsizeiptr;
         let ptr = data as *const GLvoid;
 
         //get the creation flags
@@ -26,15 +61,18 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
 
         //upload the data
         if gl::NamedBufferStorage::is_loaded() {
-            gl::NamedBufferStorage(raw.id(), size as GLsizeiptr, ptr, flags)
+            gl::NamedBufferStorage(self.id(), size, ptr, flags)
         } else {
-            let mut target = BufferTarget::CopyWriteBuffer.as_loc();
-            gl::BufferStorage(target.bind(&raw).target_id(), size as GLsizeiptr, ptr, flags);
+            BufferTarget::CopyWriteBuffer.as_loc().map_bind(&self,
+                |b| gl::BufferStorage(b.target_id(), size, ptr, flags)
+            );
         }
 
+        //construct the inner representation for the buffer
+        let inner = BufPtr::new(self.id(), data as *mut T);
 
         //make sure we don't delete the buffer by accident
-        forget(raw);
+        forget(self);
 
         //now, constuct a buffer with that pointer, where the leading half is the buffer id and the
         //latter half is any object metadata
@@ -42,27 +80,33 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
             ptr: inner,
             access: PhantomData
         }
-
     }
 
-    pub unsafe fn data_raw(raw: RawBuffer, data: *const T, usage: DataHint) -> Self where A:NonPersistentAccess {
-        //get the size of the object
-        let size = size_of_val(&*data);
+    pub unsafe fn data_raw<T:?Sized,A:NonPersistentAccess>(
+        self, data: *const T, hint:DataHint
+    ) -> Buffer<T,A> {
 
-        let inner = BufPtr::new(raw.id(), data as *mut T);
+        //get the size and pointer of the object
+        let size = size_of_val(&*data) as GLsizeiptr;
         let ptr = data as *const GLvoid;
+
+        //get the usage
+        let usage = hint.unwrap_or(Default::default()) as GLenum;
 
         //upload the data
         if gl::NamedBufferData::is_loaded() {
-            gl::NamedBufferData(raw.id(), size as GLsizeiptr, ptr, usage.unwrap_or(Default::default()) as GLenum);
+            gl::NamedBufferData(self.id(), size, ptr, usage)
         } else {
-            let mut target = BufferTarget::CopyWriteBuffer.as_loc();
-            let tar = target.bind(&raw).target_id();
-            gl::BufferData(tar, size as GLsizeiptr, ptr, usage.unwrap_or(Default::default()) as GLenum);
+            BufferTarget::CopyWriteBuffer.as_loc().map_bind(&self,
+                |b| gl::BufferData(b.target_id(), size, ptr, usage)
+            );
         }
 
+        //construct the inner representation for the buffer
+        let inner = BufPtr::new(self.id(), data as *mut T);
+
         //make sure we don't delete the buffer by accident
-        forget(raw);
+        forget(self);
 
         //now, constuct a buffer with that pointer, where the leading half is the buffer id and the
         //latter half is any object metadata
@@ -70,102 +114,83 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
             ptr: inner,
             access: PhantomData
         }
+
     }
 
-    pub unsafe fn from_raw(gl: &GL15, data: *const T, hint: CreationHint) -> Self where A:NonPersistentAccess {
-        let raw = RawBuffer::gen(gl);
-        if let Ok(gl4) = gl.try_as_gl44() {
-            Self::storage_raw(&gl4, raw, data, hint.map(|h| h.1))
+    pub unsafe fn new_raw<T:?Sized,A:NonPersistentAccess>(
+        self, data: *const T, hint:CreationHint
+    ) -> Buffer<T,A> {
+        if let Ok(gl) = self.gl().try_as_gl44() {
+            self.storage_raw(&gl, data, hint.map(|h| h.1))
         } else {
-            Self::data_raw(raw, data, hint.map(|h| h.0))
+            self.data_raw(data, hint.map(|h| h.0))
         }
     }
 
-}
-
-impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
-
-    pub fn storage_box(gl: &GL44, raw: RawBuffer, data: Box<T>, hint: StorageHint) -> Self {
-        map_dealloc(data, |ptr| unsafe{Self::storage_raw(gl, raw, ptr, hint)})
+    pub fn storage_box<T:?Sized,A:BufferAccess>(self, gl: &GL44, data: Box<T>, hint: StorageHint) -> Buffer<T,A> {
+        map_dealloc(data, |ptr| unsafe{self.storage_raw(gl, ptr, hint)})
     }
 
-    pub fn data_box(raw: RawBuffer, data: Box<T>, usage: DataHint) -> Self where A:NonPersistentAccess {
-        map_dealloc(data, |ptr| unsafe{Self::data_raw(raw, ptr, usage)})
+    pub fn data_box<T:?Sized,A:NonPersistentAccess>(self, data: Box<T>, usage: DataHint) -> Buffer<T,A> {
+        map_dealloc(data, |ptr| unsafe{self.data_raw(ptr, usage)})
     }
 
-    pub fn from_box(gl: &GL15, data: Box<T>, hint: CreationHint) -> Self where A:NonPersistentAccess {
-        map_dealloc(data, |ptr| unsafe{Self::from_raw(gl, ptr, hint)})
+    pub fn new_box<T:?Sized,A:NonPersistentAccess>(self, data: Box<T>, hint: CreationHint) -> Buffer<T,A> {
+        map_dealloc(data, |ptr| unsafe{self.new_raw(ptr, hint)})
     }
 
-}
-
-impl<T:?Sized+GPUCopy, A:BufferAccess> Buffer<T,A> {
-
-    pub fn storage_ref(gl: &GL44, raw: RawBuffer, data: &T, hint: StorageHint) -> Self {
-        unsafe { Self::storage_raw(gl, raw, data as *const T, hint) }
-    }
-
-    pub fn data_ref(uninit: RawBuffer, data: &T, usage: DataHint) -> Self where A:NonPersistentAccess {
-        unsafe { Self::data_raw(uninit, data as *const T, usage) }
-    }
-
-    pub fn from_ref(gl: &GL15, data: &T, hint: CreationHint) -> Self where A:NonPersistentAccess {
-        unsafe { Self::from_raw(gl, data as *const T, hint) }
-    }
-}
-
-impl<T:Sized, A:BufferAccess> Buffer<T,A> {
-
-    pub fn storage(gl: &GL44, raw: RawBuffer, data:T, hint: StorageHint) -> Self {
+    pub fn storage<T:Sized,A:BufferAccess>(self, gl: &GL44, data: T, hint: StorageHint) -> Buffer<T,A> {
         unsafe {
-            let buf = Self::storage_raw(gl, raw, &data, hint);
+            let buf = self.storage_raw(gl, &data, hint);
             forget(data);
             buf
         }
     }
 
-    pub fn data(raw: RawBuffer, data:T, usage: DataHint) -> Self where A:NonPersistentAccess {
+    pub fn data<T:Sized,A:NonPersistentAccess>(self, data: T, usage: DataHint) -> Buffer<T,A> {
         unsafe {
-            let buf = Self::data_raw(raw, &data, usage);
+            let buf = self.data_raw(&data, usage);
             forget(data);
             buf
         }
     }
 
-    pub fn from(gl: &GL15, data:T, hint: CreationHint) -> Self where A:NonPersistentAccess {
+    pub fn new<T:Sized,A:NonPersistentAccess>(self, data: T, hint: CreationHint) -> Buffer<T,A> {
         unsafe {
-            let buf = Self::from_raw(gl, &data, hint);
+            let buf = self.new_raw(&data, hint);
             forget(data);
             buf
         }
     }
 
-    pub fn storage_uninit(gl: &GL44, raw: RawBuffer, hint: StorageHint) -> Self {
-        unsafe { Self::storage_raw(gl, raw, null::<T>(), hint) }
+    pub fn storage_uninit<T:Sized,A:BufferAccess>(self, gl: &GL44, hint: StorageHint) -> Buffer<MaybeUninit<T>,A> {
+        unsafe { self.storage_raw(gl, null(), hint) }
     }
 
-    pub unsafe fn data_uninit(raw: RawBuffer, usage: DataHint) -> Self where A:NonPersistentAccess {
-        Self::data_raw(raw, null::<T>(), usage)
+    pub fn data_uninit<T:Sized,A:NonPersistentAccess>(self, usage: DataHint) -> Buffer<MaybeUninit<T>,A> {
+        unsafe { self.data_raw(null(), usage) }
     }
 
-    pub unsafe fn uninit(gl: &GL15, hint: CreationHint) -> Self where A:NonPersistentAccess {
-        Self::from_raw(gl, null::<T>(), hint)
+    pub fn new_uninit<T:Sized,A:NonPersistentAccess>(self, hint: CreationHint) -> Buffer<MaybeUninit<T>,A> {
+        unsafe { self.new_raw(null(), hint) }
     }
 
-}
-
-impl<T:Sized, A:BufferAccess> Buffer<[T],A> {
-
-    pub unsafe fn storage_uninit_count(gl: &GL44, raw:RawBuffer, count: usize, hint: StorageHint) -> Self {
-        Self::storage_raw(gl, raw, from_raw_parts(null::<T>(), count), hint)
+    pub fn storage_uninit_slice<T:Sized,A:BufferAccess>(
+        self, count: usize, gl: &GL44, hint: StorageHint
+    ) -> Buffer<[MaybeUninit<T>],A> {
+        unsafe { self.storage_raw(gl, slice_from_raw_parts(null(), count), hint) }
     }
 
-    pub unsafe fn data_uninit_count(raw: RawBuffer, count: usize, usage: DataHint) -> Self where A:NonPersistentAccess {
-        Self::data_raw(raw, from_raw_parts(null::<T>(), count), usage)
+    pub fn data_uninit_slice<T:Sized,A:NonPersistentAccess>(
+        self, count: usize, usage: DataHint
+    ) -> Buffer<[MaybeUninit<T>],A> {
+        unsafe { self.data_raw(slice_from_raw_parts(null(), count), usage) }
     }
 
-    pub unsafe fn uninit_count(gl: &GL15, count: usize, hint: CreationHint) -> Self where A:NonPersistentAccess {
-        Self::from_raw(gl, from_raw_parts(null::<T>(), count), hint)
+    pub fn new_uninit_slice<T:Sized,A:NonPersistentAccess>(
+        self, count: usize, hint: CreationHint
+    ) -> Buffer<[MaybeUninit<T>],A> {
+        unsafe { self.new_raw(slice_from_raw_parts(null(), count), hint) }
     }
 
 }
