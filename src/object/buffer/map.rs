@@ -305,12 +305,12 @@ impl<'a,T:?Sized,A:PersistentAccess> SliceMut<'a,T,A> {
     }
 
     #[inline]
-    pub fn get_pointer_write(&mut self) -> Map<T,PersistentWrite> where A:MapWriteAccess {
+    pub fn get_write_pointer(&mut self) -> Map<T,PersistentWrite> where A:MapWriteAccess {
         unsafe {Slice::get_pointer_raw(&self.as_immut())}
     }
 
     #[inline]
-    pub fn get_pointer_mut(&mut self) -> Map<T,PersistentReadWrite> where A:MapReadAccess+MapWriteAccess {
+    pub fn get_mut_pointer(&mut self) -> Map<T,PersistentReadWrite> where A:MapReadAccess+MapWriteAccess {
         unsafe {Slice::get_pointer_raw(&self.as_immut())}
     }
 
