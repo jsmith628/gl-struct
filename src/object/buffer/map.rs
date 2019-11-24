@@ -233,7 +233,7 @@ impl<T:Sized,A:MapReadAccess+MapWriteAccess> Buffer<[T],A> {
 //
 
 impl<'a,T:?Sized,A:BufferAccess> Slice<'a,T,A> {
-    unsafe fn get_map_pointer_raw<'b,B:BufferAccess>(this:*const Self) -> Map<'b,T,B> {
+    unsafe fn get_pointer_raw<'b,B:BufferAccess>(this:*const Self) -> Map<'b,T,B> {
         let mut ptr = MaybeUninit::uninit();
 
         if gl::GetNamedBufferPointerv::is_loaded() {
@@ -281,25 +281,25 @@ impl<'a,T:?Sized,A:BufferAccess> Slice<'a,T,A> {
 }
 
 impl<'a,T:?Sized,A:MapReadAccess+PersistentAccess> Slice<'a,T,A> {
-    #[inline] pub fn get_map_pointer(&self) -> Map<T,PersistentRead> {
-        unsafe {Self::get_map_pointer_raw(self)}
+    #[inline] pub fn get_pointer(&self) -> Map<T,PersistentRead> {
+        unsafe {Self::get_pointer_raw(self)}
     }
 }
 
 impl<'a,T:?Sized,A:MapReadAccess+PersistentAccess> SliceMut<'a,T,A> {
-    #[inline] pub fn get_map_pointer(&self) -> Map<T,PersistentRead> {
-        unsafe {Slice::get_map_pointer_raw(&self.as_immut())}
+    #[inline] pub fn get_pointer(&self) -> Map<T,PersistentRead> {
+        unsafe {Slice::get_pointer_raw(&self.as_immut())}
     }
 }
 
 impl<'a,T:?Sized,A:MapWriteAccess+PersistentAccess> SliceMut<'a,T,A> {
-    #[inline] pub fn get_map_pointer_write(&mut self) -> Map<T,PersistentWrite> {
-        unsafe {Slice::get_map_pointer_raw(&self.as_immut())}
+    #[inline] pub fn get_pointer_write(&mut self) -> Map<T,PersistentWrite> {
+        unsafe {Slice::get_pointer_raw(&self.as_immut())}
     }
 }
 
 impl<'a,T:?Sized,A:MapWriteAccess+MapReadAccess+PersistentAccess> SliceMut<'a,T,A> {
-    #[inline] pub fn get_map_pointer_mut(&mut self) -> Map<T,PersistentReadWrite> {
-        unsafe {Slice::get_map_pointer_raw(&self.as_immut())}
+    #[inline] pub fn get_pointer_mut(&mut self) -> Map<T,PersistentReadWrite> {
+        unsafe {Slice::get_pointer_raw(&self.as_immut())}
     }
 }
