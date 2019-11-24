@@ -98,7 +98,7 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
 
 
     //
-    //Reading a buffer into a box
+    //Reading a buffer into a box or stack value
     //
 
     ///deallocates the buffer data without running the data's destructor
@@ -106,6 +106,12 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
 
     #[inline] unsafe fn _read_into_box(&self) -> Box<T> {
         map_alloc(self.ptr, |ptr| self.as_slice().get_subdata_raw(ptr))
+    }
+
+    unsafe fn _read(&self) -> T where T:Sized {
+        let mut data = MaybeUninit::uninit();
+        self.as_slice().get_subdata_raw(data.get_mut() as *mut T);
+        data.assume_init()
     }
 
     pub fn into_box(self) -> Box<T> {
@@ -121,6 +127,23 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
         }
     }
 
+    pub fn into_inner(self) -> T where T:Sized {
+        unsafe {
+            //read the data
+            let data = self._read();
+
+            //next, delete the buffer and forget the handle without running the object destructor
+            self.forget_data();
+
+            //return the data
+            data
+        }
+    }
+
+    //
+    //Buffer invalidation
+    //
+
     pub unsafe fn invalidate_data_raw(&mut self) {
         if gl::InvalidateBufferData::is_loaded() {
             gl::InvalidateBufferData(self.id())
@@ -132,6 +155,17 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
         }
     }
 
+
+
+}
+
+impl<T:Sized, A:BufferAccess> Buffer<T,A> {
+    pub fn invalidate_data(mut self) -> Buffer<MaybeUninit<T>, A> {
+        unsafe {
+            self.invalidate_data_raw();
+            transmute(self)
+        }
+    }
 }
 
 impl<T:Sized, A:BufferAccess> Buffer<[T],A> {
@@ -183,44 +217,6 @@ impl<T, A:BufferAccess> Buffer<MaybeUninit<T>, A> {
 
 impl<T, A:BufferAccess> Buffer<[MaybeUninit<T>], A> {
     #[inline] pub unsafe fn assume_init(self) -> Buffer<[T], A> { transmute(self) }
-}
-
-impl<T:Sized, A:BufferAccess> Buffer<T,A> {
-
-    //
-    //Read into a sized stack value
-    //
-
-    unsafe fn _read(&self) -> T {
-        let mut data = MaybeUninit::uninit();
-        self.as_slice().get_subdata_raw(data.get_mut() as *mut T);
-        data.assume_init()
-    }
-
-    pub fn into_inner(self) -> T {
-        unsafe {
-            //read the data
-            let data = self._read();
-
-            //next, delete the buffer and forget the handle without running the object destructor
-            self.forget_data();
-
-            //return the data
-            data
-        }
-    }
-
-    //
-    //Buffer invalidation
-    //
-
-    pub fn invalidate_data(mut self) -> Buffer<MaybeUninit<T>, A> {
-        unsafe {
-            self.invalidate_data_raw();
-            transmute(self)
-        }
-    }
-
 }
 
 //
@@ -285,7 +281,7 @@ impl<T:?Sized+GPUCopy,A:BufferAccess> Clone for Buffer<T,A> {
 }
 
 impl<T:?Sized, A> Drop for Buffer<T,A> {
-    default fn drop(&mut self) {
+    fn drop(&mut self) {
 
         trait _Drop { unsafe fn _drop(&mut self); }
 
