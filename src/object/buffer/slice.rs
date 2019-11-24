@@ -91,7 +91,7 @@ impl<'a,T:?Sized,A:BufferAccess> Slice<'a,T,A> {
         unsafe { self._read_into_box() }
     }
 
-    pub fn get_subdata(&self) -> T where T:GPUCopy+Sized {
+    pub fn get_subdata(&self) -> T where T:Copy {
         unsafe {
             let mut data = MaybeUninit::uninit();
             self.get_subdata_raw(data.as_mut_ptr());
@@ -101,14 +101,14 @@ impl<'a,T:?Sized,A:BufferAccess> Slice<'a,T,A> {
 
 }
 
-impl<'a,T:GPUCopy+Sized,A:BufferAccess> Slice<'a,T,A> {
+impl<'a,T:Copy+Sized,A:BufferAccess> Slice<'a,T,A> {
     #[inline]
     pub fn copy_subdata(&self, dest:&mut SliceMut<'a,T,A>) {
         unsafe{ self.copy_subdata_unchecked(dest) }
     }
 }
 
-impl<'a,T:GPUCopy+Sized,A:BufferAccess> Slice<'a,[T],A> {
+impl<'a,T:Copy+Sized,A:BufferAccess> Slice<'a,[T],A> {
     #[inline]
     pub fn copy_subdata(&self, dest:&mut SliceMut<'a,[T],A>) {
         assert_eq!(dest.size(), self.size(), "destination and source buffers have different sizes");
@@ -170,7 +170,7 @@ impl<'a,T:Sized,A:BufferAccess> Slice<'a,[T],A> {
     }
 
     #[inline]
-    pub fn get_subdata_slice(&self, data: &mut [T]) where T:GPUCopy {
+    pub fn get_subdata_slice(&self, data: &mut [T]) where T:Copy {
         if size_of_val(data) != self.size() {
             panic!("Destination size not equal to source size: {} != {}", size_of_val(data), self.size())
         }
@@ -204,15 +204,15 @@ impl<'a,T:?Sized,A:BufferAccess> SliceMut<'a,T,A> {
     }
 
     #[inline] pub fn get_subdata_box(&self) -> Box<T> where T:GPUCopy {self.as_immut().get_subdata_box()}
-    #[inline] pub fn get_subdata(&self) -> T where T:GPUCopy+Sized {self.as_immut().get_subdata()}
+    #[inline] pub fn get_subdata(&self) -> T where T:Copy+Sized {self.as_immut().get_subdata()}
 
 }
 
-impl<'a,T:GPUCopy+Sized,A:BufferAccess> SliceMut<'a,[T],A> {
+impl<'a,T:Copy+Sized,A:BufferAccess> SliceMut<'a,[T],A> {
     #[inline] pub fn copy_subdata(&self, dest:&mut SliceMut<'a,[T],A>) { self.as_immut().copy_subdata(dest) }
 }
 
-impl<'a,T:GPUCopy+Sized,A:BufferAccess> SliceMut<'a,T,A> {
+impl<'a,T:Copy+Sized,A:BufferAccess> SliceMut<'a,T,A> {
     #[inline] pub fn copy_subdata(&self, dest:&mut SliceMut<'a,T,A>) { self.as_immut().copy_subdata(dest) }
 }
 
@@ -257,7 +257,7 @@ impl<'a,T:Sized,A:BufferAccess> SliceMut<'a,[T],A> {
     }
 
     #[inline]
-    pub fn get_subdata_slice(&self, data: &mut [T]) where T:GPUCopy {
+    pub fn get_subdata_slice(&self, data: &mut [T]) where T:Copy {
         self.as_immut().get_subdata_slice(data)
     }
 

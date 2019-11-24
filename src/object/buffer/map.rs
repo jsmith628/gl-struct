@@ -79,7 +79,7 @@ impl<'a,T:?Sized,A:MapReadAccess+MapWriteAccess> DerefMut for Map<'a,T,A> {
 
 impl<'a,T:Sized,A:MapWriteAccess> Map<'a,T,A> {
     #[inline] pub unsafe fn write_direct(&mut self, data:T) { copy_nonoverlapping(&data, self.ptr, 1) }
-    #[inline] pub fn write(&mut self, data:T) where T:GPUCopy { unsafe{*self.ptr = data;} }
+    #[inline] pub fn write(&mut self, data:T) where T:Copy { unsafe{*self.ptr = data;} }
 }
 
 impl<'a,T:Sized,A:MapWriteAccess> Map<'a,[T],A> {
@@ -91,7 +91,7 @@ impl<'a,T:Sized,A:MapWriteAccess> Map<'a,[T],A> {
     }
 
     #[inline]
-    pub fn write_at<U:Sized,I:SliceIndex<[T],Output=U>>(&mut self, i:I, data:U) where T:GPUCopy {
+    pub fn write_at<U:Sized,I:SliceIndex<[T],Output=U>>(&mut self, i:I, data:U) where T:Copy {
         unsafe { (*self.ptr)[i] = data; }
     }
 }
