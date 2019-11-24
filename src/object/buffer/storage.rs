@@ -166,7 +166,7 @@ impl UninitBuf {
         if let Ok(gl) = self.gl().try_as_gl44() {
             self.storage_raw(&gl, data, hint.map(|h| h.1))
         } else {
-            self.data_raw(data, hint.map(|h| h.0)).with_access()
+            self.data_raw(data, hint.map(|h| h.0)).downgrade_unchecked()
         }
     }
 

@@ -70,9 +70,9 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
     //Conversion between access types
     //
 
-    #[inline] pub unsafe fn with_access<B:BufferAccess>(self) -> Buffer<T,B> { transmute(self) }
-    #[inline] pub unsafe fn with_access_ref<B:BufferAccess>(&self) -> &Buffer<T,B> { transmute(self) }
-    #[inline] pub unsafe fn with_access_mut<B:BufferAccess>(&mut self) -> &mut Buffer<T,B> { transmute(self) }
+    #[inline] pub unsafe fn downgrade_unchecked<B:BufferAccess>(self) -> Buffer<T,B> { transmute(self) }
+    #[inline] pub unsafe fn downgrade_ref_unchecked<B:BufferAccess>(&self) -> &Buffer<T,B> { transmute(self) }
+    #[inline] pub unsafe fn downgrade_mut_unchecked<B:BufferAccess>(&mut self) -> &mut Buffer<T,B> { transmute(self) }
 
     #[inline]
     pub fn downgrade<B:BufferAccess>(self) -> Buffer<T,B> where A:DowngradesTo<B> {
@@ -271,7 +271,7 @@ impl<T:?Sized+GPUCopy,A:BufferAccess> Clone for Buffer<T,A> {
                 if <A as BufferAccess>::MapPersistent::VALUE || self.immutable_storage() {
                     raw.storage_raw(&assume_supported(), ptr, Some(self.storage_flags()))
                 } else {
-                    raw.data_raw(ptr, Some(self.usage())).with_access()
+                    raw.data_raw(ptr, Some(self.usage())).downgrade_unchecked()
                 }
             };
 
