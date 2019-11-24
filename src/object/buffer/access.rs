@@ -30,10 +30,11 @@ pub trait NonPersistentAccess = BufferAccess<MapPersistent=Low>;
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)] pub struct MapReadWrite;
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)] pub struct ReadWrite;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)] pub struct PersistentRead;
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)] pub struct PersistentWrite;
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)] pub struct PersistentReadDynWrite;
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)] pub struct PersistentReadWrite;
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)] pub struct PersistRead;
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)] pub struct PersistWrite;
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)] pub struct PersistReadDynWrite;
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)] pub struct PersistReadMapWrite;
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)] pub struct PersistReadWrite;
 
 impl BufferAccess for ReadOnly { type MapRead=Low; type DynamicStorage=Low; type MapWrite=Low; type MapPersistent=Low; }
 impl BufferAccess for MapRead { type MapRead = High; type DynamicStorage=Low; type MapWrite=Low; type MapPersistent=Low; }
@@ -46,7 +47,8 @@ impl BufferAccess for MapReadDynWrite { type MapRead=High; type DynamicStorage=H
 impl BufferAccess for MapReadWrite { type MapRead=High; type DynamicStorage=Low; type MapWrite=High; type MapPersistent=Low; }
 impl BufferAccess for ReadWrite { type MapRead=High; type DynamicStorage=High; type MapWrite=High; type MapPersistent=Low; }
 
-impl BufferAccess for PersistentRead { type MapRead=High; type DynamicStorage=Low; type MapWrite=Low; type MapPersistent=High; }
-impl BufferAccess for PersistentWrite { type MapRead=Low; type DynamicStorage=Low; type MapWrite=High; type MapPersistent=High; }
-impl BufferAccess for PersistentReadDynWrite { type MapRead=High; type DynamicStorage=High; type MapWrite=Low; type MapPersistent=High; }
-impl BufferAccess for PersistentReadWrite { type MapRead=High; type DynamicStorage=High; type MapWrite=High; type MapPersistent=High; }
+impl BufferAccess for PersistRead { type MapRead=High; type DynamicStorage=Low; type MapWrite=Low; type MapPersistent=High; }
+impl BufferAccess for PersistWrite { type MapRead=Low; type DynamicStorage=Low; type MapWrite=High; type MapPersistent=High; }
+impl BufferAccess for PersistReadDynWrite { type MapRead=High; type DynamicStorage=High; type MapWrite=Low; type MapPersistent=High; }
+impl BufferAccess for PersistReadMapWrite { type MapRead=High; type DynamicStorage=High; type MapWrite=Low; type MapPersistent=High; }
+impl BufferAccess for PersistReadWrite { type MapRead=High; type DynamicStorage=High; type MapWrite=High; type MapPersistent=High; }
