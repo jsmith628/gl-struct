@@ -193,6 +193,12 @@ impl<'a,T:?Sized,A:BufferAccess> SliceMut<'a,T,A> {
     #[inline] pub fn as_immut(&self) -> Slice<'a,T,A> {
         Slice{ptr:self.ptr, offset:self.offset, buf:PhantomData}
     }
+    
+    pub unsafe fn invalidate_subdata_raw(&mut self) {
+        if gl::InvalidateBufferSubData::is_loaded() {
+            gl::InvalidateBufferSubData(self.id(), self.offset() as GLintptr, self.size() as GLsizeiptr)
+        }
+    }
 }
 
 //

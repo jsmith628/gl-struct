@@ -121,6 +121,17 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
         }
     }
 
+    pub unsafe fn invalidate_data_raw(&mut self) {
+        if gl::InvalidateBufferData::is_loaded() {
+            gl::InvalidateBufferData(self.id())
+        } else if !self.immutable_storage() {
+            let (size, usage) = (self.size() as GLsizeiptr, self.usage() as GLenum);
+            BufferTarget::CopyWriteBuffer.as_loc().map_bind(self,
+                |b| gl::BufferData(b.target_id(), size, null(), usage)
+            );
+        }
+    }
+
 }
 
 impl<T:Sized, A:BufferAccess> Buffer<[T],A> {
@@ -144,6 +155,24 @@ impl<T:Sized, A:BufferAccess> Buffer<[T],A> {
     #[inline] pub fn index<U:?Sized,I:SliceIndex<[T],Output=U>>(&self,i:I) -> Slice<U,A> { self.as_slice().index(i) }
     #[inline] pub fn index_mut<U:?Sized,I:SliceIndex<[T],Output=U>>(&mut self,i:I) -> SliceMut<U,A> {
         self.as_slice_mut().index_mut(i)
+    }
+
+    //
+    //Buffer invalidation
+    //
+
+    pub fn invalidate_data(mut self) -> Buffer<[MaybeUninit<T>], A> {
+        unsafe {
+            self.invalidate_data_raw();
+            transmute(self)
+        }
+    }
+
+    pub fn invalidate_subdata<I:SliceIndex<[T]>>(mut self, i:I) -> Buffer<[MaybeUninit<T>], A> {
+        unsafe {
+            self.index_mut(i).invalidate_subdata_raw();
+            transmute(self)
+        }
     }
 
 }
@@ -180,6 +209,18 @@ impl<T:Sized, A:BufferAccess> Buffer<T,A> {
             data
         }
     }
+
+    //
+    //Buffer invalidation
+    //
+
+    pub fn invalidate_data(mut self) -> Buffer<MaybeUninit<T>, A> {
+        unsafe {
+            self.invalidate_data_raw();
+            transmute(self)
+        }
+    }
+
 }
 
 //
