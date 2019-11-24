@@ -292,7 +292,7 @@ impl<'a,T:?Sized,A:BufferAccess> Slice<'a,T,A> {
 }
 
 impl<'a,T:?Sized,A:MapReadAccess+PersistentAccess> Slice<'a,T,A> {
-    #[inline] pub fn get_pointer(&self) -> Map<T,PersistRead> {
+    #[inline] pub fn get_pointer(&self) -> Map<T,PersistMapRead> {
         unsafe {Self::get_pointer_raw(self)}
     }
 }
@@ -300,17 +300,17 @@ impl<'a,T:?Sized,A:MapReadAccess+PersistentAccess> Slice<'a,T,A> {
 impl<'a,T:?Sized,A:PersistentAccess> SliceMut<'a,T,A> {
 
     #[inline]
-    pub fn get_pointer(&self) -> Map<T,PersistRead> where A:MapReadAccess {
+    pub fn get_pointer(&self) -> Map<T,PersistMapRead> where A:MapReadAccess {
         unsafe {Slice::get_pointer_raw(&self.as_immut())}
     }
 
     #[inline]
-    pub fn get_write_pointer(&mut self) -> Map<T,PersistWrite> where A:MapWriteAccess {
+    pub fn get_write_pointer(&mut self) -> Map<T,PersistMapWrite> where A:MapWriteAccess {
         unsafe {Slice::get_pointer_raw(&self.as_immut())}
     }
 
     #[inline]
-    pub fn get_mut_pointer(&mut self) -> Map<T,PersistReadMapWrite> where A:MapReadAccess+MapWriteAccess {
+    pub fn get_mut_pointer(&mut self) -> Map<T,PersistMapReadWrite> where A:MapReadAccess+MapWriteAccess {
         unsafe {Slice::get_pointer_raw(&self.as_immut())}
     }
 
