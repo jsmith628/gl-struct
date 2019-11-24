@@ -7,9 +7,9 @@ use std::ops::{Deref, DerefMut, CoerceUnsized};
 
 pub struct Map<'a, T:?Sized, A:BufferAccess> {
     pub(super) ptr: *mut T,
-    offset: usize,
-    id: GLuint,
-    buf: PhantomData<&'a mut Buffer<T,A>>
+    pub(super) offset: usize,
+    pub(super) id: GLuint,
+    pub(super) buf: PhantomData<&'a mut Buffer<T,A>>
 }
 
 impl<'a,U:?Sized,T:?Sized+Unsize<U>,A:BufferAccess> CoerceUnsized<Map<'a,U,A>> for Map<'a,T,A> {}

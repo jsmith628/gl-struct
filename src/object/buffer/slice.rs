@@ -4,14 +4,14 @@ use crate::gl;
 #[derive(Clone, Copy)]
 pub struct Slice<'a, T:?Sized, A:BufferAccess> {
     pub(super) ptr: BufPtr<T>,
-    offset: usize,
-    buf: PhantomData<&'a Buffer<T, A>>
+    pub(super) offset: usize,
+    pub(super) buf: PhantomData<&'a Buffer<T, A>>
 }
 
 pub struct SliceMut<'a, T:?Sized, A:BufferAccess> {
     pub(super) ptr: BufPtr<T>,
-    offset: usize,
-    buf: PhantomData<&'a mut Buffer<T, A>>
+    pub(super) offset: usize,
+    pub(super) buf: PhantomData<&'a mut Buffer<T, A>>
 }
 
 impl<'a,U:?Sized,T:?Sized+Unsize<U>,A:BufferAccess> CoerceUnsized<Slice<'a,U,A>> for Slice<'a,T,A> {}
