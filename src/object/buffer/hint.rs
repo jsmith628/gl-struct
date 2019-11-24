@@ -46,5 +46,5 @@ impl From<BufferUsage> for BufferCreationFlags {
     #[inline] fn from(usage:BufferUsage) -> Self { Self(usage,Default::default()) }
 }
 
-impl Default for BufferUsage { #[inline] fn default() -> Self {BufferUsage::DynamicDraw} }
+impl Default for BufferUsage { #[inline] fn default() -> Self {BufferUsage::StaticDraw} }
 impl Default for BufferCreationFlags { #[inline] fn default() -> Self {Self(Default::default(),Default::default())} }
