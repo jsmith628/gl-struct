@@ -134,9 +134,26 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
     }
 }
 
-//Note: we require a mutable reference because otherwise, we could read from the buffer GPU side
-//(ie. use this buffer to render something) while mapped, which is dissallowed for everything but
-//persistence mapping
+impl<T:?Sized,A:NonPersistentAccess> Buffer<T,A> {
+    #[inline]
+    pub fn map<'a>(&'a mut self) -> Map<'a,T,MapRead> where A:MapReadAccess {
+        unsafe{self.map_raw()}
+    }
+
+    #[inline]
+    pub fn map_write<'a>(&'a mut self) -> Map<'a,T,MapWrite> where A:MapWriteAccess {
+        unsafe{self.map_raw()}
+    }
+
+    #[inline]
+    pub fn map_mut<'a>(&'a mut self) -> Map<'a,T,MapReadWrite> where A:MapReadAccess+MapWriteAccess {
+        unsafe{self.map_raw()}
+    }
+}
+
+//
+//MapBufferRange
+//
 
 unsafe fn map_range_flags<B:BufferAccess>() -> GLbitfield {
     let mut flags = 0;
@@ -146,26 +163,8 @@ unsafe fn map_range_flags<B:BufferAccess>() -> GLbitfield {
     flags
 }
 
-impl<T:?Sized, A:MapReadAccess+NonPersistentAccess> Buffer<T,A> {
-    #[inline] pub fn map<'a>(&'a mut self) -> Map<'a,T,MapRead> { unsafe{self.map_raw()} }
-}
-
-impl<T:?Sized, A:MapWriteAccess+NonPersistentAccess> Buffer<T,A> {
-    #[inline] pub fn map_write<'a>(&'a mut self) -> Map<'a,T,MapWrite> { unsafe{self.map_raw()} }
-}
-
-impl<T:?Sized, A:MapReadAccess+MapWriteAccess+NonPersistentAccess> Buffer<T,A> {
-    #[inline] pub fn map_mut<'a>(&'a mut self) -> Map<'a,T,MapReadWrite> { unsafe{self.map_raw()} }
-}
-
-//
-//MapBufferRange
-//
-
 //Note: we cannot simply implement a public map_range method on Slice or SliceMut, as then, we could
 //split the buffer and then map it multiple times, which is not allowed, even for persistent mapping.
-//However, for transparency of the base GL api, we can have a raw one
-//Also, we only use mutable references here for the same reason as above
 
 impl<'a,T:?Sized,A:BufferAccess> SliceMut<'a,T,A> {
     unsafe fn map_range_raw<'b,B:BufferAccess>(self) -> Map<'b,T,B> {
@@ -207,23 +206,35 @@ impl<'a,T:?Sized,A:BufferAccess> SliceMut<'a,T,A> {
     }
 }
 
-impl<T:Sized,A:MapReadAccess> Buffer<[T],A> {
+//Note: we require a mutable references because all API access of the buffer store are invalid
+//while mapped non-persistently
+
+impl<T:Sized,A:NonPersistentAccess> Buffer<[T],A> {
+
     #[inline]
-    pub fn map_range<'a,U:?Sized,I:SliceIndex<[T],Output=U>>(&'a mut self, i:I) -> Map<'a,U,MapRead> {
+    pub fn map_range<'a,U,I>(&'a mut self, i:I) -> Map<'a,U,MapRead> where
+        U:?Sized,
+        I:SliceIndex<[T],Output=U>,
+        A:MapReadAccess
+    {
         unsafe { self.as_slice_mut().index_mut(i).map_range_raw() }
     }
-}
 
-impl<T:Sized,A:MapWriteAccess> Buffer<[T],A> {
     #[inline]
-    pub fn map_range_write<'a,U:?Sized,I:SliceIndex<[T],Output=U>>(&'a mut self, i:I) -> Map<'a,U,MapWrite> {
+    pub fn map_range_write<'a,U,I>(&'a mut self, i:I) -> Map<'a,U,MapWrite> where
+        U:?Sized,
+        I:SliceIndex<[T],Output=U>,
+        A:MapWriteAccess
+    {
         unsafe { self.as_slice_mut().index_mut(i).map_range_raw() }
     }
-}
 
-impl<T:Sized,A:MapReadAccess+MapWriteAccess> Buffer<[T],A> {
     #[inline]
-    pub fn map_range_mut<'a,U:?Sized,I:SliceIndex<[T],Output=U>>(&'a mut self, i:I) -> Map<'a,U,MapReadWrite> {
+    pub fn map_range_mut<'a,U,I>(&'a mut self, i:I) -> Map<'a,U,MapReadWrite> where
+        U:?Sized,
+        I:SliceIndex<[T],Output=U>,
+        A:MapReadAccess+MapWriteAccess
+    {
         unsafe { self.as_slice_mut().index_mut(i).map_range_raw() }
     }
 }
@@ -286,20 +297,21 @@ impl<'a,T:?Sized,A:MapReadAccess+PersistentAccess> Slice<'a,T,A> {
     }
 }
 
-impl<'a,T:?Sized,A:MapReadAccess+PersistentAccess> SliceMut<'a,T,A> {
-    #[inline] pub fn get_pointer(&self) -> Map<T,PersistentRead> {
-        unsafe {Slice::get_pointer_raw(&self.as_immut())}
-    }
-}
+impl<'a,T:?Sized,A:PersistentAccess> SliceMut<'a,T,A> {
 
-impl<'a,T:?Sized,A:MapWriteAccess+PersistentAccess> SliceMut<'a,T,A> {
-    #[inline] pub fn get_pointer_write(&mut self) -> Map<T,PersistentWrite> {
+    #[inline]
+    pub fn get_pointer(&self) -> Map<T,PersistentRead> where A:MapReadAccess {
         unsafe {Slice::get_pointer_raw(&self.as_immut())}
     }
-}
 
-impl<'a,T:?Sized,A:MapWriteAccess+MapReadAccess+PersistentAccess> SliceMut<'a,T,A> {
-    #[inline] pub fn get_pointer_mut(&mut self) -> Map<T,PersistentReadWrite> {
+    #[inline]
+    pub fn get_pointer_write(&mut self) -> Map<T,PersistentWrite> where A:MapWriteAccess {
         unsafe {Slice::get_pointer_raw(&self.as_immut())}
     }
+
+    #[inline]
+    pub fn get_pointer_mut(&mut self) -> Map<T,PersistentReadWrite> where A:MapReadAccess+MapWriteAccess {
+        unsafe {Slice::get_pointer_raw(&self.as_immut())}
+    }
+
 }
