@@ -1,63 +1,46 @@
 use super::*;
 
-///
-///Trait-level control over buffer creation and mapping access flags
-///
-///This particular system exists in lieu of a runtime solution in order to provide proper
-///restriction of (Buffer)[super::Buffer] features at compile-time. This gives a way to make sure that
-///all available functions for a given buffer satisfy the OpenGL API restrictions on use.
-///
 pub trait BufferAccess {
-
-    type Read: Bit;
-    type Write: Bit;
-    type Persistent: Bit;
-
+    type MapRead: Bit;
+    type MapWrite: Bit;
+    type DynamicStorage: Bit;
+    type MapPersistent: Bit;
 }
 
-///Any [BufferAccess] allowing readable mappings of Buffer contents
-pub trait ReadAccess = BufferAccess<Read=High>;
+pub trait MapReadAccess = BufferAccess<MapRead=High>;
+pub trait MapWriteAccess = BufferAccess<MapWrite=High>;
+pub trait DynamicAccess = BufferAccess<DynamicStorage=High>;
+pub trait PersistentAccess = BufferAccess<MapPersistent=High>;
+pub trait NonPersistentAccess = BufferAccess<MapPersistent=Low>;
 
-///Any [BufferAccess] allowing client-side writes of Buffer contents
-pub trait WriteAccess = BufferAccess<Write=High>;
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)] pub struct ReadOnly;
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)] pub struct MapRead;
 
-///Any [BufferAccess] allowing persistent mapping
-pub trait PersistentAccess = BufferAccess<Persistent=High>;
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)] pub struct Write;
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)] pub struct DynWrite;
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)] pub struct MapWrite;
 
-///Any [BufferAccess] that doesn't persistently map buffers
-pub trait NonPersistentAccess = BufferAccess<Persistent=Low>;
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)] pub struct MapReadDynWrite;
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)] pub struct MapReadWrite;
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)] pub struct ReadWrite;
 
-///A [BufferAccess] allowing no client-side access
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
-pub struct CopyOnly;
-impl BufferAccess for CopyOnly { type Read=Low; type Write=Low; type Persistent=Low; }
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)] pub struct PersistentRead;
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)] pub struct PersistentWrite;
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)] pub struct PersistentReadDynWrite;
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)] pub struct PersistentReadWrite;
 
-///A [BufferAccess] allowing readonly client-side access
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
-pub struct Read;
-impl BufferAccess for Read { type Read = High; type Write = Low; type Persistent = Low; }
+impl BufferAccess for ReadOnly { type MapRead=Low; type DynamicStorage=Low; type MapWrite=Low; type MapPersistent=Low; }
+impl BufferAccess for MapRead { type MapRead = High; type DynamicStorage=Low; type MapWrite=Low; type MapPersistent=Low; }
 
-///A [BufferAccess] allowing readonly client-side access and persistent mapping
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
-pub struct PersistentRead;
-impl BufferAccess for PersistentRead { type Read=High; type Write=Low; type Persistent=High; }
+impl BufferAccess for Write { type MapRead=Low; type DynamicStorage=High; type MapWrite=High; type MapPersistent=Low; }
+impl BufferAccess for DynWrite { type MapRead=Low; type DynamicStorage=High; type MapWrite=Low; type MapPersistent=Low; }
+impl BufferAccess for MapWrite { type MapRead=Low; type DynamicStorage=Low; type MapWrite=High; type MapPersistent=Low; }
 
-///A [BufferAccess] allowing writeonly client-side access
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
-pub struct Write;
-impl BufferAccess for Write { type Read=Low; type Write=High; type Persistent=Low; }
+impl BufferAccess for MapReadDynWrite { type MapRead=High; type DynamicStorage=High; type MapWrite=Low; type MapPersistent=Low; }
+impl BufferAccess for MapReadWrite { type MapRead=High; type DynamicStorage=Low; type MapWrite=High; type MapPersistent=Low; }
+impl BufferAccess for ReadWrite { type MapRead=High; type DynamicStorage=High; type MapWrite=High; type MapPersistent=Low; }
 
-///A [BufferAccess] allowing writeonly client-side access and persistent mapping
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
-pub struct PersistentWrite;
-impl BufferAccess for PersistentWrite { type Read=Low; type Write=High; type Persistent=High; }
-
-///A [BufferAccess] allowing both client-side reads and writes
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
-pub struct ReadWrite;
-impl BufferAccess for ReadWrite { type Read=High; type Write=High; type Persistent=Low; }
-
-///A [BufferAccess] allowing persistent mapping and both client-side reads and writes
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
-pub struct PersistentReadWrite;
-impl BufferAccess for PersistentReadWrite { type Read=High; type Write=High; type Persistent=High; }
+impl BufferAccess for PersistentRead { type MapRead=High; type DynamicStorage=Low; type MapWrite=Low; type MapPersistent=High; }
+impl BufferAccess for PersistentWrite { type MapRead=Low; type DynamicStorage=Low; type MapWrite=High; type MapPersistent=High; }
+impl BufferAccess for PersistentReadDynWrite { type MapRead=High; type DynamicStorage=High; type MapWrite=Low; type MapPersistent=High; }
+impl BufferAccess for PersistentReadWrite { type MapRead=High; type DynamicStorage=High; type MapWrite=High; type MapPersistent=High; }

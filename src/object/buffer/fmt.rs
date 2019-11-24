@@ -15,7 +15,7 @@ macro_rules! map_fmt {
             fn fmt(&self, f:&mut Formatter) -> Result { $ty::fmt(&self.as_immut(), f) }
         }
 
-        impl<'a, T:?Sized+$ty, A:ReadAccess> $ty for Map<'a,T,A> {
+        impl<'a, T:?Sized+$ty, A:MapReadAccess> $ty for Map<'a,T,A> {
             fn fmt(&self, f:&mut Formatter) -> Result { $ty::fmt(&**self, f) }
         }
 

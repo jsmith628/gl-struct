@@ -15,7 +15,7 @@ pub trait Vertex: GLSLType {}
 
 pub struct VertexArray<'a,V:Vertex> {
     id: GLuint,
-    buffers: PhantomData<(&'a Buffer<GLuint, CopyOnly>, AttribArray<'a,V>)>
+    buffers: PhantomData<(&'a Buffer<GLuint, ReadOnly>, AttribArray<'a,V>)>
 }
 
 

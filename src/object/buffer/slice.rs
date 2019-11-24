@@ -1,8 +1,6 @@
 use super::*;
 use crate::gl;
 
-use std::slice::*;
-
 #[derive(Clone, Copy)]
 pub struct Slice<'a, T:?Sized, A:BufferAccess> {
     pub(super) ptr: BufPtr<T>,
@@ -240,7 +238,7 @@ impl<'a,T:GPUCopy+Sized,A:BufferAccess> SliceMut<'a,T,A> {
 //Writing subdata: glBufferSubData
 //
 
-impl<'a, T:?Sized, A:WriteAccess> SliceMut<'a,T,A> {
+impl<'a, T:?Sized, A:DynamicAccess> SliceMut<'a,T,A> {
     pub unsafe fn subdata_raw(&mut self, data: *const T) {
         let void = data as *const GLvoid;
         let size = self.size().min(size_of_val(&*data)) as GLsizeiptr;
@@ -256,7 +254,7 @@ impl<'a, T:?Sized, A:WriteAccess> SliceMut<'a,T,A> {
     }
 }
 
-impl<'a,T:Sized,A:WriteAccess> SliceMut<'a,T,A> {
+impl<'a,T:Sized,A:DynamicAccess> SliceMut<'a,T,A> {
     #[inline]
     pub fn subdata(&mut self, data: T) {
         unsafe {
@@ -287,7 +285,7 @@ impl<'a,T:Sized,A:WriteAccess> SliceMut<'a,T,A> {
     }
 }
 
-impl<'a,T:Sized,A:WriteAccess> SliceMut<'a,[T],A> {
+impl<'a,T:Sized,A:DynamicAccess> SliceMut<'a,[T],A> {
     #[inline]
     pub fn replace_range(&mut self, data: &mut [T]) {
         unsafe {
@@ -306,7 +304,7 @@ impl<'a,T:Sized,A:WriteAccess> SliceMut<'a,[T],A> {
     }
 }
 
-impl<'a,T:GPUCopy+?Sized,A:WriteAccess> SliceMut<'a,T,A> {
+impl<'a,T:GPUCopy+?Sized,A:DynamicAccess> SliceMut<'a,T,A> {
     #[inline]
     pub fn subdata_ref(&mut self, data: &T) {
         assert_eq!(self.size(), size_of_val(data), "destination and source have different lengths");//check bounds

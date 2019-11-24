@@ -23,9 +23,9 @@ pub use self::fmt::*;
 pub use self::pixel_transfer::*;
 pub use self::attrib_array::*;
 
+mod access;
 mod raw;
 mod hint;
-mod access;
 mod storage;
 mod map;
 mod slice;

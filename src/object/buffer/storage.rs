@@ -54,10 +54,13 @@ impl UninitBuf {
 
         //get the creation flags
         let mut flags = 0;
-        if <A::Read as Bit>::VALUE { flags |= gl::MAP_READ_BIT};
-        if <A::Write as Bit>::VALUE { flags |= gl::MAP_WRITE_BIT | gl::DYNAMIC_STORAGE_BIT};
-        if <A::Persistent as Bit>::VALUE { flags |= gl::MAP_PERSISTENT_BIT};
-        if let Some(hints) = hint { flags |= gl::CLIENT_STORAGE_BIT & hints.bits() }
+        if <A::MapRead as Bit>::VALUE { flags |= gl::MAP_READ_BIT };
+        if <A::MapWrite as Bit>::VALUE { flags |= gl::MAP_WRITE_BIT };
+        if <A::MapPersistent as Bit>::VALUE { flags |= gl::MAP_PERSISTENT_BIT };
+        if <A::DynamicStorage as Bit>::VALUE { flags |= gl::DYNAMIC_STORAGE_BIT };
+        if let Some(hints) = hint {
+            flags |= gl::CLIENT_STORAGE_BIT & hints.bits()
+        }
 
         //upload the data
         if gl::NamedBufferStorage::is_loaded() {
