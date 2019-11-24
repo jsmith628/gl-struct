@@ -206,6 +206,10 @@ impl !Sync for RawBuffer {}
 
 unsafe impl<T:Copy> GPUCopy for T {}
 unsafe impl<T:Copy> GPUCopy for [T] {}
+unsafe impl GPUCopy for str {}
+unsafe impl GPUCopy for std::ffi::CStr {}
+unsafe impl GPUCopy for std::ffi::OsStr {}
+unsafe impl GPUCopy for std::path::Path {}
 
 macro_rules! impl_tuple_gpucopy {
     ({$($T:ident:$t:ident)*} $Last:ident:$l:ident) => {
