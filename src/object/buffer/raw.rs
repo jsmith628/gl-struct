@@ -151,7 +151,6 @@ impl<T:?Sized> BufPtr<T> {
         dest.assume_init()
     }
 
-    #[allow(dead_code)]
     pub fn buffer_size(&self) -> usize {
         unsafe {self.get_parameter_i64v(gl::BUFFER_SIZE) as usize}
     }

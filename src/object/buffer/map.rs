@@ -96,10 +96,6 @@ impl<'a,T:Sized,A:MapWriteAccess> Map<'a,[T],A> {
     }
 }
 
-unsafe fn check_allignment(map:*const GLvoid, align: usize) {
-    assert_eq!((map as usize) % align, 0, "invalid map alignment for type");
-}
-
 //
 //MapBuffer
 //
@@ -159,7 +155,11 @@ unsafe fn map_range_flags<B:BufferAccess>() -> GLbitfield {
     let mut flags = 0;
     if <B::MapRead as Bit>::VALUE {flags |= gl::MAP_READ_BIT;}
     if <B::MapWrite as Bit>::VALUE {flags |= gl::MAP_WRITE_BIT;}
-    if <B::MapPersistent as Bit>::VALUE {flags |= gl::MAP_PERSISTENT_BIT;}
+    if <B::MapPersistent as Bit>::VALUE {
+        flags |= gl::MAP_PERSISTENT_BIT;
+        if !<B::MapRead as Bit>::VALUE {flags |= gl::MAP_UNSYNCHRONIZED_BIT;}
+        if <B::MapWrite as Bit>::VALUE {flags |= gl::MAP_FLUSH_EXPLICIT_BIT;}
+    }
     flags
 }
 
@@ -243,8 +243,8 @@ impl<T:Sized,A:NonPersistentAccess> Buffer<[T],A> {
 //Persistent mapping
 //
 
-impl<'a,T:?Sized,A:BufferAccess> Slice<'a,T,A> {
-    unsafe fn get_pointer_raw<'b,B:BufferAccess>(this:*const Self) -> Map<'b,T,B> {
+impl<'a,T:?Sized,A:PersistentAccess> Slice<'a,T,A> {
+    unsafe fn get_pointer_raw<'b,B:PersistentAccess>(this:*const Self) -> Map<'b,T,B> {
         let mut ptr = MaybeUninit::uninit();
 
         if gl::GetNamedBufferPointerv::is_loaded() {
@@ -252,34 +252,40 @@ impl<'a,T:?Sized,A:BufferAccess> Slice<'a,T,A> {
         } else {
             BufferTarget::CopyReadBuffer.as_loc().map_bind(&*this, |b|
                 gl::GetBufferPointerv(b.target_id(), gl::BUFFER_MAP_POINTER, ptr.as_mut_ptr())
-            )
+            );
         }
 
+        //if the pointer is null, we need to map the buffer first
         if ptr.get_ref().is_null() {
-            let mut buf_size = MaybeUninit::uninit();
-            let flags = map_range_flags::<A>() | gl::MAP_UNSYNCHRONIZED_BIT; //needs to be the A flags because this is for persistent maps
+            //get the size of the full buffer
+            let buf_size = (*this).ptr.buffer_size();
 
-            if gl::GetNamedBufferParameteriv::is_loaded() && gl::MapNamedBufferRange::is_loaded() {
-                gl::GetNamedBufferParameteriv((&*this).id(), gl::BUFFER_SIZE, buf_size.as_mut_ptr());
-                *ptr.get_mut() = gl::MapNamedBufferRange(
-                    (&*this).id(), 0, buf_size.assume_init() as GLsizeiptr, flags
-                );
-            } else {
-                let mut target = BufferTarget::CopyReadBuffer.as_loc();
-                let binding = target.bind(&*this);
-                gl::GetBufferParameteriv(binding.target_id(), gl::BUFFER_SIZE, buf_size.as_mut_ptr());
-                *ptr.get_mut() = gl::MapBufferRange(
-                    binding.target_id(), 0, buf_size.assume_init() as GLsizeiptr, flags
-                );
-            }
+            //needs to be the A flags because this map will be used for any other maps in the future
+            let flags = map_range_flags::<A>();
 
-            check_allignment(*ptr.as_ptr(), (&*this).align());
+            //map the buffer
+            ptr = MaybeUninit::new(
+                if gl::GetNamedBufferParameteriv::is_loaded() && gl::MapNamedBufferRange::is_loaded() {
+                    gl::MapNamedBufferRange((&*this).id(), 0, buf_size as GLsizeiptr, flags)
+                } else {
+                    BufferTarget::CopyReadBuffer.as_loc().map_bind(&*this,
+                        |b| gl::MapBufferRange(b.target_id(), 0, buf_size as GLsizeiptr, flags)
+                    )
+                }
+            );
 
         }
 
-        //TODO: there needs to be a memory barrier and fenceSync to make sure all writes are done before
-        //the map is written to
-        if <B::MapRead as Bit>::VALUE {gl::MemoryBarrier(gl::CLIENT_MAPPED_BUFFER_BARRIER_BIT);}
+        if <B::MapRead as Bit>::VALUE {
+            //since we don't use coherent, we have to provide a barrier to tell the GL that we intend to read them
+            gl::MemoryBarrier(gl::CLIENT_MAPPED_BUFFER_BARRIER_BIT);
+
+            //TODO: store a proper sync object in the buffer that gets updated every time the buffer
+            //is modified. That way, we don't need to block the GPU for *everything* whenever we need a pointer.
+
+            //if we don't wait for any previous writes to finish, then reads may not see them
+            gl::Finish();
+        }
 
         Map {
             ptr: (&*this).ptr.swap_mut_ptr(ptr.assume_init()),
