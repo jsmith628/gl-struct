@@ -67,6 +67,29 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
     #[inline] pub fn creation_flags(&self) -> BufferCreationFlags { self.ptr.creation_flags() }
 
     //
+    //Conversion between access types
+    //
+
+    #[inline] pub unsafe fn with_access<B:BufferAccess>(self) -> Buffer<T,B> { transmute(self) }
+    #[inline] pub unsafe fn with_access_ref<B:BufferAccess>(&self) -> &Buffer<T,B> { transmute(self) }
+    #[inline] pub unsafe fn with_access_mut<B:BufferAccess>(&mut self) -> &mut Buffer<T,B> { transmute(self) }
+
+    #[inline]
+    pub fn downgrade<B:BufferAccess>(self) -> Buffer<T,B> where A:DowngradesTo<B> {
+        unsafe { transmute(self) }
+    }
+
+    #[inline]
+    pub fn downgrade_ref<B:BufferAccess>(&self) -> &Buffer<T,B> where A:DowngradesTo<B> {
+        unsafe { transmute(self) }
+    }
+
+    #[inline]
+    pub fn downgrade_mut<B:BufferAccess>(&mut self) -> &mut Buffer<T,B> where A:DowngradesTo<B> {
+        unsafe { transmute(self) }
+    }
+
+    //
     //Slice creation
     //
 
@@ -192,36 +215,22 @@ impl<T:?Sized+GPUCopy,A:BufferAccess> Clone for Buffer<T,A> {
     fn clone(&self) -> Self {
         unsafe {
             //allocate storage
-            let mut uninit = {
-                trait Mirror { unsafe fn _mirror(&self) -> Self; }
-                impl<U:?Sized,B:BufferAccess> Mirror for Buffer<U,B> {
-                    default unsafe fn _mirror(&self) -> Self {
-                        let raw = UninitBuf::gen(&self.gl());
-                        let ptr = self.ptr.swap_ptr_unchecked(null());
-                        raw.storage_raw(&assume_supported(), ptr, Some(self.storage_flags()))
-                    }
+            let mut dest = {
+                let raw = UninitBuf::gen(&self.gl());
+                let ptr = self.ptr.swap_ptr_unchecked(null());
+
+                if <A as BufferAccess>::MapPersistent::VALUE || self.immutable_storage() {
+                    raw.storage_raw(&assume_supported(), ptr, Some(self.storage_flags()))
+                } else {
+                    raw.data_raw(ptr, Some(self.usage())).with_access()
                 }
-
-                impl<U:?Sized,B:NonPersistentAccess> Mirror for Buffer<U,B>  {
-                    unsafe fn _mirror(&self) -> Self {
-                        let raw = UninitBuf::gen(&self.gl());
-                        let ptr = self.ptr.swap_ptr_unchecked(null());
-
-                        if self.immutable_storage() {
-                            raw.storage_raw(&assume_supported(), ptr, Some(self.storage_flags()))
-                        } else {
-                            raw.data_raw(ptr, Some(self.usage()))
-                        }
-                    }
-                }
-
-                self._mirror()
             };
 
             //copy the data directly
-            self.as_slice().copy_subdata_unchecked(&mut uninit.as_slice_mut());
+            self.as_slice().copy_subdata_unchecked(&mut dest.as_slice_mut());
 
-            uninit
+            //return the buffer
+            dest
         }
     }
 }

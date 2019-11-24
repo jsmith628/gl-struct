@@ -7,6 +7,12 @@ pub trait BufferAccess {
     type MapPersistent: Bit;
 }
 
+pub trait DowngradesTo<A:BufferAccess> = BufferAccess where
+    <Self as BufferAccess>::MapRead:        BitMasks<<A as BufferAccess>::MapRead>,
+    <Self as BufferAccess>::MapWrite:       BitMasks<<A as BufferAccess>::MapWrite>,
+    <Self as BufferAccess>::DynamicStorage: BitMasks<<A as BufferAccess>::DynamicStorage>,
+    <Self as BufferAccess>::MapPersistent:  BitMasks<<A as BufferAccess>::MapPersistent>;
+
 pub trait MapReadAccess = BufferAccess<MapRead=High>;
 pub trait MapWriteAccess = BufferAccess<MapWrite=High>;
 pub trait DynamicAccess = BufferAccess<DynamicStorage=High>;
