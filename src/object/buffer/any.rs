@@ -2,7 +2,7 @@ use super::*;
 
 use std::any::*;
 
-impl<A:BufferAccess> Buffer<dyn Any + 'static, A> {
+impl<A:BufferAccess> Buffer<dyn Any, A> {
     pub fn downcast<T:Any>(self) -> Result<Buffer<T,A>, Self> {
         unsafe {
             if let Some(cast) = (&mut *self.ptr.dangling_mut()).downcast_mut() {
@@ -16,7 +16,7 @@ impl<A:BufferAccess> Buffer<dyn Any + 'static, A> {
     }
 }
 
-impl<'a, A:BufferAccess> Slice<'a, dyn Any + 'static, A> {
+impl<'a, A:BufferAccess> Slice<'a, dyn Any, A> {
     pub fn downcast<T:Any>(self) -> Result<Slice<'a,T,A>, Self> {
         unsafe {
             if let Some(cast) = (&mut *self.ptr.dangling_mut()).downcast_mut() {
@@ -31,7 +31,7 @@ impl<'a, A:BufferAccess> Slice<'a, dyn Any + 'static, A> {
     }
 }
 
-impl<'a, A:BufferAccess> SliceMut<'a, dyn Any + 'static, A> {
+impl<'a, A:BufferAccess> SliceMut<'a, dyn Any, A> {
     pub fn downcast<T:Any>(self) -> Result<SliceMut<'a,T,A>, Self> {
         unsafe {
             if let Some(cast) = (&mut *self.ptr.dangling_mut()).downcast_mut() {
