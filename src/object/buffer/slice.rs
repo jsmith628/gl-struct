@@ -290,9 +290,10 @@ impl<'a,T:Sized,A:DynamicAccess> SliceMut<'a,T,A> {
                 //we need to make sure that the destructor on the data is run if it is a Drop type
                 drop(self.replace(data));
             } else {
-                //else, we can just overwrite the data
-                self.subdata_raw(&data);
-                forget(data); //note, we need to make sure the destructor of data is NOT run
+                //else, we can just overwrite the data without dropping
+                //in fact, we can even invalidate the buffer region since we don't need the data either
+                self.invalidate_subdata_raw();
+                self.subdata_raw(&data)
             }
         }
     }
@@ -321,9 +322,10 @@ impl<'a,T:Sized,A:DynamicAccess> SliceMut<'a,[T],A> {
                 //we need to make sure that the destructor on the data is run if it is a Drop type
                 drop(self.replace(&mut *data));
             } else {
-                //else, we can just overwrite the data
-                self.subdata_raw(&*data);
-                forget(data); //note, we need to make sure the destructor of data is NOT run
+                //else, we can just overwrite the data without dropping
+                //in fact, we can even invalidate the buffer region since we don't need the data either
+                self.invalidate_subdata_raw();
+                self.subdata_raw(&*data)
             }
         }
     }
