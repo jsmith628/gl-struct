@@ -148,6 +148,14 @@ impl<T:Sized, A:BufferAccess> Buffer<[T],A> {
 
 }
 
+impl<T, A:BufferAccess> Buffer<MaybeUninit<T>, A> {
+    #[inline] pub unsafe fn assume_init(self) -> Buffer<T, A> { transmute(self) }
+}
+
+impl<T, A:BufferAccess> Buffer<[MaybeUninit<T>], A> {
+    #[inline] pub unsafe fn assume_init(self) -> Buffer<[T], A> { transmute(self) }
+}
+
 impl<T:Sized, A:BufferAccess> Buffer<T,A> {
 
     //
