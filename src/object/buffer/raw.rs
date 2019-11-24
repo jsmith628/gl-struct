@@ -61,7 +61,7 @@ union BufUnion<T:?Sized> {
     gl_mut: *mut GLvoid,
     rust: *const T,
     rust_mut: *mut T,
-    buf: GLuint,
+    buf: usize,
 }
 
 #[derive(Derivative)]
@@ -83,11 +83,11 @@ impl<T:?Sized> BufPtr<T> {
     #[inline]
     pub fn new(id: GLuint, ptr: *mut T) -> Self {
         let mut union = BufUnion {rust_mut: ptr};
-        union.buf = id;
+        union.buf = id as usize;
         BufPtr { ptr: unsafe { union.rust_mut } }
     }
 
-    #[inline] pub fn id(self) -> GLuint { unsafe {BufUnion{rust_mut: self.ptr}.buf} }
+    #[inline] pub fn id(self) -> GLuint { unsafe {BufUnion{rust_mut: self.ptr}.buf as GLuint} }
     #[inline] pub fn size(self) -> usize { unsafe {size_of_val(&*self.ptr)} }
     #[inline] pub fn align(self) -> usize { unsafe {align_of_val(&*self.ptr)} }
     #[inline] pub fn needs_drop(self) -> bool { unsafe { (&*self.ptr).needs_drop_val() } }
