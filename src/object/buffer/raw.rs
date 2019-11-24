@@ -92,10 +92,16 @@ impl<T:?Sized> BufPtr<T> {
     #[inline] pub fn align(self) -> usize { unsafe {align_of_val(&*self.ptr)} }
     #[inline] pub fn needs_drop(self) -> bool { unsafe { (&*self.ptr).needs_drop_val() } }
 
-    #[inline] pub fn dangling(self) -> *const T { unsafe {self.swap_ptr_unchecked(NonNull::dangling().as_ptr())} }
-    #[inline] pub fn dangling_mut(self) -> *mut T { unsafe {self.swap_mut_ptr_unchecked(NonNull::dangling().as_ptr())} }
 
     #[inline]
+    #[allow(dead_code)]
+    pub fn dangling(self) -> *const T { unsafe {self.swap_ptr_unchecked(NonNull::dangling().as_ptr())} }
+
+    #[inline]
+    pub fn dangling_mut(self) -> *mut T { unsafe {self.swap_mut_ptr_unchecked(NonNull::dangling().as_ptr())} }
+
+    #[inline]
+    #[allow(dead_code)]
     pub fn swap_ptr(self, ptr: *const GLvoid) -> *const T {
         check_alignment(ptr, self.align());
         unsafe { self.swap_ptr_unchecked(ptr) }
@@ -145,6 +151,7 @@ impl<T:?Sized> BufPtr<T> {
         dest.assume_init()
     }
 
+    #[allow(dead_code)]
     pub fn buffer_size(&self) -> usize {
         unsafe {self.get_parameter_i64v(gl::BUFFER_SIZE) as usize}
     }
