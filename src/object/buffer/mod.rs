@@ -46,6 +46,12 @@ impl<U:?Sized, T:?Sized+Unsize<U>, A:BufferAccess> CoerceUnsized<Buffer<U,A>> fo
 impl<T:?Sized, A> Buffer<T,A> {
     #[inline] pub fn id(&self) -> GLuint { self.ptr.id() }
     #[inline] pub fn gl(&self) -> GL15 { unsafe { assume_supported::<GL15>() } }
+
+    #[inline] pub fn is(id: GLuint) -> bool { unsafe { gl::IsBuffer(id) != 0 } }
+
+    #[inline] pub fn delete(self) { drop(self); }
+    #[inline] pub fn delete_buffers(buffers: Box<[Self]>) { drop(buffers); }
+
 }
 
 impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
