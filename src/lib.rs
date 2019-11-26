@@ -6,7 +6,6 @@
 #![feature(specialization)]
 #![feature(allocator_api)]
 #![feature(box_into_raw_non_null)]
-#![feature(result_map_or_else)]
 #![feature(trace_macros)]
 #![feature(unsize)]
 #![feature(coerce_unsized)]
