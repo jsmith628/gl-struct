@@ -13,8 +13,8 @@ use std::mem::*;
 
 pub use self::raw::*;
 pub use self::hint::*;
-pub use self::access::*;
 pub use self::storage::*;
+pub use self::uninit::*;
 pub use self::map::*;
 pub use self::slice::*;
 pub use self::any::*;
@@ -23,11 +23,11 @@ pub use self::fmt::*;
 pub use self::pixel_transfer::*;
 pub use self::attrib_array::*;
 
-pub mod access;
+pub mod storage;
 pub mod hint;
 
 mod raw;
-mod storage;
+mod uninit;
 mod map;
 mod slice;
 mod any;
