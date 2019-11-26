@@ -13,12 +13,14 @@ pub trait DowngradesTo<A:BufferStorage> = BufferStorage where
     <Self as BufferStorage>::DynamicStorage: BitMasks<<A as BufferStorage>::DynamicStorage>,
     <Self as BufferStorage>::MapPersistent:  BitMasks<<A as BufferStorage>::MapPersistent>;
 
-pub trait ReadMappable = BufferStorage<MapRead=High>;
-pub trait WriteMappable = BufferStorage<MapWrite=High>;
-pub trait ReadWriteMappable = ReadMappable + WriteMappable;
-pub trait Dynamic = BufferStorage<DynamicStorage=High>;
-pub trait Persistent = BufferStorage<MapPersistent=High>;
-pub trait NonPersistent = BufferStorage<MapPersistent=Low>;
+#[marker] pub unsafe trait Initialized: BufferStorage {}
+
+pub trait ReadMappable = Initialized + BufferStorage<MapRead=High>;
+pub trait WriteMappable = Initialized + BufferStorage<MapWrite=High>;
+pub trait ReadWriteMappable = Initialized + ReadMappable + WriteMappable;
+pub trait Dynamic = Initialized + BufferStorage<DynamicStorage=High>;
+pub trait Persistent = Initialized + BufferStorage<MapPersistent=High>;
+pub trait NonPersistent = Initialized + BufferStorage<MapPersistent=Low>;
 
 macro_rules! access {
     ($( $(#[$attr:meta])* $ty:ident = [$($flag:ident = $bit:ident),*];)*) => {
@@ -27,11 +29,17 @@ macro_rules! access {
             #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
             pub struct $ty;
 
-            unsafe impl BufferStorage for $ty {
-                $(type $flag = $bit;)*
-            }
+            unsafe impl Initialized for $ty {}
+            unsafe impl BufferStorage for $ty { $(type $flag = $bit;)* }
         )*
     }
+}
+
+unsafe impl BufferStorage for ! {
+    type MapRead=Low;
+    type MapWrite=Low;
+    type DynamicStorage=Low;
+    type MapPersistent=Low;
 }
 
 access! {
