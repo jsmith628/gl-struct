@@ -94,10 +94,6 @@ pub struct Low;
 impl Bit for High { const VALUE:bool = true; }
 impl Bit for Low { const VALUE:bool = false; }
 
-#[marker] pub trait BitMasks<B:Bit>: Bit {}
-impl<B:Bit> BitMasks<Low> for B {}
-impl<B:Bit> BitMasks<B> for High {}
-
 #[derive(Clone, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum GLError {

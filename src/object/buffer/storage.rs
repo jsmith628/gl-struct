@@ -7,12 +7,6 @@ pub unsafe trait BufferStorage {
     type MapPersistent: Bit;
 }
 
-pub trait DowngradesTo<A:BufferStorage> = BufferStorage where
-    <Self as BufferStorage>::MapRead:        BitMasks<<A as BufferStorage>::MapRead>,
-    <Self as BufferStorage>::MapWrite:       BitMasks<<A as BufferStorage>::MapWrite>,
-    <Self as BufferStorage>::DynamicStorage: BitMasks<<A as BufferStorage>::DynamicStorage>,
-    <Self as BufferStorage>::MapPersistent:  BitMasks<<A as BufferStorage>::MapPersistent>;
-
 #[marker] pub unsafe trait Initialized: BufferStorage {}
 
 pub trait ReadMappable = Initialized + BufferStorage<MapRead=High>;
