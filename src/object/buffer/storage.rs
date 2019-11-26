@@ -41,7 +41,7 @@ impl UninitBuf {
         }
     }
 
-    pub unsafe fn storage_raw<T:?Sized,A:BufferAccess>(
+    pub unsafe fn storage_raw<T:?Sized,A:BufferStorage>(
         self,
         #[allow(unused_variables)] gl: &GL44,
         data: *const T,
@@ -85,11 +85,11 @@ impl UninitBuf {
         }
     }
 
-    pub fn storage_box<T:?Sized,A:BufferAccess>(self, gl: &GL44, data: Box<T>, hint: StorageHint) -> Buffer<T,A> {
+    pub fn storage_box<T:?Sized,A:BufferStorage>(self, gl: &GL44, data: Box<T>, hint: StorageHint) -> Buffer<T,A> {
         map_dealloc(data, |ptr| unsafe{self.storage_raw(gl, ptr, hint)})
     }
 
-    pub fn storage<T:Sized,A:BufferAccess>(self, gl: &GL44, data: T, hint: StorageHint) -> Buffer<T,A> {
+    pub fn storage<T:Sized,A:BufferStorage>(self, gl: &GL44, data: T, hint: StorageHint) -> Buffer<T,A> {
         unsafe {
             let buf = self.storage_raw(gl, &data, hint);
             forget(data);
@@ -97,11 +97,11 @@ impl UninitBuf {
         }
     }
 
-    pub fn storage_uninit<T:Sized,A:BufferAccess>(self, gl: &GL44, hint: StorageHint) -> Buffer<MaybeUninit<T>,A> {
+    pub fn storage_uninit<T:Sized,A:BufferStorage>(self, gl: &GL44, hint: StorageHint) -> Buffer<MaybeUninit<T>,A> {
         unsafe { self.storage_raw(gl, null(), hint) }
     }
 
-    pub fn storage_uninit_slice<T:Sized,A:BufferAccess>(
+    pub fn storage_uninit_slice<T:Sized,A:BufferStorage>(
         self, count: usize, gl: &GL44, hint: StorageHint
     ) -> Buffer<[MaybeUninit<T>],A> {
         unsafe { self.storage_raw(gl, slice_from_raw_parts(null(), count), hint) }
@@ -160,7 +160,7 @@ impl UninitBuf {
         unsafe { self.data_raw(slice_from_raw_parts(null(), count), usage) }
     }
 
-    pub unsafe fn with_raw<T:?Sized,A:NonPersistentAccess>(
+    pub unsafe fn with_raw<T:?Sized,A:NonPersistent>(
         self, data: *const T, hint:CreationHint
     ) -> Buffer<T,A> {
         if let Ok(gl) = self.gl().try_as_gl44() {
@@ -170,11 +170,11 @@ impl UninitBuf {
         }
     }
 
-    pub fn with_box<T:?Sized,A:NonPersistentAccess>(self, data: Box<T>, hint: CreationHint) -> Buffer<T,A> {
+    pub fn with_box<T:?Sized,A:NonPersistent>(self, data: Box<T>, hint: CreationHint) -> Buffer<T,A> {
         map_dealloc(data, |ptr| unsafe{self.with_raw(ptr, hint)})
     }
 
-    pub fn with<T:Sized,A:NonPersistentAccess>(self, data: T, hint: CreationHint) -> Buffer<T,A> {
+    pub fn with<T:Sized,A:NonPersistent>(self, data: T, hint: CreationHint) -> Buffer<T,A> {
         unsafe {
             let buf = self.with_raw(&data, hint);
             forget(data);
@@ -182,11 +182,11 @@ impl UninitBuf {
         }
     }
 
-    pub fn uninit<T:Sized,A:NonPersistentAccess>(self, hint: CreationHint) -> Buffer<MaybeUninit<T>,A> {
+    pub fn uninit<T:Sized,A:NonPersistent>(self, hint: CreationHint) -> Buffer<MaybeUninit<T>,A> {
         unsafe { self.with_raw(null(), hint) }
     }
 
-    pub fn uninit_slice<T:Sized,A:NonPersistentAccess>(
+    pub fn uninit_slice<T:Sized,A:NonPersistent>(
         self, count: usize, hint: CreationHint
     ) -> Buffer<[MaybeUninit<T>],A> {
         unsafe { self.with_raw(slice_from_raw_parts(null(), count), hint) }

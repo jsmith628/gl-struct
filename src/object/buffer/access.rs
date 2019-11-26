@@ -1,23 +1,24 @@
 use super::*;
 
-pub unsafe trait BufferAccess {
+pub unsafe trait BufferStorage {
     type MapRead: Bit;
     type MapWrite: Bit;
     type DynamicStorage: Bit;
     type MapPersistent: Bit;
 }
 
-pub trait DowngradesTo<A:BufferAccess> = BufferAccess where
-    <Self as BufferAccess>::MapRead:        BitMasks<<A as BufferAccess>::MapRead>,
-    <Self as BufferAccess>::MapWrite:       BitMasks<<A as BufferAccess>::MapWrite>,
-    <Self as BufferAccess>::DynamicStorage: BitMasks<<A as BufferAccess>::DynamicStorage>,
-    <Self as BufferAccess>::MapPersistent:  BitMasks<<A as BufferAccess>::MapPersistent>;
+pub trait DowngradesTo<A:BufferStorage> = BufferStorage where
+    <Self as BufferStorage>::MapRead:        BitMasks<<A as BufferStorage>::MapRead>,
+    <Self as BufferStorage>::MapWrite:       BitMasks<<A as BufferStorage>::MapWrite>,
+    <Self as BufferStorage>::DynamicStorage: BitMasks<<A as BufferStorage>::DynamicStorage>,
+    <Self as BufferStorage>::MapPersistent:  BitMasks<<A as BufferStorage>::MapPersistent>;
 
-pub trait MapReadAccess = BufferAccess<MapRead=High>;
-pub trait MapWriteAccess = BufferAccess<MapWrite=High>;
-pub trait DynamicAccess = BufferAccess<DynamicStorage=High>;
-pub trait PersistentAccess = BufferAccess<MapPersistent=High>;
-pub trait NonPersistentAccess = BufferAccess<MapPersistent=Low>;
+pub trait ReadMappable = BufferStorage<MapRead=High>;
+pub trait WriteMappable = BufferStorage<MapWrite=High>;
+pub trait ReadWriteMappable = ReadMappable + WriteMappable;
+pub trait Dynamic = BufferStorage<DynamicStorage=High>;
+pub trait Persistent = BufferStorage<MapPersistent=High>;
+pub trait NonPersistent = BufferStorage<MapPersistent=Low>;
 
 macro_rules! access {
     ($( $(#[$attr:meta])* $ty:ident = [$($flag:ident = $bit:ident),*];)*) => {
@@ -26,7 +27,7 @@ macro_rules! access {
             #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
             pub struct $ty;
 
-            unsafe impl BufferAccess for $ty {
+            unsafe impl BufferStorage for $ty {
                 $(type $flag = $bit;)*
             }
         )*

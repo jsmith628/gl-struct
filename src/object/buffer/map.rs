@@ -5,19 +5,19 @@ use crate::gl;
 use std::slice::SliceIndex;
 use std::ops::{Deref, DerefMut, CoerceUnsized};
 
-pub struct Map<'a, T:?Sized, A:BufferAccess> {
+pub struct Map<'a, T:?Sized, A:BufferStorage> {
     pub(super) ptr: *mut T,
     pub(super) offset: usize,
     pub(super) id: GLuint,
     pub(super) buf: PhantomData<&'a mut Buffer<T,A>>
 }
 
-impl<'a,U:?Sized,T:?Sized+Unsize<U>,A:BufferAccess> CoerceUnsized<Map<'a,U,A>> for Map<'a,T,A> {}
+impl<'a,U:?Sized,T:?Sized+Unsize<U>,A:BufferStorage> CoerceUnsized<Map<'a,U,A>> for Map<'a,T,A> {}
 
-impl<'a,T:?Sized,A:BufferAccess> !Sync for Map<'a,T,A> {}
-impl<'a,T:?Sized,A:BufferAccess> !Send for Map<'a,T,A> {}
+impl<'a,T:?Sized,A:BufferStorage> !Sync for Map<'a,T,A> {}
+impl<'a,T:?Sized,A:BufferStorage> !Send for Map<'a,T,A> {}
 
-impl<'a,T:?Sized,A:BufferAccess> Drop for Map<'a,T,A> {
+impl<'a,T:?Sized,A:BufferStorage> Drop for Map<'a,T,A> {
     fn drop(&mut self) {
         unsafe {
             let status;
@@ -61,28 +61,28 @@ impl<'a,T:?Sized,A:BufferAccess> Drop for Map<'a,T,A> {
     }
 }
 
-impl<'a,T:?Sized,A:BufferAccess> Map<'a,T,A> {
+impl<'a,T:?Sized,A:BufferStorage> Map<'a,T,A> {
     pub fn id(this: &Self) -> GLuint { this.id }
     pub fn size(this: &Self) -> usize { unsafe {size_of_val(&*this.ptr)} }
     pub fn align(this: &Self) -> usize { unsafe {align_of_val(&*this.ptr)} }
     pub fn offset(this: &Self) -> usize { this.offset }
 }
 
-impl<'a,T:?Sized,A:MapReadAccess> Deref for Map<'a,T,A> {
+impl<'a,T:?Sized,A:ReadMappable> Deref for Map<'a,T,A> {
     type Target = T;
     #[inline] fn deref(&self) -> &T { unsafe{&*self.ptr} }
 }
 
-impl<'a,T:?Sized,A:MapReadAccess+MapWriteAccess> DerefMut for Map<'a,T,A> {
+impl<'a,T:?Sized,A:ReadMappable+WriteMappable> DerefMut for Map<'a,T,A> {
     #[inline] fn deref_mut(&mut self) -> &mut T { unsafe{&mut *self.ptr} }
 }
 
-impl<'a,T:Sized,A:MapWriteAccess> Map<'a,T,A> {
+impl<'a,T:Sized,A:WriteMappable> Map<'a,T,A> {
     #[inline] pub unsafe fn write_direct(&mut self, data:T) { copy_nonoverlapping(&data, self.ptr, 1) }
     #[inline] pub fn write(&mut self, data:T) where T:Copy { unsafe{*self.ptr = data;} }
 }
 
-impl<'a,T:Sized,A:MapWriteAccess> Map<'a,[T],A> {
+impl<'a,T:Sized,A:WriteMappable> Map<'a,[T],A> {
 
     #[inline]
     pub unsafe fn write_direct_at(&mut self, i:usize, data:&[T]) {
@@ -100,7 +100,7 @@ impl<'a,T:Sized,A:MapWriteAccess> Map<'a,[T],A> {
 //MapBuffer
 //
 
-unsafe fn map_access<B:BufferAccess>() -> GLenum {
+unsafe fn map_access<B:BufferStorage>() -> GLenum {
     match (<B::MapRead as Bit>::VALUE, <B::MapWrite as Bit>::VALUE) {
         (true, false) => gl::READ_ONLY,
         (false, true) => gl::WRITE_ONLY,
@@ -109,8 +109,8 @@ unsafe fn map_access<B:BufferAccess>() -> GLenum {
     }
 }
 
-impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
-    unsafe fn map_raw<'a,B:BufferAccess>(&'a mut self) -> Map<'a,T,B> {
+impl<T:?Sized, A:BufferStorage> Buffer<T,A> {
+    unsafe fn map_raw<'a,B:BufferStorage>(&'a mut self) -> Map<'a,T,B> {
         let ptr = self.ptr.swap_mut_ptr(
             if gl::MapNamedBuffer::is_loaded() {
                 gl::MapNamedBuffer(self.id(), map_access::<B>())
@@ -130,19 +130,19 @@ impl<T:?Sized, A:BufferAccess> Buffer<T,A> {
     }
 }
 
-impl<T:?Sized,A:NonPersistentAccess> Buffer<T,A> {
+impl<T:?Sized,A:NonPersistent> Buffer<T,A> {
     #[inline]
-    pub fn map<'a>(&'a mut self) -> Map<'a,T,MapRead> where A:MapReadAccess {
+    pub fn map<'a>(&'a mut self) -> Map<'a,T,MapRead> where A:ReadMappable {
         unsafe{self.map_raw()}
     }
 
     #[inline]
-    pub fn map_write<'a>(&'a mut self) -> Map<'a,T,MapWrite> where A:MapWriteAccess {
+    pub fn map_write<'a>(&'a mut self) -> Map<'a,T,MapWrite> where A:WriteMappable {
         unsafe{self.map_raw()}
     }
 
     #[inline]
-    pub fn map_mut<'a>(&'a mut self) -> Map<'a,T,MapReadWrite> where A:MapReadAccess+MapWriteAccess {
+    pub fn map_mut<'a>(&'a mut self) -> Map<'a,T,MapReadWrite> where A:ReadWriteMappable {
         unsafe{self.map_raw()}
     }
 }
@@ -151,7 +151,7 @@ impl<T:?Sized,A:NonPersistentAccess> Buffer<T,A> {
 //MapBufferRange
 //
 
-unsafe fn map_range_flags<B:BufferAccess>() -> GLbitfield {
+unsafe fn map_range_flags<B:BufferStorage>() -> GLbitfield {
     let mut flags = 0;
     if <B::MapRead as Bit>::VALUE {flags |= gl::MAP_READ_BIT;}
     if <B::MapWrite as Bit>::VALUE {flags |= gl::MAP_WRITE_BIT;}
@@ -166,8 +166,8 @@ unsafe fn map_range_flags<B:BufferAccess>() -> GLbitfield {
 //Note: we cannot simply implement a public map_range method on Slice or SliceMut, as then, we could
 //split the buffer and then map it multiple times, which is not allowed, even for persistent mapping.
 
-impl<'a,T:?Sized,A:BufferAccess> SliceMut<'a,T,A> {
-    unsafe fn map_range_raw<'b,B:BufferAccess>(self) -> Map<'b,T,B> {
+impl<'a,T:?Sized,A:BufferStorage> SliceMut<'a,T,A> {
+    unsafe fn map_range_raw<'b,B:BufferStorage>(self) -> Map<'b,T,B> {
         let mut target = BufferTarget::CopyWriteBuffer.as_loc();
         let ptr = self.ptr.swap_mut_ptr(
             if
@@ -209,13 +209,13 @@ impl<'a,T:?Sized,A:BufferAccess> SliceMut<'a,T,A> {
 //Note: we require a mutable references because all API access of the buffer store are invalid
 //while mapped non-persistently
 
-impl<T:Sized,A:NonPersistentAccess> Buffer<[T],A> {
+impl<T:Sized,A:NonPersistent> Buffer<[T],A> {
 
     #[inline]
     pub fn map_range<'a,U,I>(&'a mut self, i:I) -> Map<'a,U,MapRead> where
         U:?Sized,
         I:SliceIndex<[T],Output=U>,
-        A:MapReadAccess
+        A:ReadMappable
     {
         unsafe { self.as_slice_mut().index_mut(i).map_range_raw() }
     }
@@ -224,7 +224,7 @@ impl<T:Sized,A:NonPersistentAccess> Buffer<[T],A> {
     pub fn map_range_write<'a,U,I>(&'a mut self, i:I) -> Map<'a,U,MapWrite> where
         U:?Sized,
         I:SliceIndex<[T],Output=U>,
-        A:MapWriteAccess
+        A:WriteMappable
     {
         unsafe { self.as_slice_mut().index_mut(i).map_range_raw() }
     }
@@ -233,7 +233,7 @@ impl<T:Sized,A:NonPersistentAccess> Buffer<[T],A> {
     pub fn map_range_mut<'a,U,I>(&'a mut self, i:I) -> Map<'a,U,MapReadWrite> where
         U:?Sized,
         I:SliceIndex<[T],Output=U>,
-        A:MapReadAccess+MapWriteAccess
+        A:ReadMappable+WriteMappable
     {
         unsafe { self.as_slice_mut().index_mut(i).map_range_raw() }
     }
@@ -243,8 +243,8 @@ impl<T:Sized,A:NonPersistentAccess> Buffer<[T],A> {
 //Persistent mapping
 //
 
-impl<'a,T:?Sized,A:PersistentAccess> Slice<'a,T,A> {
-    unsafe fn get_pointer_raw<'b,B:PersistentAccess>(this:*const Self) -> Map<'b,T,B> {
+impl<'a,T:?Sized,A:Persistent> Slice<'a,T,A> {
+    unsafe fn get_pointer_raw<'b,B:Persistent>(this:*const Self) -> Map<'b,T,B> {
         let mut ptr = MaybeUninit::uninit();
 
         if gl::GetNamedBufferPointerv::is_loaded() {
@@ -297,26 +297,26 @@ impl<'a,T:?Sized,A:PersistentAccess> Slice<'a,T,A> {
     }
 }
 
-impl<'a,T:?Sized,A:MapReadAccess+PersistentAccess> Slice<'a,T,A> {
+impl<'a,T:?Sized,A:ReadMappable+Persistent> Slice<'a,T,A> {
     #[inline] pub fn get_pointer(&self) -> Map<T,PersistMapRead> {
         unsafe {Self::get_pointer_raw(self)}
     }
 }
 
-impl<'a,T:?Sized,A:PersistentAccess> SliceMut<'a,T,A> {
+impl<'a,T:?Sized,A:Persistent> SliceMut<'a,T,A> {
 
     #[inline]
-    pub fn get_pointer(&self) -> Map<T,PersistMapRead> where A:MapReadAccess {
+    pub fn get_pointer(&self) -> Map<T,PersistMapRead> where A:ReadMappable {
         unsafe {Slice::get_pointer_raw(&self.as_immut())}
     }
 
     #[inline]
-    pub fn get_write_pointer(&mut self) -> Map<T,PersistMapWrite> where A:MapWriteAccess {
+    pub fn get_write_pointer(&mut self) -> Map<T,PersistMapWrite> where A:WriteMappable {
         unsafe {Slice::get_pointer_raw(&self.as_immut())}
     }
 
     #[inline]
-    pub fn get_mut_pointer(&mut self) -> Map<T,PersistMapReadWrite> where A:MapReadAccess+MapWriteAccess {
+    pub fn get_mut_pointer(&mut self) -> Map<T,PersistMapReadWrite> where A:ReadWriteMappable {
         unsafe {Slice::get_pointer_raw(&self.as_immut())}
     }
 

@@ -1,7 +1,7 @@
 // use super::*;
 // use format::{ClientFormat,PixelType,PixelData,PixelDataMut,PixelRowAlignment};
 
-// unsafe impl<'a,F:ClientFormat,T:PixelType<F>,A:BufferAccess> PixelData<F> for Slice<'a,[T],A> {
+// unsafe impl<'a,F:ClientFormat,T:PixelType<F>,A:BufferStorage> PixelData<F> for Slice<'a,[T],A> {
 //     #[inline] fn swap_bytes(&self) -> bool {T::swap_bytes()}
 //     #[inline] fn lsb_first(&self) -> bool {T::lsb_first()}
 //
@@ -18,7 +18,7 @@
 //     }
 // }
 //
-// unsafe impl<'a,F:ClientFormat,T:PixelType<F>,A:BufferAccess> PixelData<F> for SliceMut<'a,[T],A> {
+// unsafe impl<'a,F:ClientFormat,T:PixelType<F>,A:BufferStorage> PixelData<F> for SliceMut<'a,[T],A> {
 //     #[inline] fn swap_bytes(&self) -> bool {T::swap_bytes()}
 //     #[inline] fn lsb_first(&self) -> bool {T::lsb_first()}
 //
@@ -35,7 +35,7 @@
 //     }
 // }
 //
-// unsafe impl<'a,F:ClientFormat,T:PixelType<F>,A:BufferAccess> PixelDataMut<F> for SliceMut<'a,[T],A> {
+// unsafe impl<'a,F:ClientFormat,T:PixelType<F>,A:BufferStorage> PixelDataMut<F> for SliceMut<'a,[T],A> {
 //     #[inline] fn pixels_mut<'b>(
 //         &'b mut self, target:&'b mut BindingLocation<RawBuffer,BufferTarget>
 //     ) -> (Option<Binding<'b,RawBuffer,BufferTarget>>, *mut GLvoid) {

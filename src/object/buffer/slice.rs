@@ -2,47 +2,47 @@ use super::*;
 use crate::gl;
 
 #[derive(Clone, Copy)]
-pub struct Slice<'a, T:?Sized, A:BufferAccess> {
+pub struct Slice<'a, T:?Sized, A:BufferStorage> {
     pub(super) ptr: BufPtr<T>,
     pub(super) offset: usize,
     pub(super) buf: PhantomData<&'a Buffer<T, A>>
 }
 
-pub struct SliceMut<'a, T:?Sized, A:BufferAccess> {
+pub struct SliceMut<'a, T:?Sized, A:BufferStorage> {
     pub(super) ptr: BufPtr<T>,
     pub(super) offset: usize,
     pub(super) buf: PhantomData<&'a mut Buffer<T, A>>
 }
 
-impl<'a,U:?Sized,T:?Sized+Unsize<U>,A:BufferAccess> CoerceUnsized<Slice<'a,U,A>> for Slice<'a,T,A> {}
-impl<'a,U:?Sized,T:?Sized+Unsize<U>,A:BufferAccess> CoerceUnsized<SliceMut<'a,U,A>> for SliceMut<'a,T,A> {}
+impl<'a,U:?Sized,T:?Sized+Unsize<U>,A:BufferStorage> CoerceUnsized<Slice<'a,U,A>> for Slice<'a,T,A> {}
+impl<'a,U:?Sized,T:?Sized+Unsize<U>,A:BufferStorage> CoerceUnsized<SliceMut<'a,U,A>> for SliceMut<'a,T,A> {}
 
-impl<'a,T:?Sized,A:BufferAccess> !Sync for Slice<'a,T,A> {}
-impl<'a,T:?Sized,A:BufferAccess> !Send for Slice<'a,T,A> {}
-impl<'a,T:?Sized,A:BufferAccess> !Sync for SliceMut<'a,T,A> {}
-impl<'a,T:?Sized,A:BufferAccess> !Send for SliceMut<'a,T,A> {}
+impl<'a,T:?Sized,A:BufferStorage> !Sync for Slice<'a,T,A> {}
+impl<'a,T:?Sized,A:BufferStorage> !Send for Slice<'a,T,A> {}
+impl<'a,T:?Sized,A:BufferStorage> !Sync for SliceMut<'a,T,A> {}
+impl<'a,T:?Sized,A:BufferStorage> !Send for SliceMut<'a,T,A> {}
 
 //
 //Constructing slices
 //
 
-impl<'a, T:?Sized, A:BufferAccess> From<SliceMut<'a,T,A>> for Slice<'a,T,A> {
+impl<'a, T:?Sized, A:BufferStorage> From<SliceMut<'a,T,A>> for Slice<'a,T,A> {
     #[inline] fn from(bmut: SliceMut<'a,T,A>) -> Self {Slice{ptr: bmut.ptr, offset: bmut.offset, buf:PhantomData}}
 }
 
-impl<'a, T:?Sized, A:BufferAccess> From<&'a Buffer<T,A>> for Slice<'a,T,A> {
+impl<'a, T:?Sized, A:BufferStorage> From<&'a Buffer<T,A>> for Slice<'a,T,A> {
     #[inline] fn from(bref: &'a Buffer<T,A>) -> Self {Slice{ptr: bref.ptr, offset: 0, buf:PhantomData}}
 }
 
-impl<'a, T:?Sized, A:BufferAccess> From<&'a mut Buffer<T,A>> for Slice<'a,T,A> {
+impl<'a, T:?Sized, A:BufferStorage> From<&'a mut Buffer<T,A>> for Slice<'a,T,A> {
     #[inline] fn from(bref: &'a mut Buffer<T,A>) -> Self {Slice{ptr: bref.ptr, offset: 0, buf:PhantomData}}
 }
 
-impl<'a, T:?Sized, A:BufferAccess> From<&'a mut Buffer<T,A>> for SliceMut<'a,T,A> {
+impl<'a, T:?Sized, A:BufferStorage> From<&'a mut Buffer<T,A>> for SliceMut<'a,T,A> {
     #[inline] fn from(bref: &'a mut Buffer<T,A>) -> Self {SliceMut{ptr: bref.ptr, offset: 0, buf:PhantomData}}
 }
 
-impl<'a,T:?Sized,A:BufferAccess> Slice<'a,T,A> {
+impl<'a,T:?Sized,A:BufferStorage> Slice<'a,T,A> {
 
     #[inline]
     unsafe fn into_mut(self) -> SliceMut<'a,T,A> {
@@ -101,14 +101,14 @@ impl<'a,T:?Sized,A:BufferAccess> Slice<'a,T,A> {
 
 }
 
-impl<'a,T:Copy+Sized,A:BufferAccess> Slice<'a,T,A> {
+impl<'a,T:Copy+Sized,A:BufferStorage> Slice<'a,T,A> {
     #[inline]
     pub fn copy_subdata(&self, dest:&mut SliceMut<'a,T,A>) {
         unsafe{ self.copy_subdata_unchecked(dest) }
     }
 }
 
-impl<'a,T:Copy+Sized,A:BufferAccess> Slice<'a,[T],A> {
+impl<'a,T:Copy+Sized,A:BufferStorage> Slice<'a,[T],A> {
     #[inline]
     pub fn copy_subdata(&self, dest:&mut SliceMut<'a,[T],A>) {
         assert_eq!(dest.size(), self.size(), "destination and source buffers have different sizes");
@@ -116,7 +116,7 @@ impl<'a,T:Copy+Sized,A:BufferAccess> Slice<'a,[T],A> {
     }
 }
 
-impl<'a,T:Sized,A:BufferAccess> Slice<'a,[T],A> {
+impl<'a,T:Sized,A:BufferStorage> Slice<'a,[T],A> {
     #[inline] pub fn len(&self) -> usize {self.ptr.len()}
 
     #[inline]
@@ -180,7 +180,7 @@ impl<'a,T:Sized,A:BufferAccess> Slice<'a,[T],A> {
 }
 
 
-impl<'a,T:?Sized,A:BufferAccess> SliceMut<'a,T,A> {
+impl<'a,T:?Sized,A:BufferStorage> SliceMut<'a,T,A> {
 
     #[inline] pub fn id(&self) -> GLuint {self.ptr.id()}
     #[inline] pub fn size(&self) -> usize {self.ptr.size()}
@@ -208,15 +208,15 @@ impl<'a,T:?Sized,A:BufferAccess> SliceMut<'a,T,A> {
 
 }
 
-impl<'a,T:Copy+Sized,A:BufferAccess> SliceMut<'a,[T],A> {
+impl<'a,T:Copy+Sized,A:BufferStorage> SliceMut<'a,[T],A> {
     #[inline] pub fn copy_subdata(&self, dest:&mut SliceMut<'a,[T],A>) { self.as_immut().copy_subdata(dest) }
 }
 
-impl<'a,T:Copy+Sized,A:BufferAccess> SliceMut<'a,T,A> {
+impl<'a,T:Copy+Sized,A:BufferStorage> SliceMut<'a,T,A> {
     #[inline] pub fn copy_subdata(&self, dest:&mut SliceMut<'a,T,A>) { self.as_immut().copy_subdata(dest) }
 }
 
-impl<'a,T:Sized,A:BufferAccess> SliceMut<'a,[T],A> {
+impl<'a,T:Sized,A:BufferStorage> SliceMut<'a,[T],A> {
     #[inline] pub fn len(&self) -> usize {self.as_immut().len()}
 
     #[inline] pub fn split_at(&self, mid:usize) -> (Slice<'a,[T],A>, Slice<'a,[T],A>) {
@@ -267,7 +267,7 @@ impl<'a,T:Sized,A:BufferAccess> SliceMut<'a,[T],A> {
 //Writing subdata: glBufferSubData
 //
 
-impl<'a, T:?Sized, A:DynamicAccess> SliceMut<'a,T,A> {
+impl<'a, T:?Sized, A:Dynamic> SliceMut<'a,T,A> {
     pub unsafe fn subdata_raw(&mut self, data: *const T) {
         let void = data as *const GLvoid;
         let size = self.size().min(size_of_val(&*data)) as GLsizeiptr;
@@ -282,7 +282,7 @@ impl<'a, T:?Sized, A:DynamicAccess> SliceMut<'a,T,A> {
     }
 }
 
-impl<'a,T:Sized,A:DynamicAccess> SliceMut<'a,T,A> {
+impl<'a,T:Sized,A:Dynamic> SliceMut<'a,T,A> {
 
     pub fn subdata(&mut self, data: T) {
         unsafe {
@@ -314,7 +314,7 @@ impl<'a,T:Sized,A:DynamicAccess> SliceMut<'a,T,A> {
 
 }
 
-impl<'a,T:Sized,A:DynamicAccess> SliceMut<'a,[T],A> {
+impl<'a,T:Sized,A:Dynamic> SliceMut<'a,[T],A> {
 
     pub fn subdata(&mut self, mut data: Box<[T]>) {
         unsafe {

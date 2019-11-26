@@ -42,13 +42,13 @@ impl<T:?Sized> Target<BufPtr<T>> for BufferTarget {
     unsafe fn unbind(self) { gl::BindBuffer(self.into(), 0) }
 }
 
-impl<'a,T:?Sized,A:BufferAccess> Target<Slice<'a,T,A>> for BufferTarget {
+impl<'a,T:?Sized,A:BufferStorage> Target<Slice<'a,T,A>> for BufferTarget {
     fn target_id(self) -> GLenum { self as GLenum }
     unsafe fn bind(self, buf:&Slice<T,A>) { gl::BindBuffer(self.into(), buf.id()) }
     unsafe fn unbind(self) { gl::BindBuffer(self.into(), 0) }
 }
 
-impl<'a,T:?Sized,A:BufferAccess> Target<SliceMut<'a,T,A>> for BufferTarget {
+impl<'a,T:?Sized,A:BufferStorage> Target<SliceMut<'a,T,A>> for BufferTarget {
     fn target_id(self) -> GLenum { self as GLenum }
     unsafe fn bind(self, buf:&SliceMut<T,A>) { gl::BindBuffer(self.into(), buf.id()) }
     unsafe fn unbind(self) { gl::BindBuffer(self.into(), 0) }
