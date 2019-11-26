@@ -19,6 +19,7 @@ impl<'a,T:?Sized,A:Initialized> !Send for Map<'a,T,A> {}
 
 impl<'a,T:?Sized,A:Initialized> Drop for Map<'a,T,A> {
     fn drop(&mut self) {
+        if Self::size(self)==0 { return; }
         unsafe {
             let status;
             let mut target = BufferTarget::CopyWriteBuffer.as_loc();
@@ -112,7 +113,9 @@ unsafe fn map_access<B:Initialized>() -> GLenum {
 impl<T:?Sized, A:Initialized> Buffer<T,A> {
     unsafe fn map_raw<'a,B:Initialized>(&'a mut self) -> Map<'a,T,B> {
         let ptr = self.ptr.swap_mut_ptr(
-            if gl::MapNamedBuffer::is_loaded() {
+            if self.size()==0 {
+                NonNull::dangling().as_mut()
+            } else if gl::MapNamedBuffer::is_loaded() {
                 gl::MapNamedBuffer(self.id(), map_access::<B>())
             } else {
                 BufferTarget::CopyWriteBuffer.as_loc().map_bind(self,
@@ -170,7 +173,9 @@ impl<'a,T:?Sized,A:Initialized> SliceMut<'a,T,A> {
     unsafe fn map_range_raw<'b,B:Initialized>(self) -> Map<'b,T,B> {
         let mut target = BufferTarget::CopyWriteBuffer.as_loc();
         let ptr = self.ptr.swap_mut_ptr(
-            if
+            if self.size()==0 {
+                NonNull::dangling().as_mut()
+            } else if
                 <B::MapPersistent as Bit>::VALUE ||
                 gl::MapBufferRange::is_loaded() ||
                 gl::MapNamedBufferRange::is_loaded()
@@ -247,7 +252,12 @@ impl<'a,T:?Sized,A:Persistent> Slice<'a,T,A> {
     unsafe fn get_pointer_raw<'b,B:Persistent>(this:*const Self) -> Map<'b,T,B> {
         let mut ptr = MaybeUninit::uninit();
 
-        if gl::GetNamedBufferPointerv::is_loaded() {
+        //get the size of the full buffer
+        let buf_size = (*this).ptr.buffer_size();
+
+        if buf_size==0 {
+            ptr = MaybeUninit::new(NonNull::dangling().as_ptr())
+        } else if gl::GetNamedBufferPointerv::is_loaded() {
             gl::GetNamedBufferPointerv((&*this).id(), gl::BUFFER_MAP_POINTER, ptr.as_mut_ptr());
         } else {
             BufferTarget::CopyReadBuffer.as_loc().map_bind(&*this, |b|
@@ -256,9 +266,7 @@ impl<'a,T:?Sized,A:Persistent> Slice<'a,T,A> {
         }
 
         //if the pointer is null, we need to map the buffer first
-        if ptr.get_ref().is_null() {
-            //get the size of the full buffer
-            let buf_size = (*this).ptr.buffer_size();
+        if buf_size>0 && ptr.get_ref().is_null() {
 
             //needs to be the A flags because this map will be used for any other maps in the future
             let flags = map_range_flags::<A>();
@@ -276,7 +284,7 @@ impl<'a,T:?Sized,A:Persistent> Slice<'a,T,A> {
 
         }
 
-        if <B::MapRead as Bit>::VALUE {
+        if (&*this).size()>0 && <B::MapRead as Bit>::VALUE {
             //since we don't use coherent, we have to provide a barrier to tell the GL that we intend to read them
             gl::MemoryBarrier(gl::CLIENT_MAPPED_BUFFER_BARRIER_BIT);
 
@@ -288,7 +296,7 @@ impl<'a,T:?Sized,A:Persistent> Slice<'a,T,A> {
         }
 
         Map {
-            ptr: (&*this).ptr.swap_mut_ptr(ptr.assume_init()),
+            ptr: (&*this).ptr.swap_mut_ptr(ptr.assume_init().offset((&*this).offset() as isize)),
             id: (&*this).id(),
             offset: (&*this).offset(),
             buf: PhantomData

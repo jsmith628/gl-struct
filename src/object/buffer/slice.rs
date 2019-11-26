@@ -59,6 +59,7 @@ impl<'a,T:?Sized,A:Initialized> Slice<'a,T,A> {
     }
 
     pub unsafe fn get_subdata_raw(&self, data: *mut T) {
+        if self.size()==0 { return; }
         if gl::GetNamedBufferSubData::is_loaded() {
             gl::GetNamedBufferSubData(
                 self.id(), self.offset() as GLintptr, self.size() as GLintptr, data as *mut GLvoid
@@ -76,6 +77,7 @@ impl<'a,T:?Sized,A:Initialized> Slice<'a,T,A> {
     }
 
     pub unsafe fn copy_subdata_unchecked(&self, dest: &mut SliceMut<'a,T,A>) {
+        if self.size()==0 || dest.size()==0 { return; }
         BufferTarget::CopyReadBuffer.as_loc().map_bind(self, |b1|
             BufferTarget::CopyWriteBuffer.as_loc().map_bind(dest, |b2|
                 gl::CopyBufferSubData(
@@ -198,6 +200,7 @@ impl<'a,T:?Sized,A:Initialized> SliceMut<'a,T,A> {
     }
 
     pub unsafe fn invalidate_subdata_raw(&mut self) {
+        if self.size()==0 { return; }
         if gl::InvalidateBufferSubData::is_loaded() {
             gl::InvalidateBufferSubData(self.id(), self.offset() as GLintptr, self.size() as GLsizeiptr)
         }
@@ -269,6 +272,8 @@ impl<'a,T:Sized,A:Initialized> SliceMut<'a,[T],A> {
 
 impl<'a, T:?Sized, A:Dynamic> SliceMut<'a,T,A> {
     pub unsafe fn subdata_raw(&mut self, data: *const T) {
+        if self.size()==0 { return; }
+        
         let void = data as *const GLvoid;
         let size = self.size().min(size_of_val(&*data)) as GLsizeiptr;
 

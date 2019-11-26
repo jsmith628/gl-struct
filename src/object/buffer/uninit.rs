@@ -63,12 +63,14 @@ impl UninitBuf {
         }
 
         //upload the data
-        if gl::NamedBufferStorage::is_loaded() {
-            gl::NamedBufferStorage(self.id(), size, ptr, flags)
-        } else {
-            BufferTarget::CopyWriteBuffer.as_loc().map_bind(&self,
-                |b| gl::BufferStorage(b.target_id(), size, ptr, flags)
-            );
+        if size!=0 {
+            if gl::NamedBufferStorage::is_loaded() {
+                gl::NamedBufferStorage(self.id(), size, ptr, flags)
+            } else {
+                BufferTarget::CopyWriteBuffer.as_loc().map_bind(&self,
+                    |b| gl::BufferStorage(b.target_id(), size, ptr, flags)
+                );
+            }
         }
 
         //construct the inner representation for the buffer
@@ -117,12 +119,14 @@ impl UninitBuf {
         let usage = hint.unwrap_or(Default::default()) as GLenum;
 
         //upload the data
-        if gl::NamedBufferData::is_loaded() {
-            gl::NamedBufferData(self.id(), size, ptr, usage)
-        } else {
-            BufferTarget::CopyWriteBuffer.as_loc().map_bind(&self,
-                |b| gl::BufferData(b.target_id(), size, ptr, usage)
-            );
+        if size!=0 {
+            if gl::NamedBufferData::is_loaded() {
+                gl::NamedBufferData(self.id(), size, ptr, usage)
+            } else {
+                BufferTarget::CopyWriteBuffer.as_loc().map_bind(&self,
+                    |b| gl::BufferData(b.target_id(), size, ptr, usage)
+                );
+            }
         }
 
         //construct the inner representation for the buffer

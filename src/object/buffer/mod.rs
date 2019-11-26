@@ -151,6 +151,7 @@ impl<T:?Sized, A:Initialized> Buffer<T,A> {
     //
 
     pub unsafe fn invalidate_data_raw(&mut self) {
+        if self.size()==0 { return; }
         if gl::InvalidateBufferData::is_loaded() {
             gl::InvalidateBufferData(self.id())
         } else if !self.immutable_storage() {
