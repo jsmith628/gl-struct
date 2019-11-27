@@ -86,7 +86,6 @@ unsafe impl PixelFormat for FormatInt {
 
 
 glenum! {
-
     pub enum PixelType {
         UNSIGNED_BYTE, BYTE, UNSIGNED_SHORT, SHORT, UNSIGNED_INT, INT,
         HALF_FLOAT, FLOAT,
@@ -99,15 +98,6 @@ glenum! {
         UNSIGNED_INT_10F_11F_11F_REV,
         UNSIGNED_INT_5_9_9_9_REV,
         UNSIGNED_INT_24_8,
-        FLOAT_32_UNSIGNED_INT_24_8_REV
-    }
-
-    pub enum SpecialFloatType {
-        UNSIGNED_INT_10F_11F_11F_REV,
-        UNSIGNED_INT_5_9_9_9_REV
-    }
-
-    pub enum SpecialDepthStencilType {
         FLOAT_32_UNSIGNED_INT_24_8_REV
     }
 }
