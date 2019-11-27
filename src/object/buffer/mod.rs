@@ -80,20 +80,20 @@ impl<T:?Sized, A:Initialized> Buffer<T,A> {
     #[inline] pub unsafe fn downgrade_ref_unchecked<B:Initialized>(&self) -> &Buffer<T,B> { transmute(self) }
     #[inline] pub unsafe fn downgrade_mut_unchecked<B:Initialized>(&mut self) -> &mut Buffer<T,B> { transmute(self) }
 
-    // #[inline]
-    // pub fn downgrade<B:Initialized>(self) -> Buffer<T,B> where A:DowngradesTo<B> {
-    //     unsafe { transmute(self) }
-    // }
-    //
-    // #[inline]
-    // pub fn downgrade_ref<B:Initialized>(&self) -> &Buffer<T,B> where A:DowngradesTo<B> {
-    //     unsafe { transmute(self) }
-    // }
-    //
-    // #[inline]
-    // pub fn downgrade_mut<B:Initialized>(&mut self) -> &mut Buffer<T,B> where A:DowngradesTo<B> {
-    //     unsafe { transmute(self) }
-    // }
+    #[inline]
+    pub fn downgrade<B:Initialized>(self) -> Buffer<T,B> where A:DowngradesTo<B> {
+        unsafe { transmute(self) }
+    }
+
+    #[inline]
+    pub fn downgrade_ref<B:Initialized>(&self) -> &Buffer<T,B> where A:DowngradesTo<B> {
+        unsafe { transmute(self) }
+    }
+
+    #[inline]
+    pub fn downgrade_mut<B:Initialized>(&mut self) -> &mut Buffer<T,B> where A:DowngradesTo<B> {
+        unsafe { transmute(self) }
+    }
 
     //
     //Slice creation

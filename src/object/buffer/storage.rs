@@ -7,6 +7,24 @@ pub unsafe trait BufferStorage {
     type MapPersistent: Bit;
 }
 
+#[marker] pub unsafe trait DowngradesTo<B:Initialized>: Initialized {}
+
+unsafe impl<A:NonPersistent, B:NonPersistent> DowngradesTo<B> for A where
+    <A as BufferStorage>::MapRead:        BitMasks<<B as BufferStorage>::MapRead>,
+    <A as BufferStorage>::MapWrite:       BitMasks<<B as BufferStorage>::MapWrite>,
+    <A as BufferStorage>::DynamicStorage: BitMasks<<B as BufferStorage>::DynamicStorage>
+{}
+
+unsafe impl<A:Initialized> DowngradesTo<ReadOnly> for A {}
+unsafe impl<A:Dynamic> DowngradesTo<DynWrite> for A {}
+unsafe impl DowngradesTo<PersistMapRead> for PersistMapReadWrite {}
+unsafe impl DowngradesTo<PersistMapWrite> for PersistMapReadWrite {}
+unsafe impl DowngradesTo<PersistMapRead> for PersistReadDynWrite {}
+unsafe impl DowngradesTo<PersistMapRead> for PersistReadWrite {}
+unsafe impl DowngradesTo<PersistMapWrite> for PersistReadWrite {}
+unsafe impl DowngradesTo<PersistWrite> for PersistReadWrite {}
+
+
 #[marker] pub unsafe trait Initialized: BufferStorage {}
 
 pub trait ReadMappable = Initialized + BufferStorage<MapRead=High>;

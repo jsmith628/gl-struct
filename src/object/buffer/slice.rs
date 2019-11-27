@@ -1,7 +1,8 @@
 use super::*;
 use crate::gl;
 
-#[derive(Clone, Copy)]
+#[derive(Derivative)]
+#[derivative(Clone(bound=""), Copy(bound=""))]
 pub struct Slice<'a, T:?Sized, A:Initialized> {
     pub(super) ptr: BufPtr<T>,
     pub(super) offset: usize,
@@ -53,6 +54,15 @@ impl<'a,T:?Sized,A:Initialized> Slice<'a,T,A> {
     #[inline] pub fn size(&self) -> usize {self.ptr.size()}
     #[inline] pub fn align(&self) -> usize {self.ptr.align()}
     #[inline] pub fn offset(&self) -> usize {self.offset}
+
+    #[inline] pub unsafe fn downgrade_unchecked<B:Initialized>(self) -> Slice<'a,T,B> {
+        Slice{ptr: self.ptr, offset: self.offset, buf: PhantomData}
+    }
+
+    #[inline]
+    pub fn downgrade<B:Initialized>(self) -> Slice<'a,T,B> where A:DowngradesTo<B> {
+        unsafe { self.downgrade_unchecked() }
+    }
 
     #[inline] pub(super) unsafe fn _read_into_box(&self) -> Box<T> {
         map_alloc(self.ptr, |ptr| self.get_subdata_raw(ptr))
@@ -193,6 +203,15 @@ impl<'a,T:?Sized,A:Initialized> SliceMut<'a,T,A> {
         Slice{ptr:self.ptr, offset:self.offset, buf:PhantomData}
     }
 
+    #[inline] pub unsafe fn downgrade_unchecked<B:Initialized>(self) -> SliceMut<'a,T,B> {
+        SliceMut{ptr: self.ptr, offset: self.offset, buf: PhantomData}
+    }
+
+    #[inline]
+    pub fn downgrade<B:Initialized>(self) -> SliceMut<'a,T,B> where A:DowngradesTo<B> {
+        unsafe { self.downgrade_unchecked() }
+    }
+
     #[inline] pub unsafe fn get_subdata_raw(&self, data: *mut T) { self.as_immut().get_subdata_raw(data) }
 
     #[inline] pub unsafe fn copy_subdata_unchecked(&self, dest: &mut SliceMut<'a,T,A>) {
@@ -273,7 +292,7 @@ impl<'a,T:Sized,A:Initialized> SliceMut<'a,[T],A> {
 impl<'a, T:?Sized, A:Dynamic> SliceMut<'a,T,A> {
     pub unsafe fn subdata_raw(&mut self, data: *const T) {
         if self.size()==0 { return; }
-        
+
         let void = data as *const GLvoid;
         let size = self.size().min(size_of_val(&*data)) as GLsizeiptr;
 
