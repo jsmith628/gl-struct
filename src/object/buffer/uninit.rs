@@ -24,20 +24,33 @@ impl UninitBuf {
         }
     }
 
-    pub fn create(#[allow(unused_variables)] gl: &GL45) -> UninitBuf {
+    pub fn create(#[allow(unused_variables)] gl: &GL15) -> UninitBuf {
         let mut id = MaybeUninit::uninit();
         unsafe {
-            gl::CreateBuffers(1, id.as_mut_ptr());
+            if gl::CreateBuffers::is_loaded() {
+                gl::CreateBuffers(1, id.as_mut_ptr());
+            } else {
+                gl::GenBuffers(1, id.as_mut_ptr());
+                gl::BindBuffer(gl::COPY_WRITE_BUFFER, id.assume_init());
+                gl::BindBuffer(gl::COPY_WRITE_BUFFER, 0);
+            }
             Self::from_id(id.assume_init())
         }
     }
 
-    pub fn create_buffers(#[allow(unused_variables)] gl: &GL45, n:GLuint) -> Box<[UninitBuf]> {
+    pub fn create_buffers(gl: &GL15, n:GLuint) -> Box<[UninitBuf]> {
         if n==0 { return Box::new([]); }
         let mut ids = Box::new_uninit_slice(n as usize);
         unsafe {
-            gl::CreateBuffers(n as GLsizei, ids[0].as_mut_ptr());
-            ids.into_iter().map(|id| Self::from_id(id.assume_init())).collect()
+            if gl::CreateBuffers::is_loaded() {
+                gl::CreateBuffers(n as GLsizei, ids[0].as_mut_ptr());
+                ids.into_iter().map(|id| Self::from_id(id.assume_init())).collect()
+            } else {
+                let mut bufs = Self::gen_buffers(gl, n);
+                for b in bufs.iter_mut() { gl::BindBuffer(gl::COPY_WRITE_BUFFER, b.id()); }
+                gl::BindBuffer(gl::COPY_WRITE_BUFFER, 0);
+                bufs
+            }
         }
     }
 
