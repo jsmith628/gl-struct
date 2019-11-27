@@ -3,33 +3,25 @@ use super::*;
 use crate::object::*;
 
 use std::mem::*;
+use std::fmt::{Debug, Formatter};
 
-#[derive(Copy,Clone,PartialEq,Eq,Hash)]
+#[derive(Copy,Clone,PartialEq,Eq,Hash,Debug)]
 pub struct InvalidPixelRowAlignment(pub u8);
-
-display_from_debug!(InvalidPixelRowAlignment);
-impl ::std::fmt::Debug for InvalidPixelRowAlignment {
-    #[inline]
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
 
 #[derive(Copy,Clone,PartialEq,Eq,Hash)]
 pub struct PixelRowAlignment(u8);
 
 display_from_debug!(PixelRowAlignment);
-impl ::std::fmt::Debug for PixelRowAlignment {
-    #[inline]
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
+impl Debug for PixelRowAlignment {
+    #[inline] fn fmt(&self, f: &mut Formatter) -> ::std::fmt::Result { write!(f, "{}", self.0) }
 }
 
 pub const ALIGN_1: PixelRowAlignment = PixelRowAlignment(1);
 pub const ALIGN_2: PixelRowAlignment = PixelRowAlignment(2);
 pub const ALIGN_4: PixelRowAlignment = PixelRowAlignment(4);
 pub const ALIGN_8: PixelRowAlignment = PixelRowAlignment(8);
+
+impl Into<u8> for PixelRowAlignment { #[inline] fn into(self) -> u8 {self.0} }
 
 impl TryFrom<u8> for PixelRowAlignment {
     type Error = InvalidPixelRowAlignment;
@@ -41,8 +33,39 @@ impl TryFrom<u8> for PixelRowAlignment {
     }
 }
 
-impl Into<u8> for PixelRowAlignment {
-    #[inline] fn into(self) -> u8 {self.0}
+pub unsafe trait Pixel<F: ClientFormat>: Copy+PartialEq {
+    fn format() -> F;
+}
+
+pub enum Pixels<'a,F:ClientFormat,P:Pixel<F>> {
+    Slice(F, &'a [P]),
+    Buffer(F, Slice<'a,[P],ReadOnly>)
+}
+
+pub enum PixelsMut<'a,F:ClientFormat,P:Pixel<F>> {
+    Slice(F, &'a mut [P]),
+    Buffer(F, SliceMut<'a,[P],ReadOnly>)
+}
+
+pub trait PixelData<F:ClientFormat> {
+    type Pixel: Pixel<F>;
+
+    #[inline] fn swap_bytes(&self) -> bool {false}
+    #[inline] fn lsb_first(&self) -> bool {false}
+
+    #[inline] fn alignment(&self) -> PixelRowAlignment {ALIGN_1}
+    #[inline] fn row_length(&self) -> usize {0}
+    #[inline] fn image_height(&self) -> usize {0}
+
+    #[inline] fn skip_pixels(&self) -> usize {0}
+    #[inline] fn skip_rows(&self) -> usize {0}
+    #[inline] fn skip_images(&self) -> usize {0}
+
+    fn pixels<'a>(&'a self) -> Pixels<'a,F,Self::Pixel>;
+}
+
+pub trait PixelDataMut<F:ClientFormat>: PixelData<F> {
+    fn pixels_mut<'a>(&'a mut self) -> PixelsMut<'a,F,Self::Pixel>;
 }
 
 pub(crate) unsafe fn apply_packing_settings<F:ClientFormat,P:PixelData<F>+?Sized>(pixels:&P) {
@@ -67,61 +90,44 @@ pub(crate) unsafe fn apply_unpacking_settings<F:ClientFormat,P:PixelData<F>+?Siz
     gl::PixelStorei(gl::UNPACK_SKIP_IMAGES, pixels.skip_images() as GLint);
 }
 
-pub unsafe trait PixelData<F:ClientFormat> {
-
-    #[inline] fn swap_bytes(&self) -> bool {false}
-    #[inline] fn lsb_first(&self) -> bool {false}
-
-    #[inline] fn alignment(&self) -> PixelRowAlignment {ALIGN_4}
-    #[inline] fn row_length(&self) -> usize {0}
-    #[inline] fn image_height(&self) -> usize {0}
-
-    #[inline] fn skip_pixels(&self) -> usize {0}
-    #[inline] fn skip_rows(&self) -> usize {0}
-    #[inline] fn skip_images(&self) -> usize {0}
-
-    fn format_type(&self) -> F;
-    fn count(&self) -> usize;
-    fn size(&self) -> usize;
-
-    fn pixels<'a>(
-        &'a self, target:&'a mut BindingLocation<UninitBuf,BufferTarget>
-    ) -> (Option<Binding<'a,UninitBuf,BufferTarget>>, *const GLvoid);
+impl<F:ClientFormat, P:Pixel<F>> PixelData<F> for [P] {
+    type Pixel = P;
+    fn pixels<'a>(&'a self) -> Pixels<'a,F,Self::Pixel> { Pixels::Slice(P::format(), self) }
 }
 
-pub unsafe trait PixelDataMut<F:ClientFormat>: PixelData<F> {
-    fn pixels_mut<'a>(
-        &'a mut self, target:&'a mut BindingLocation<UninitBuf,BufferTarget>
-    ) -> (Option<Binding<'a,UninitBuf,BufferTarget>>, *mut GLvoid);
+impl<F:ClientFormat, P:Pixel<F>> PixelDataMut<F> for [P] {
+    fn pixels_mut<'a>(&'a mut self) -> PixelsMut<'a,F,Self::Pixel> { PixelsMut::Slice(P::format(), self) }
 }
 
-pub unsafe trait PixelType<F: ClientFormat>: Sized+Copy+Clone+PartialEq {
-    fn format_type() -> F;
-    fn swap_bytes() -> bool;
-    fn lsb_first() -> bool;
-}
-
-unsafe impl<F:ClientFormat,T:PixelType<F>> PixelData<F> for [T] {
-    #[inline] fn swap_bytes(&self) -> bool {T::swap_bytes()}
-    #[inline] fn lsb_first(&self) -> bool {T::lsb_first()}
-
-    #[inline] fn alignment(&self) -> PixelRowAlignment { PixelRowAlignment(align_of::<T>().min(8) as u8) }
-
-    #[inline] fn format_type(&self) -> F {T::format_type()}
-    #[inline] fn count(&self) -> usize {self.len()}
-    #[inline] fn size(&self) -> usize {size_of_val(self)}
-
-    #[inline] fn pixels<'a>(
-        &'a self, _:&'a mut BindingLocation<UninitBuf,BufferTarget>
-    ) -> (Option<Binding<'a,UninitBuf,BufferTarget>>, *const GLvoid) {
-        (None, &self[0] as *const T as *const GLvoid)
+impl<F:ClientFormat, P:Pixel<F>, A:Initialized> PixelData<F> for Buffer<[P],A> {
+    type Pixel = P;
+    fn pixels<'a>(&'a self) -> Pixels<'a,F,Self::Pixel> {
+        Pixels::Buffer(P::format(), self.downgrade_ref().as_slice())
     }
 }
 
-unsafe impl<F:ClientFormat,T:PixelType<F>> PixelDataMut<F> for [T] {
-    #[inline] fn pixels_mut<'a>(
-        &'a mut self, _:&'a mut BindingLocation<UninitBuf,BufferTarget>
-    ) -> (Option<Binding<'a,UninitBuf,BufferTarget>>, *mut GLvoid) {
-        (None, &mut self[0] as *mut T as *mut GLvoid)
+impl<F:ClientFormat, P:Pixel<F>, A:Initialized> PixelDataMut<F> for Buffer<[P],A> {
+    fn pixels_mut<'a>(&'a mut self) -> PixelsMut<'a,F,Self::Pixel> {
+        PixelsMut::Buffer(P::format(), self.downgrade_mut().as_slice_mut())
+    }
+}
+
+impl<'a, F:ClientFormat, P:Pixel<F>, A:Initialized> PixelData<F> for Slice<'a,[P],A> {
+    type Pixel = P;
+    fn pixels<'b>(&'b self) -> Pixels<'b,F,Self::Pixel> {
+        Pixels::Buffer(P::format(), self.downgrade())
+    }
+}
+
+impl<'a, F:ClientFormat, P:Pixel<F>, A:Initialized> PixelData<F> for SliceMut<'a,[P],A> {
+    type Pixel = P;
+    fn pixels<'b>(&'b self) -> Pixels<'b,F,Self::Pixel> {
+        Pixels::Buffer(P::format(), self.as_immut().downgrade())
+    }
+}
+
+impl<'a,F:ClientFormat, P:Pixel<F>, A:Initialized> PixelDataMut<F> for SliceMut<'a,[P],A> {
+    fn pixels_mut<'b>(&'b mut self) -> PixelsMut<'b,F,Self::Pixel> {
+        PixelsMut::Buffer(P::format(), self.index_mut(..).downgrade())
     }
 }
