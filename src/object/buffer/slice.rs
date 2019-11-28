@@ -35,10 +35,6 @@ impl<'a, T:?Sized, A:Initialized> From<&'a Buffer<T,A>> for Slice<'a,T,A> {
     #[inline] fn from(bref: &'a Buffer<T,A>) -> Self {Slice{ptr: bref.ptr, offset: 0, buf:PhantomData}}
 }
 
-impl<'a, T:?Sized, A:Initialized> From<&'a mut Buffer<T,A>> for Slice<'a,T,A> {
-    #[inline] fn from(bref: &'a mut Buffer<T,A>) -> Self {Slice{ptr: bref.ptr, offset: 0, buf:PhantomData}}
-}
-
 impl<'a, T:?Sized, A:Initialized> From<&'a mut Buffer<T,A>> for SliceMut<'a,T,A> {
     #[inline] fn from(bref: &'a mut Buffer<T,A>) -> Self {SliceMut{ptr: bref.ptr, offset: 0, buf:PhantomData}}
 }
