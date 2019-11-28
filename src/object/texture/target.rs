@@ -85,6 +85,8 @@ pub unsafe trait TextureType: GLEnum + Default {
 }
 
 pub trait TextureTarget<F> = TextureType + Target<Texture<F,Self>>;
+pub trait MipmappedTarget<F> = Mipmapped + Target<Texture<F,Self>>;
+pub trait MultisampledTarget<F> = Multisampled + Target<Texture<F,Self>>;
 
 #[marker] pub unsafe trait Mipmapped: TextureType {}
 #[marker] pub unsafe trait Multisampled: TextureType {}
