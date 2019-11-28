@@ -11,12 +11,12 @@ mod target;
 mod dim;
 mod uninit;
 
-pub struct Texture<F, T:TextureTarget> {
+pub struct Texture<F, T:TextureTarget<F>> {
     id: GLuint,
     phantom: PhantomData<(F,T)>
 }
 
-impl<F, T:TextureTarget> Texture<F,T> {
+impl<F, T:TextureTarget<F>> Texture<F,T> {
     pub fn id(&self) -> GLuint { self.id }
 
     pub fn delete(self) { drop(self); }
@@ -49,7 +49,7 @@ impl<F, T:TextureTarget> Texture<F,T> {
 
 }
 
-impl<F:InternalFormat, T:TextureTarget> Texture<F,T> {
+impl<F:InternalFormat, T:TextureTarget<F>> Texture<F,T> {
 
     pub fn immutable_format(&self) -> bool {
         unsafe { self.get_parameter_iv(gl::TEXTURE_IMMUTABLE_FORMAT)!=0 }
@@ -63,6 +63,6 @@ impl<F:InternalFormat, T:TextureTarget> Texture<F,T> {
 
 
 
-impl<F, T:TextureTarget> Drop for Texture<F,T> {
+impl<F, T:TextureTarget<F>> Drop for Texture<F,T> {
     fn drop(&mut self) { unsafe { gl::DeleteTextures(1, &self.id) } }
 }

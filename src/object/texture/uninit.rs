@@ -2,7 +2,7 @@ use super::*;
 
 pub type UninitTex<T> = Texture<!,T>;
 
-impl<T:TextureTarget> UninitTex<T> {
+impl<T:TextureType> UninitTex<T> {
     pub fn gen(#[allow(unused_variables)] gl: &T::GL) -> Self {
         let mut tex = MaybeUninit::uninit();
         unsafe {
