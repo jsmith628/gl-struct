@@ -7,15 +7,20 @@ use std::ops::*;
 pub use self::target::*;
 pub use self::dim::*;
 pub use self::uninit::*;
+pub use self::level::*;
 
 mod target;
 mod dim;
 mod uninit;
+mod level;
 
 pub struct Texture<F, T:TextureTarget<F>> {
     id: GLuint,
     phantom: PhantomData<(F,T)>
 }
+
+impl<F,T:TextureTarget<F>> !Sync for Texture<F,T> {}
+impl<F,T:TextureTarget<F>> !Send for Texture<F,T> {}
 
 impl<F, T:TextureTarget<F>> Texture<F,T> {
     pub fn id(&self) -> GLuint { self.id }
@@ -49,27 +54,6 @@ impl<F, T:TextureTarget<F>> Texture<F,T> {
         param.assume_init()
     }
 
-    #[inline]
-    unsafe fn get_level_parameter_iv(&self, level:GLuint, pname:GLenum) -> GLint {
-        //TODO special case for cubemaps
-        let mut param = MaybeUninit::uninit();
-        if gl::GetTextureLevelParameteriv::is_loaded() {
-            gl::GetTextureLevelParameteriv(self.id(), level as GLint, pname, param.as_mut_ptr());
-        } else {
-            T::bind_loc().map_bind(self,
-                |b| {
-                    let target = if b.target_id()==gl::TEXTURE_CUBE_MAP {
-                        gl::TEXTURE_CUBE_MAP_POSITIVE_X
-                    } else {
-                        b.target_id()
-                    };
-                    gl::GetTexLevelParameteriv(target, level as GLint, pname, param.as_mut_ptr())
-                }
-            );
-        }
-        param.assume_init()
-    }
-
 }
 
 impl<F:InternalFormat, T:TextureTarget<F>> Texture<F,T> {
@@ -82,18 +66,11 @@ impl<F:InternalFormat, T:TextureTarget<F>> Texture<F,T> {
         unsafe { self.get_parameter_iv(gl::TEXTURE_IMMUTABLE_LEVELS) as GLuint }
     }
 
-    pub fn width(&self) -> usize { unsafe {self.get_level_parameter_iv(0,gl::TEXTURE_WIDTH) as usize} }
-    pub fn height(&self) -> usize { unsafe {self.get_level_parameter_iv(0,gl::TEXTURE_HEIGHT) as usize} }
-    pub fn depth(&self) -> usize { unsafe {self.get_level_parameter_iv(0,gl::TEXTURE_DEPTH) as usize} }
+    pub fn width(&self) -> usize { self.base_image().width() }
+    pub fn height(&self) -> usize { self.base_image().height() }
+    pub fn depth(&self) -> usize { self.base_image().depth() }
 
-    pub fn dim(&self) -> T::Dim {
-        let coords = T::Dim::dim();
-        T::Dim::new(
-            if coords>0 {self.width()} else {0},
-            if coords>1 {self.height()} else {0},
-            if coords>2 {self.depth()} else {0},
-        )
-    }
+    pub fn dim(&self) -> T::Dim { self.base_image().dim() }
 
     pub fn max_levels(&self) -> GLuint {
         if T::mipmapped() {
@@ -106,6 +83,9 @@ impl<F:InternalFormat, T:TextureTarget<F>> Texture<F,T> {
             1
         }
     }
+
+    pub fn base_image(&self) -> Level<F,T> { Level::from(self) }
+    pub fn base_image_mut(&mut self) -> LevelMut<F,T> { LevelMut::from(self) }
 
 }
 
