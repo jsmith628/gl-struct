@@ -1,5 +1,4 @@
 use super::*;
-use super::texture::TextureUnitID;
 
 use std::convert::TryInto;
 
@@ -48,10 +47,10 @@ glenum! {
 gl_resource!{
     pub struct Sampler {
         gl = GL33,
-        target = TextureUnitID,
+        target = !,
         ident = Sampler,
         gen = GenSamplers,
-        bind = BindSampler,
+        // bind = BindSampler,
         is = IsSampler,
         delete = DeleteSamplers
     }
