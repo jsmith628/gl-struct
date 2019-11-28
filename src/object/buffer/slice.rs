@@ -82,7 +82,7 @@ impl<'a,T:?Sized,A:Initialized> Slice<'a,T,A> {
         }
     }
 
-    pub unsafe fn copy_subdata_unchecked(&self, dest: &mut SliceMut<'a,T,A>) {
+    pub unsafe fn copy_subdata_unchecked<'b>(&self, dest: &mut SliceMut<'b,T,A>) {
         if self.size()==0 || dest.size()==0 { return; }
         BufferTarget::CopyReadBuffer.as_loc().map_bind(self, |b1|
             BufferTarget::CopyWriteBuffer.as_loc().map_bind(dest, |b2|
@@ -111,14 +111,14 @@ impl<'a,T:?Sized,A:Initialized> Slice<'a,T,A> {
 
 impl<'a,T:Copy+Sized,A:Initialized> Slice<'a,T,A> {
     #[inline]
-    pub fn copy_subdata(&self, dest:&mut SliceMut<'a,T,A>) {
+    pub fn copy_subdata<'b>(&self, dest:&mut SliceMut<'b,T,A>) {
         unsafe{ self.copy_subdata_unchecked(dest) }
     }
 }
 
 impl<'a,T:Copy+Sized,A:Initialized> Slice<'a,[T],A> {
     #[inline]
-    pub fn copy_subdata(&self, dest:&mut SliceMut<'a,[T],A>) {
+    pub fn copy_subdata<'b>(&self, dest:&mut SliceMut<'b,[T],A>) {
         assert_eq!(dest.size(), self.size(), "destination and source buffers have different sizes");
         unsafe{ self.copy_subdata_unchecked(dest) }
     }
@@ -132,7 +132,7 @@ impl<'a,T:Sized,A:Initialized> Slice<'a,[T],A> {
         Slice{ptr: BufPtr::from_raw_parts(id, len), offset: offset, buf:PhantomData}
     }
 
-    pub fn split_at(&self, mid:usize) -> (Slice<'a,[T],A>, Slice<'a,[T],A>) {
+    pub fn split_at(self, mid:usize) -> (Slice<'a,[T],A>, Slice<'a,[T],A>) {
         assert!(mid<=self.len(), "Split midpoint larger than slice length");
         unsafe {
             (
@@ -142,7 +142,7 @@ impl<'a,T:Sized,A:Initialized> Slice<'a,[T],A> {
         }
     }
 
-    pub fn split_first(&self) -> Option<(Slice<'a,T,A>, Slice<'a,[T],A>)> {
+    pub fn split_first(self) -> Option<(Slice<'a,T,A>, Slice<'a,[T],A>)> {
         match self.len()==0 {
             true => None,
             _ => {
@@ -152,7 +152,7 @@ impl<'a,T:Sized,A:Initialized> Slice<'a,[T],A> {
         }
     }
 
-    pub fn split_last(&self) -> Option<(Slice<'a,T,A>, Slice<'a,[T],A>)> {
+    pub fn split_last(self) -> Option<(Slice<'a,T,A>, Slice<'a,[T],A>)> {
         match self.len()==0 {
             true => None,
             _ => {
@@ -162,7 +162,7 @@ impl<'a,T:Sized,A:Initialized> Slice<'a,[T],A> {
         }
     }
 
-    pub fn index<U:?Sized,I:SliceIndex<[T],Output=U>>(&self,i:I) -> Slice<'a,U,A> {
+    pub fn index<U:?Sized,I:SliceIndex<[T],Output=U>>(self,i:I) -> Slice<'a,U,A> {
         unsafe {
             let dangling_slice = from_raw_parts(NonNull::dangling().as_ptr(), self.len());
             let indexed = &dangling_slice[i];
@@ -195,8 +195,12 @@ impl<'a,T:?Sized,A:Initialized> SliceMut<'a,T,A> {
     #[inline] pub fn align(&self) -> usize {self.ptr.align()}
     #[inline] pub fn offset(&self) -> usize {self.offset}
 
-    #[inline] pub fn as_immut(&self) -> Slice<'a,T,A> {
+    #[inline] pub fn as_immut(&self) -> Slice<T,A> {
         Slice{ptr:self.ptr, offset:self.offset, buf:PhantomData}
+    }
+
+    #[inline] pub fn as_mut(&mut self) -> SliceMut<T,A> {
+        SliceMut{ptr:self.ptr, offset:self.offset, buf:PhantomData}
     }
 
     #[inline] pub unsafe fn downgrade_unchecked<B:Initialized>(self) -> SliceMut<'a,T,B> {
@@ -210,7 +214,7 @@ impl<'a,T:?Sized,A:Initialized> SliceMut<'a,T,A> {
 
     #[inline] pub unsafe fn get_subdata_raw(&self, data: *mut T) { self.as_immut().get_subdata_raw(data) }
 
-    #[inline] pub unsafe fn copy_subdata_unchecked(&self, dest: &mut SliceMut<'a,T,A>) {
+    #[inline] pub unsafe fn copy_subdata_unchecked<'b>(&self, dest: &mut SliceMut<'b,T,A>) {
         self.as_immut().copy_subdata_unchecked(dest)
     }
 
@@ -227,51 +231,51 @@ impl<'a,T:?Sized,A:Initialized> SliceMut<'a,T,A> {
 }
 
 impl<'a,T:Copy+Sized,A:Initialized> SliceMut<'a,[T],A> {
-    #[inline] pub fn copy_subdata(&self, dest:&mut SliceMut<'a,[T],A>) { self.as_immut().copy_subdata(dest) }
+    #[inline] pub fn copy_subdata<'b>(&self, dest:&mut SliceMut<'b,[T],A>) { self.as_immut().copy_subdata(dest) }
 }
 
 impl<'a,T:Copy+Sized,A:Initialized> SliceMut<'a,T,A> {
-    #[inline] pub fn copy_subdata(&self, dest:&mut SliceMut<'a,T,A>) { self.as_immut().copy_subdata(dest) }
+    #[inline] pub fn copy_subdata<'b>(&self, dest:&mut SliceMut<'b,T,A>) { self.as_immut().copy_subdata(dest) }
 }
 
 impl<'a,T:Sized,A:Initialized> SliceMut<'a,[T],A> {
     #[inline] pub fn len(&self) -> usize {self.as_immut().len()}
 
-    #[inline] pub fn split_at(&self, mid:usize) -> (Slice<'a,[T],A>, Slice<'a,[T],A>) {
-        self.as_immut().split_at(mid)
+    #[inline] pub fn split_at(self, mid:usize) -> (Slice<'a,[T],A>, Slice<'a,[T],A>) {
+        Slice::from(self).split_at(mid)
     }
 
-    #[inline] pub fn split_at_mut(&mut self, mid:usize) -> (SliceMut<'a,[T],A>, SliceMut<'a,[T],A>) {
+    #[inline] pub fn split_at_mut(self, mid:usize) -> (SliceMut<'a,[T],A>, SliceMut<'a,[T],A>) {
         unsafe {
             let (s1, s2) = self.split_at(mid);
             (s1.into_mut(), s2.into_mut())
         }
     }
 
-    #[inline] pub fn split_first(&self) -> Option<(Slice<'a,T,A>, Slice<'a,[T],A>)> {
-        self.as_immut().split_first()
+    #[inline] pub fn split_first(self) -> Option<(Slice<'a,T,A>, Slice<'a,[T],A>)> {
+        Slice::from(self).split_first()
     }
 
-    #[inline] pub fn split_first_mut(&mut self) -> Option<(SliceMut<'a,T,A>, SliceMut<'a,[T],A>)> {
+    #[inline] pub fn split_first_mut(self) -> Option<(SliceMut<'a,T,A>, SliceMut<'a,[T],A>)> {
         unsafe { self.split_first().map(|(s1,s2)| (s1.into_mut(), s2.into_mut())) }
     }
 
-    #[inline] pub fn split_last(&self) -> Option<(Slice<'a,T,A>, Slice<'a,[T],A>)> {
-        self.as_immut().split_last()
+    #[inline] pub fn split_last(self) -> Option<(Slice<'a,T,A>, Slice<'a,[T],A>)> {
+        Slice::from(self).split_last()
     }
 
-    #[inline] pub fn split_last_mut(&mut self) -> Option<(SliceMut<'a,T,A>, SliceMut<'a,[T],A>)> {
+    #[inline] pub fn split_last_mut(self) -> Option<(SliceMut<'a,T,A>, SliceMut<'a,[T],A>)> {
         unsafe { self.split_last().map(|(s1,s2)| (s1.into_mut(), s2.into_mut())) }
     }
 
     #[inline]
-    pub fn index<U:?Sized,I:SliceIndex<[T],Output=U>>(&self,i:I) -> Slice<'a,U,A> {
-        self.as_immut().index(i)
+    pub fn index<U:?Sized,I:SliceIndex<[T],Output=U>>(self,i:I) -> Slice<'a,U,A> {
+        Slice::from(self).index(i)
     }
 
     #[inline]
-    pub fn index_mut<U:?Sized,I:SliceIndex<[T],Output=U>>(&mut self,i:I) -> SliceMut<'a,U,A> {
-        unsafe { self.as_immut().index(i).into_mut() }
+    pub fn index_mut<U:?Sized,I:SliceIndex<[T],Output=U>>(self,i:I) -> SliceMut<'a,U,A> {
+        unsafe { Slice::from(self).index(i).into_mut() }
     }
 
     #[inline]

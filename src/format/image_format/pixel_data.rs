@@ -132,6 +132,6 @@ impl<'a, F:ClientFormat, P:Pixel<F>, A:Initialized> PixelData<F> for SliceMut<'a
 
 impl<'a,F:ClientFormat, P:Pixel<F>, A:Initialized> PixelDataMut<F> for SliceMut<'a,[P],A> {
     fn pixels_mut<'b>(&'b mut self) -> PixelsMut<'b,F,Self::Pixel> {
-        PixelsMut::Buffer(P::format(), self.index_mut(..).downgrade())
+        PixelsMut::Buffer(P::format(), self.as_mut().downgrade())
     }
 }
