@@ -2,7 +2,6 @@
 use super::*;
 use crate::object::*;
 
-use std::mem::*;
 use std::fmt::{Debug, Formatter};
 
 #[derive(Copy,Clone,PartialEq,Eq,Hash,Debug)]
@@ -61,6 +60,7 @@ pub trait PixelData<F:ClientFormat> {
     #[inline] fn skip_rows(&self) -> usize {0}
     #[inline] fn skip_images(&self) -> usize {0}
 
+    fn count(&self) -> usize;
     fn pixels<'a>(&'a self) -> Pixels<'a,F,Self::Pixel>;
 }
 
@@ -92,6 +92,7 @@ pub(crate) unsafe fn apply_unpacking_settings<F:ClientFormat,P:PixelData<F>+?Siz
 
 impl<F:ClientFormat, P:Pixel<F>> PixelData<F> for [P] {
     type Pixel = P;
+    fn count(&self) -> usize {self.len()}
     fn pixels<'a>(&'a self) -> Pixels<'a,F,Self::Pixel> { Pixels::Slice(P::format(), self) }
 }
 
@@ -101,6 +102,7 @@ impl<F:ClientFormat, P:Pixel<F>> PixelDataMut<F> for [P] {
 
 impl<F:ClientFormat, P:Pixel<F>, A:Initialized> PixelData<F> for Buffer<[P],A> {
     type Pixel = P;
+    fn count(&self) -> usize {self.len()}
     fn pixels<'a>(&'a self) -> Pixels<'a,F,Self::Pixel> {
         Pixels::Buffer(P::format(), self.downgrade_ref().as_slice())
     }
@@ -114,6 +116,7 @@ impl<F:ClientFormat, P:Pixel<F>, A:Initialized> PixelDataMut<F> for Buffer<[P],A
 
 impl<'a, F:ClientFormat, P:Pixel<F>, A:Initialized> PixelData<F> for Slice<'a,[P],A> {
     type Pixel = P;
+    fn count(&self) -> usize {self.len()}
     fn pixels<'b>(&'b self) -> Pixels<'b,F,Self::Pixel> {
         Pixels::Buffer(P::format(), self.downgrade())
     }
@@ -121,6 +124,7 @@ impl<'a, F:ClientFormat, P:Pixel<F>, A:Initialized> PixelData<F> for Slice<'a,[P
 
 impl<'a, F:ClientFormat, P:Pixel<F>, A:Initialized> PixelData<F> for SliceMut<'a,[P],A> {
     type Pixel = P;
+    fn count(&self) -> usize {self.len()}
     fn pixels<'b>(&'b self) -> Pixels<'b,F,Self::Pixel> {
         Pixels::Buffer(P::format(), self.as_immut().downgrade())
     }

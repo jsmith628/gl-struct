@@ -84,9 +84,14 @@ pub unsafe trait TextureType: GLEnum + Default {
 
 }
 
+pub unsafe trait ImageType: GLEnum + Default {
+    #[inline] fn glenum() -> GLenum {Self::default().into()}
+}
+
 pub trait TextureTarget<F> = TextureType + Target<Texture<F,Self>>;
-pub trait MipmappedTarget<F> = Mipmapped + Target<Texture<F,Self>>;
-pub trait MultisampledTarget<F> = Multisampled + Target<Texture<F,Self>>;
+pub trait ImageTarget<F> = ImageType + TextureTarget<F>;
+pub trait MipmappedTarget<F> = Mipmapped + TextureTarget<F>;
+pub trait MultisampledTarget<F> = Multisampled + TextureTarget<F>;
 
 #[marker] pub unsafe trait Mipmapped: TextureType {}
 #[marker] pub unsafe trait Multisampled: TextureType {}
@@ -116,6 +121,13 @@ target! {
     [TEXTURE_2D_MULTISAMPLE "Texture 2D Multisample"]; GL32; <TEXTURE_2D as TextureType>::Dim,
     [TEXTURE_2D_MULTISAMPLE_ARRAY "Texture 2D Multisample Array"]; GL32; <TEXTURE_2D_ARRAY as TextureType>::Dim,
 }
+
+unsafe impl ImageType for TEXTURE_1D { }
+unsafe impl ImageType for TEXTURE_2D { }
+unsafe impl ImageType for TEXTURE_3D { }
+unsafe impl ImageType for TEXTURE_1D_ARRAY { }
+unsafe impl ImageType for TEXTURE_2D_ARRAY { }
+unsafe impl ImageType for TEXTURE_RECTANGLE { }
 
 unsafe impl Mipmapped for TEXTURE_1D {}
 unsafe impl Mipmapped for TEXTURE_2D {}

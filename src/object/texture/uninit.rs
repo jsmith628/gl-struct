@@ -49,6 +49,44 @@ impl<T:TextureType> UninitTex<T> {
         }
     }
 
+    pub fn image<F,P>(self, dim: T::Dim, data: &P) -> Texture<F,T> where
+        F:InternalFormat,
+        P:PixelData<F::ClientFormat>,
+        T:ImageTarget<F>
+    {
+        unsafe {
 
+            size_check::<_,F,_>(dim, data);
+            apply_unpacking_settings(data);
+
+            let mut target = BufferTarget::PixelUnpackBuffer.as_loc();
+            let pixels = data.pixels();
+            let (binding, ptr, client_format) = match pixels {
+                Pixels::Slice(f, slice) => (None, slice as *const [P::Pixel] as *const GLvoid, f),
+                Pixels::Buffer(f, ref slice) => (Some(target.bind(slice)), slice.offset() as *const GLvoid, f),
+            };
+
+            let (format, ty) = client_format.format_type().into();
+            let (internal, format, ty) = (F::glenum() as GLint, format.into(), ty.into());
+            let (w, h, d) = (dim.width() as GLsizei, dim.height() as GLsizei, dim.depth() as GLsizei);
+
+            T::bind_loc::<!>().map_bind(&self,
+                |b| match T::Dim::dim() {
+                    1 => gl::TexImage1D(b.target_id(), 0, internal, w, 0, format, ty, ptr),
+                    2 => gl::TexImage2D(b.target_id(), 0, internal, w, h, 0, format, ty, ptr),
+                    3 => gl::TexImage3D(b.target_id(), 0, internal, w, h, d, 0, format, ty, ptr),
+                    n => panic!("{}D Textures not supported", n)
+                }
+            );
+
+            drop(binding);
+
+            let id = self.id();
+            forget(self);
+
+            Texture { id:id, phantom:PhantomData }
+
+        }
+    }
 
 }
