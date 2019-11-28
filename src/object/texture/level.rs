@@ -19,12 +19,20 @@ impl<'a,F,T:TextureTarget<F>> !Send for Level<'a,F,T> {}
 impl<'a,F,T:TextureTarget<F>> !Sync for LevelMut<'a,F,T> {}
 impl<'a,F,T:TextureTarget<F>> !Send for LevelMut<'a,F,T> {}
 
+impl<'a,'b:'a,F,T:TextureTarget<F>> From<&'a Level<'b,F,T>> for Level<'a,F,T> {
+    #[inline] fn from(lvl: &'a Level<'b,F,T>) -> Self {*lvl}
+}
+
 impl<'a,F,T:TextureTarget<F>> From<LevelMut<'a,F,T>> for Level<'a,F,T> {
     #[inline] fn from(lvl: LevelMut<'a,F,T>) -> Self { Level{id:lvl.id, level:lvl.level, tex:PhantomData} }
 }
 
 impl<'a,'b:'a,F,T:TextureTarget<F>> From<&'a LevelMut<'b,F,T>> for Level<'a,F,T> {
     #[inline] fn from(lvl: &'a LevelMut<'b,F,T>) -> Self { Level{id:lvl.id, level:lvl.level, tex:PhantomData} }
+}
+
+impl<'a,'b:'a,F,T:TextureTarget<F>> From<&'a mut LevelMut<'b,F,T>> for LevelMut<'a,F,T> {
+    #[inline] fn from(lvl: &'a mut LevelMut<'b,F,T>) -> Self { LevelMut{id:lvl.id, level:lvl.level, tex:PhantomData} }
 }
 
 impl<'a,F,T:TextureTarget<F>> From<&'a Texture<F,T>> for Level<'a,F,T> {

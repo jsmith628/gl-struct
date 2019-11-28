@@ -27,8 +27,24 @@ impl<'a,T:?Sized,A:Initialized> !Send for SliceMut<'a,T,A> {}
 //Constructing slices
 //
 
+impl<'a, 'b:'a, T:?Sized, A:Initialized> From<&'a Slice<'b,T,A>> for Slice<'a,T,A> {
+    #[inline] fn from(bmut: &'a Slice<'b,T,A>) -> Self { *bmut }
+}
+
 impl<'a, T:?Sized, A:Initialized> From<SliceMut<'a,T,A>> for Slice<'a,T,A> {
     #[inline] fn from(bmut: SliceMut<'a,T,A>) -> Self {Slice{ptr: bmut.ptr, offset: bmut.offset, buf:PhantomData}}
+}
+
+impl<'a, 'b:'a, T:?Sized, A:Initialized> From<&'a SliceMut<'b,T,A>> for Slice<'a,T,A> {
+    #[inline] fn from(bmut: &'a SliceMut<'b,T,A>) -> Self {
+        Slice{ptr: bmut.ptr, offset: bmut.offset, buf:PhantomData}
+    }
+}
+
+impl<'a, 'b:'a, T:?Sized, A:Initialized> From<&'a mut SliceMut<'b,T,A>> for SliceMut<'a,T,A> {
+    #[inline] fn from(bmut: &'a mut SliceMut<'b,T,A>) -> Self {
+        SliceMut{ptr: bmut.ptr, offset: bmut.offset, buf:PhantomData}
+    }
 }
 
 impl<'a, T:?Sized, A:Initialized> From<&'a Buffer<T,A>> for Slice<'a,T,A> {
@@ -195,13 +211,9 @@ impl<'a,T:?Sized,A:Initialized> SliceMut<'a,T,A> {
     #[inline] pub fn align(&self) -> usize {self.ptr.align()}
     #[inline] pub fn offset(&self) -> usize {self.offset}
 
-    #[inline] pub fn as_immut(&self) -> Slice<T,A> {
-        Slice{ptr:self.ptr, offset:self.offset, buf:PhantomData}
-    }
+    #[inline] pub fn as_immut(&self) -> Slice<T,A> { Slice::from(self) }
 
-    #[inline] pub fn as_mut(&mut self) -> SliceMut<T,A> {
-        SliceMut{ptr:self.ptr, offset:self.offset, buf:PhantomData}
-    }
+    #[inline] pub fn as_mut(&mut self) -> SliceMut<T,A> { SliceMut::from(self) }
 
     #[inline] pub unsafe fn downgrade_unchecked<B:Initialized>(self) -> SliceMut<'a,T,B> {
         SliceMut{ptr: self.ptr, offset: self.offset, buf: PhantomData}
