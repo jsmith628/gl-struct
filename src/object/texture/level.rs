@@ -86,5 +86,43 @@ impl<'a,F,T:TextureTarget<F>> LevelMut<'a,F,T> {
     pub fn id(&self) -> GLuint { self.id }
     pub fn level(&self) -> GLuint { self.level }
 
+    pub fn as_immut(&self) -> Level<F,T> { Level::from(self) }
+    pub fn as_mut(&mut self) -> LevelMut<F,T> { LevelMut::from(self) }
 
+    pub fn width(&self) -> usize { self.as_immut().width() }
+    pub fn height(&self) -> usize { self.as_immut().height() }
+    pub fn depth(&self) -> usize { self.as_immut().depth() }
+
+    pub fn dim(&self) -> T::Dim { self.as_immut().dim() }
+
+}
+
+impl<'a,F:InternalFormat,T:ImageTarget<F>> LevelMut<'a,F,T> {
+    pub(super) unsafe fn image_dim<P:PixelData<F::ClientFormat>>(&mut self, dim:T::Dim, data: &P) {
+
+        size_check::<_,F,_>(dim, data);
+        apply_unpacking_settings(data);
+
+        let mut target = BufferTarget::PixelUnpackBuffer.as_loc();
+        let pixels = data.pixels();
+        let (binding, ptr, client_format) = match pixels {
+            Pixels::Slice(f, slice) => (None, slice as *const [P::Pixel] as *const GLvoid, f),
+            Pixels::Buffer(f, ref slice) => (Some(target.bind(slice)), slice.offset() as *const GLvoid, f),
+        };
+
+        let (format, ty) = client_format.format_type().into();
+        let (internal, format, ty) = (F::glenum() as GLint, format.into(), ty.into());
+        let (w, h, d) = (dim.width() as GLsizei, dim.height() as GLsizei, dim.depth() as GLsizei);
+
+        T::bind_loc_level_mut().map_bind(self,
+            |b| match T::Dim::dim() {
+                1 => gl::TexImage1D(b.target_id(), 0, internal, w, 0, format, ty, ptr),
+                2 => gl::TexImage2D(b.target_id(), 0, internal, w, h, 0, format, ty, ptr),
+                3 => gl::TexImage3D(b.target_id(), 0, internal, w, h, d, 0, format, ty, ptr),
+                n => panic!("{}D Textures not supported", n)
+            }
+        );
+
+        drop(binding);
+    }
 }
