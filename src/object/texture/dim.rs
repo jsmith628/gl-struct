@@ -19,13 +19,13 @@ pub unsafe trait TexDim: Sized + Copy + Eq + Hash + Debug {
 unsafe impl TexDim for usize {
     #[inline] fn dim() -> usize {1}
     #[inline] fn width(&self) -> usize {*self}
-    #[inline] fn minimized(&self, level: GLuint) -> Self { (self >> level).max(1) }
+    #[inline] fn minimized(&self, _: GLuint) -> Self { *self }
 }
 
 unsafe impl TexDim for [usize;1] {
     #[inline] fn dim() -> usize {1}
     #[inline] fn width(&self) -> usize {self[0]}
-    #[inline] fn minimized(&self, level: GLuint) -> Self { [self[0].minimized(level)] }
+    #[inline] fn minimized(&self, level: GLuint) -> Self { [(self[0] >> level).max(1)] }
 }
 
 unsafe impl TexDim for [usize;2] {
@@ -33,7 +33,7 @@ unsafe impl TexDim for [usize;2] {
     #[inline] fn width(&self) -> usize {self[0]}
     #[inline] fn height(&self) -> usize {self[1]}
     #[inline] fn minimized(&self, level: GLuint) -> Self {
-        [self[0].minimized(level), self[1].minimized(level)]
+        [(self[0] >> level).max(1), (self[1] >> level).max(1)]
     }
 }
 
@@ -43,7 +43,7 @@ unsafe impl TexDim for [usize;3] {
     #[inline] fn height(&self) -> usize {self[1]}
     #[inline] fn depth(&self) -> usize {self[2]}
     #[inline] fn minimized(&self, level: GLuint) -> Self {
-        [self[0].minimized(level), self[1].minimized(level), self[2].minimized(level)]
+        [(self[0] >> level).max(1), (self[1] >> level).max(1), (self[2] >> level).max(1)]
     }
 }
 
