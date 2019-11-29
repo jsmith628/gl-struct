@@ -52,7 +52,7 @@ impl<T:TextureType> UninitTex<T> {
     pub fn image<F,P>(self, dim: T::Dim, data: &P) -> Texture<F,T> where
         F:InternalFormat,
         P:PixelData<F::ClientFormat>,
-        T:ImageTarget<F>
+        T:PixelTransferTarget<F> + BaseImage
     {
         let mut tex = Texture { id:self.id(), phantom:PhantomData };
         unsafe { tex.base_image_mut().image_dim(dim, data); }

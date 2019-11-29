@@ -15,7 +15,7 @@ impl Default for CubeMapFace { fn default() -> Self { Self::PositiveX } }
 
 trait ImageSelector: TextureType { type Selection: GLEnum + Default; }
 impl<T: TextureType> ImageSelector for T { default type Selection = Self; }
-impl<T: ImageType> ImageSelector for T { type Selection = Self; }
+impl<T: BaseImage> ImageSelector for T { type Selection = Self; }
 impl ImageSelector for TEXTURE_CUBE_MAP { type Selection = CubeMapFace; }
 
 
@@ -62,13 +62,13 @@ impl<'a,'b:'a,F,T:TextureTarget<F>> From<&'a mut ImageMut<'b,F,T>> for ImageMut<
     }
 }
 
-impl<'a,F,T:ImageTarget<F>> From<&'a Texture<F,T>> for Image<'a,F,T> {
+impl<'a,F,T:TextureTarget<F>+BaseImage> From<&'a Texture<F,T>> for Image<'a,F,T> {
     #[inline] fn from(tex: &'a Texture<F,T>) -> Self {
         Image{id:tex.id, level:0, face:T::default(), tex:PhantomData}
     }
 }
 
-impl<'a,F,T:ImageTarget<F>> From<&'a mut Texture<F,T>> for ImageMut<'a,F,T> {
+impl<'a,F,T:TextureTarget<F>+BaseImage> From<&'a mut Texture<F,T>> for ImageMut<'a,F,T> {
     #[inline] fn from(tex: &'a mut Texture<F,T>) -> Self {
         ImageMut{id:tex.id, level:0, face:T::default(), tex:PhantomData}
     }
@@ -133,7 +133,7 @@ impl<'a,F,T:TextureTarget<F>> ImageMut<'a,F,T> {
 
 }
 
-impl<'a,F:InternalFormat,T:ImageTarget<F>> ImageMut<'a,F,T> {
+impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> ImageMut<'a,F,T> {
     pub(super) unsafe fn image_dim<P:PixelData<F::ClientFormat>>(&mut self, dim:T::Dim, data: &P) {
 
         size_check::<_,F,_>(dim, data);
@@ -151,10 +151,10 @@ impl<'a,F:InternalFormat,T:ImageTarget<F>> ImageMut<'a,F,T> {
         let (w, h, d) = (dim.width() as GLsizei, dim.height() as GLsizei, dim.depth() as GLsizei);
 
         T::bind_loc_level_mut().map_bind(self,
-            |b| match T::Dim::dim() {
-                1 => gl::TexImage1D(b.target_id(), 0, internal, w, 0, format, ty, ptr),
-                2 => gl::TexImage2D(b.target_id(), 0, internal, w, h, 0, format, ty, ptr),
-                3 => gl::TexImage3D(b.target_id(), 0, internal, w, h, d, 0, format, ty, ptr),
+            |_| match T::Dim::dim() {
+                1 => gl::TexImage1D(self.face.into(), 0, internal, w, 0, format, ty, ptr),
+                2 => gl::TexImage2D(self.face.into(), 0, internal, w, h, 0, format, ty, ptr),
+                3 => gl::TexImage3D(self.face.into(), 0, internal, w, h, d, 0, format, ty, ptr),
                 n => panic!("{}D Textures not supported", n)
             }
         );

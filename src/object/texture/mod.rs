@@ -88,7 +88,7 @@ impl<F:InternalFormat, T:TextureTarget<F>> Texture<F,T> {
 
 }
 
-impl<F:InternalFormat, T:ImageTarget<F>> Texture<F,T> {
+impl<F:InternalFormat, T:TextureTarget<F>+BaseImage> Texture<F,T> {
     pub fn base_image(&self) -> Image<F,T> { Image::from(self) }
     pub fn base_image_mut(&mut self) -> ImageMut<F,T> { ImageMut::from(self) }
 }

@@ -1,12 +1,12 @@
 use super::*;
 use std::fmt::{Debug, Display, Formatter};
 
-macro_rules! target {
+macro_rules! tex_target {
 
     () => {};
 
     ([$name:ident $display:expr]; $GL:ty; $dim:ty, $($rest:tt)*) => {
-        target!([$name $display]; InternalFormat; $GL; $dim, $($rest)*);
+        tex_target!([$name $display]; InternalFormat; $GL; $dim, $($rest)*);
     };
 
     ([$name:ident $display:expr]; $bound:ident; $GL:ty; $dim:ty, $($rest:tt)*) => {
@@ -52,7 +52,7 @@ macro_rules! target {
             unsafe fn unbind(self) { gl::BindTexture(self.into(), 0) }
         }
 
-        target!($($rest)*);
+        tex_target!($($rest)*);
     }
 }
 
@@ -104,21 +104,76 @@ pub unsafe trait TextureType: GLEnum + Default {
 
 }
 
-pub unsafe trait ImageType: TextureType {
-    #[inline] fn glenum() -> GLenum {Self::default().into()}
-}
-
 pub trait TextureTarget<F> = TextureType +
     Target<Texture<F,Self>> +
     for<'a> Target<Image<'a,F,Self>> +
     for<'a> Target<ImageMut<'a,F,Self>>;
 
-pub trait ImageTarget<F> = ImageType + TextureTarget<F>;
 pub trait MipmappedTarget<F> = Mipmapped + TextureTarget<F>;
 pub trait MultisampledTarget<F> = Multisampled + TextureTarget<F>;
+pub trait PixelTransferTarget<F> = PixelTransfer + TextureTarget<F>;
+pub trait LayeredTarget<F> = Layered + TextureTarget<F>;
+pub trait CubeMapTarget<F> = CubeMapped + TextureTarget<F>;
 
 #[marker] pub unsafe trait Mipmapped: TextureType {}
 #[marker] pub unsafe trait Multisampled: TextureType {}
+#[marker] pub unsafe trait PixelTransfer: TextureType {}
+#[marker] pub unsafe trait BaseImage: TextureType {}
+#[marker] pub unsafe trait CubeMapped: TextureType {}
+#[marker] pub unsafe trait Layered: TextureType {}
+
+tex_target! {
+    [TEXTURE_1D "Texture 1D"]; GL10; [usize;1],
+    [TEXTURE_2D "Texture 2D"]; GL10; [usize;2],
+    [TEXTURE_3D "Texture 3D"]; InternalFormatColor; GL11; [usize;3],
+    [TEXTURE_1D_ARRAY "Texture 1D Array"]; GL30; (<TEXTURE_1D as TextureType>::Dim, usize),
+    [TEXTURE_2D_ARRAY "Texture 2D Array"]; GL30; (<TEXTURE_2D as TextureType>::Dim, usize),
+    [TEXTURE_RECTANGLE "Texture Rectangle"]; GL31; <TEXTURE_2D as TextureType>::Dim,
+    [TEXTURE_BUFFER "Texture Buffer"]; InternalFormatColor; GL31; usize,
+    [TEXTURE_CUBE_MAP "Texture Cube Map"]; GL13; <TEXTURE_2D as TextureType>::Dim,
+    [TEXTURE_CUBE_MAP_ARRAY "Texture Cube Map Array"]; GL40; <TEXTURE_2D_ARRAY as TextureType>::Dim,
+    [TEXTURE_2D_MULTISAMPLE "Texture 2D Multisample"]; GL32; <TEXTURE_2D as TextureType>::Dim,
+    [TEXTURE_2D_MULTISAMPLE_ARRAY "Texture 2D Multisample Array"]; GL32; <TEXTURE_2D_ARRAY as TextureType>::Dim,
+}
+
+unsafe impl BaseImage for TEXTURE_1D { }
+unsafe impl BaseImage for TEXTURE_2D { }
+unsafe impl BaseImage for TEXTURE_3D { }
+unsafe impl BaseImage for TEXTURE_1D_ARRAY { }
+unsafe impl BaseImage for TEXTURE_2D_ARRAY { }
+unsafe impl BaseImage for TEXTURE_RECTANGLE { }
+unsafe impl BaseImage for TEXTURE_CUBE_MAP_ARRAY {}
+unsafe impl BaseImage for TEXTURE_2D_MULTISAMPLE {}
+unsafe impl BaseImage for TEXTURE_2D_MULTISAMPLE_ARRAY {}
+
+unsafe impl PixelTransfer for TEXTURE_1D { }
+unsafe impl PixelTransfer for TEXTURE_2D { }
+unsafe impl PixelTransfer for TEXTURE_3D { }
+unsafe impl PixelTransfer for TEXTURE_1D_ARRAY { }
+unsafe impl PixelTransfer for TEXTURE_2D_ARRAY { }
+unsafe impl PixelTransfer for TEXTURE_RECTANGLE { }
+unsafe impl PixelTransfer for TEXTURE_CUBE_MAP {}
+unsafe impl PixelTransfer for TEXTURE_CUBE_MAP_ARRAY {}
+
+unsafe impl Mipmapped for TEXTURE_1D {}
+unsafe impl Mipmapped for TEXTURE_2D {}
+unsafe impl Mipmapped for TEXTURE_3D {}
+unsafe impl Mipmapped for TEXTURE_1D_ARRAY {}
+unsafe impl Mipmapped for TEXTURE_2D_ARRAY {}
+unsafe impl Mipmapped for TEXTURE_CUBE_MAP {}
+unsafe impl Mipmapped for TEXTURE_CUBE_MAP_ARRAY {}
+
+unsafe impl Layered for TEXTURE_1D_ARRAY {}
+unsafe impl Layered for TEXTURE_2D_ARRAY {}
+unsafe impl Layered for TEXTURE_CUBE_MAP_ARRAY {}
+unsafe impl Layered for TEXTURE_2D_MULTISAMPLE_ARRAY {}
+
+unsafe impl CubeMapped for TEXTURE_CUBE_MAP {}
+unsafe impl CubeMapped for TEXTURE_CUBE_MAP_ARRAY {}
+
+unsafe impl Multisampled for TEXTURE_2D_MULTISAMPLE {}
+unsafe impl Multisampled for TEXTURE_2D_MULTISAMPLE_ARRAY {}
+
 
 impl<T:TextureType> Target<UninitTex<Self>> for T {
     fn target_id(self) -> GLenum { self.into() }
@@ -152,35 +207,3 @@ impl<'a,F,T:TextureTarget<F>> Target<ImageMut<'a,MaybeUninit<F>,Self>> for T {
     unsafe fn bind(self, tex: &ImageMut<'a,MaybeUninit<F>,Self>) { gl::BindTexture(self.into(), tex.id()) }
     unsafe fn unbind(self) { gl::BindTexture(self.into(), 0) }
 }
-
-target! {
-    [TEXTURE_1D "Texture 1D"]; GL10; [usize;1],
-    [TEXTURE_2D "Texture 2D"]; GL10; [usize;2],
-    [TEXTURE_3D "Texture 3D"]; InternalFormatColor; GL11; [usize;3],
-    [TEXTURE_1D_ARRAY "Texture 1D Array"]; GL30; (<TEXTURE_1D as TextureType>::Dim, usize),
-    [TEXTURE_2D_ARRAY "Texture 2D Array"]; GL30; (<TEXTURE_2D as TextureType>::Dim, usize),
-    [TEXTURE_RECTANGLE "Texture Rectangle"]; GL31; <TEXTURE_2D as TextureType>::Dim,
-    [TEXTURE_BUFFER "Texture Buffer"]; InternalFormatColor; GL31; usize,
-    [TEXTURE_CUBE_MAP "Texture Cube Map"]; GL13; <TEXTURE_2D as TextureType>::Dim,
-    [TEXTURE_CUBE_MAP_ARRAY "Texture Cube Map Array"]; GL40; <TEXTURE_2D_ARRAY as TextureType>::Dim,
-    [TEXTURE_2D_MULTISAMPLE "Texture 2D Multisample"]; GL32; <TEXTURE_2D as TextureType>::Dim,
-    [TEXTURE_2D_MULTISAMPLE_ARRAY "Texture 2D Multisample Array"]; GL32; <TEXTURE_2D_ARRAY as TextureType>::Dim,
-}
-
-unsafe impl ImageType for TEXTURE_1D { }
-unsafe impl ImageType for TEXTURE_2D { }
-unsafe impl ImageType for TEXTURE_3D { }
-unsafe impl ImageType for TEXTURE_1D_ARRAY { }
-unsafe impl ImageType for TEXTURE_2D_ARRAY { }
-unsafe impl ImageType for TEXTURE_RECTANGLE { }
-
-unsafe impl Mipmapped for TEXTURE_1D {}
-unsafe impl Mipmapped for TEXTURE_2D {}
-unsafe impl Mipmapped for TEXTURE_3D {}
-unsafe impl Mipmapped for TEXTURE_1D_ARRAY {}
-unsafe impl Mipmapped for TEXTURE_2D_ARRAY {}
-unsafe impl Mipmapped for TEXTURE_CUBE_MAP {}
-unsafe impl Mipmapped for TEXTURE_CUBE_MAP_ARRAY {}
-
-unsafe impl Multisampled for TEXTURE_2D_MULTISAMPLE {}
-unsafe impl Multisampled for TEXTURE_2D_MULTISAMPLE_ARRAY {}
