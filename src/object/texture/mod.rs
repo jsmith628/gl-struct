@@ -66,11 +66,13 @@ impl<F:InternalFormat, T:TextureTarget<F>> Texture<F,T> {
         unsafe { self.get_parameter_iv(gl::TEXTURE_IMMUTABLE_LEVELS) as GLuint }
     }
 
-    pub fn width(&self) -> usize { self.base_image().width() }
-    pub fn height(&self) -> usize { self.base_image().height() }
-    pub fn depth(&self) -> usize { self.base_image().depth() }
+    fn _base_image(&self) -> Image<F,T> { Image::_base(self) }
 
-    pub fn dim(&self) -> T::Dim { self.base_image().dim() }
+    pub fn width(&self) -> usize { self._base_image().width() }
+    pub fn height(&self) -> usize { self._base_image().height() }
+    pub fn depth(&self) -> usize { self._base_image().depth() }
+
+    pub fn dim(&self) -> T::Dim { self._base_image().dim() }
 
     pub fn max_levels(&self) -> GLuint {
         if T::mipmapped() {
@@ -84,9 +86,11 @@ impl<F:InternalFormat, T:TextureTarget<F>> Texture<F,T> {
         }
     }
 
+}
+
+impl<F:InternalFormat, T:ImageTarget<F>> Texture<F,T> {
     pub fn base_image(&self) -> Image<F,T> { Image::from(self) }
     pub fn base_image_mut(&mut self) -> ImageMut<F,T> { ImageMut::from(self) }
-
 }
 
 impl<F:InternalFormat, T:MipmappedTarget<F>> Texture<F,T> {

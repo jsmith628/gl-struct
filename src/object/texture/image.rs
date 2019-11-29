@@ -1,16 +1,37 @@
 use super::*;
 
+glenum!{
+    pub enum CubeMapFace {
+        [PositiveX TEXTURE_CUBE_MAP_POSITIVE_X "Cube-map Positive X"],
+        [NegativeX TEXTURE_CUBE_MAP_NEGATIVE_X "Cube-map Negative X"],
+        [PositiveY TEXTURE_CUBE_MAP_POSITIVE_Y "Cube-map Positive Y"],
+        [NegativeY TEXTURE_CUBE_MAP_NEGATIVE_Y "Cube-map Negative Y"],
+        [PositiveZ TEXTURE_CUBE_MAP_POSITIVE_Z "Cube-map Positive Z"],
+        [NegativeZ TEXTURE_CUBE_MAP_NEGATIVE_Z "Cube-map Negative Z"]
+    }
+}
+
+impl Default for CubeMapFace { fn default() -> Self { Self::PositiveX } }
+
+trait ImageSelector: TextureType { type Selection: GLEnum + Default; }
+impl<T: TextureType> ImageSelector for T { default type Selection = Self; }
+impl<T: ImageType> ImageSelector for T { type Selection = Self; }
+impl ImageSelector for TEXTURE_CUBE_MAP { type Selection = CubeMapFace; }
+
+
 #[derive(Derivative)]
 #[derivative(Clone(bound=""), Copy(bound=""))]
 pub struct Image<'a,F,T:TextureTarget<F>> {
     id: GLuint,
     level: GLuint,
+    face: <T as ImageSelector>::Selection,
     tex: PhantomData<&'a Texture<F,T>>
 }
 
 pub struct ImageMut<'a,F,T:TextureTarget<F>> {
     id: GLuint,
     level: GLuint,
+    face: <T as ImageSelector>::Selection,
     tex: PhantomData<&'a mut Texture<F,T>>
 }
 
@@ -24,28 +45,43 @@ impl<'a,'b:'a,F,T:TextureTarget<F>> From<&'a Image<'b,F,T>> for Image<'a,F,T> {
 }
 
 impl<'a,F,T:TextureTarget<F>> From<ImageMut<'a,F,T>> for Image<'a,F,T> {
-    #[inline] fn from(lvl: ImageMut<'a,F,T>) -> Self { Image{id:lvl.id, level:lvl.level, tex:PhantomData} }
+    #[inline] fn from(lvl: ImageMut<'a,F,T>) -> Self {
+        Image{id:lvl.id, level:lvl.level, face:lvl.face, tex:PhantomData}
+    }
 }
 
 impl<'a,'b:'a,F,T:TextureTarget<F>> From<&'a ImageMut<'b,F,T>> for Image<'a,F,T> {
-    #[inline] fn from(lvl: &'a ImageMut<'b,F,T>) -> Self { Image{id:lvl.id, level:lvl.level, tex:PhantomData} }
+    #[inline] fn from(lvl: &'a ImageMut<'b,F,T>) -> Self {
+        Image{id:lvl.id, level:lvl.level, face:lvl.face, tex:PhantomData}
+    }
 }
 
 impl<'a,'b:'a,F,T:TextureTarget<F>> From<&'a mut ImageMut<'b,F,T>> for ImageMut<'a,F,T> {
-    #[inline] fn from(lvl: &'a mut ImageMut<'b,F,T>) -> Self { ImageMut{id:lvl.id, level:lvl.level, tex:PhantomData} }
+    #[inline] fn from(lvl: &'a mut ImageMut<'b,F,T>) -> Self {
+        ImageMut{id:lvl.id, level:lvl.level, face:lvl.face, tex:PhantomData}
+    }
 }
 
-impl<'a,F,T:TextureTarget<F>> From<&'a Texture<F,T>> for Image<'a,F,T> {
-    #[inline] fn from(lvl: &'a Texture<F,T>) -> Self { Image{id:lvl.id, level:0, tex:PhantomData} }
+impl<'a,F,T:ImageTarget<F>> From<&'a Texture<F,T>> for Image<'a,F,T> {
+    #[inline] fn from(tex: &'a Texture<F,T>) -> Self {
+        Image{id:tex.id, level:0, face:T::default(), tex:PhantomData}
+    }
 }
 
-impl<'a,F,T:TextureTarget<F>> From<&'a mut Texture<F,T>> for ImageMut<'a,F,T> {
-    #[inline] fn from(lvl: &'a mut Texture<F,T>) -> Self { ImageMut{id:lvl.id, level:0, tex:PhantomData} }
+impl<'a,F,T:ImageTarget<F>> From<&'a mut Texture<F,T>> for ImageMut<'a,F,T> {
+    #[inline] fn from(tex: &'a mut Texture<F,T>) -> Self {
+        ImageMut{id:tex.id, level:0, face:T::default(), tex:PhantomData}
+    }
 }
 
 impl<'a,F,T:TextureTarget<F>> Image<'a,F,T> {
     pub fn id(&self) -> GLuint { self.id }
     pub fn level(&self) -> GLuint { self.level }
+
+    #[inline]
+    pub(super) fn _base(tex: &'a Texture<F,T>) -> Self {
+        Image{id:tex.id, level:0, face:<T as ImageSelector>::Selection::default(), tex:PhantomData}
+    }
 
     #[inline]
     unsafe fn get_parameter_iv(&self, pname:GLenum) -> GLint {

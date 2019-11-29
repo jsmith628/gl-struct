@@ -104,7 +104,7 @@ pub unsafe trait TextureType: GLEnum + Default {
 
 }
 
-pub unsafe trait ImageType: GLEnum + Default {
+pub unsafe trait ImageType: TextureType {
     #[inline] fn glenum() -> GLenum {Self::default().into()}
 }
 
