@@ -2,48 +2,48 @@ use super::*;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound=""), Copy(bound=""))]
-pub struct Level<'a,F,T:TextureTarget<F>> {
+pub struct Image<'a,F,T:TextureTarget<F>> {
     id: GLuint,
     level: GLuint,
     tex: PhantomData<&'a Texture<F,T>>
 }
 
-pub struct LevelMut<'a,F,T:TextureTarget<F>> {
+pub struct ImageMut<'a,F,T:TextureTarget<F>> {
     id: GLuint,
     level: GLuint,
     tex: PhantomData<&'a mut Texture<F,T>>
 }
 
-impl<'a,F,T:TextureTarget<F>> !Sync for Level<'a,F,T> {}
-impl<'a,F,T:TextureTarget<F>> !Send for Level<'a,F,T> {}
-impl<'a,F,T:TextureTarget<F>> !Sync for LevelMut<'a,F,T> {}
-impl<'a,F,T:TextureTarget<F>> !Send for LevelMut<'a,F,T> {}
+impl<'a,F,T:TextureTarget<F>> !Sync for Image<'a,F,T> {}
+impl<'a,F,T:TextureTarget<F>> !Send for Image<'a,F,T> {}
+impl<'a,F,T:TextureTarget<F>> !Sync for ImageMut<'a,F,T> {}
+impl<'a,F,T:TextureTarget<F>> !Send for ImageMut<'a,F,T> {}
 
-impl<'a,'b:'a,F,T:TextureTarget<F>> From<&'a Level<'b,F,T>> for Level<'a,F,T> {
-    #[inline] fn from(lvl: &'a Level<'b,F,T>) -> Self {*lvl}
+impl<'a,'b:'a,F,T:TextureTarget<F>> From<&'a Image<'b,F,T>> for Image<'a,F,T> {
+    #[inline] fn from(lvl: &'a Image<'b,F,T>) -> Self {*lvl}
 }
 
-impl<'a,F,T:TextureTarget<F>> From<LevelMut<'a,F,T>> for Level<'a,F,T> {
-    #[inline] fn from(lvl: LevelMut<'a,F,T>) -> Self { Level{id:lvl.id, level:lvl.level, tex:PhantomData} }
+impl<'a,F,T:TextureTarget<F>> From<ImageMut<'a,F,T>> for Image<'a,F,T> {
+    #[inline] fn from(lvl: ImageMut<'a,F,T>) -> Self { Image{id:lvl.id, level:lvl.level, tex:PhantomData} }
 }
 
-impl<'a,'b:'a,F,T:TextureTarget<F>> From<&'a LevelMut<'b,F,T>> for Level<'a,F,T> {
-    #[inline] fn from(lvl: &'a LevelMut<'b,F,T>) -> Self { Level{id:lvl.id, level:lvl.level, tex:PhantomData} }
+impl<'a,'b:'a,F,T:TextureTarget<F>> From<&'a ImageMut<'b,F,T>> for Image<'a,F,T> {
+    #[inline] fn from(lvl: &'a ImageMut<'b,F,T>) -> Self { Image{id:lvl.id, level:lvl.level, tex:PhantomData} }
 }
 
-impl<'a,'b:'a,F,T:TextureTarget<F>> From<&'a mut LevelMut<'b,F,T>> for LevelMut<'a,F,T> {
-    #[inline] fn from(lvl: &'a mut LevelMut<'b,F,T>) -> Self { LevelMut{id:lvl.id, level:lvl.level, tex:PhantomData} }
+impl<'a,'b:'a,F,T:TextureTarget<F>> From<&'a mut ImageMut<'b,F,T>> for ImageMut<'a,F,T> {
+    #[inline] fn from(lvl: &'a mut ImageMut<'b,F,T>) -> Self { ImageMut{id:lvl.id, level:lvl.level, tex:PhantomData} }
 }
 
-impl<'a,F,T:TextureTarget<F>> From<&'a Texture<F,T>> for Level<'a,F,T> {
-    #[inline] fn from(lvl: &'a Texture<F,T>) -> Self { Level{id:lvl.id, level:0, tex:PhantomData} }
+impl<'a,F,T:TextureTarget<F>> From<&'a Texture<F,T>> for Image<'a,F,T> {
+    #[inline] fn from(lvl: &'a Texture<F,T>) -> Self { Image{id:lvl.id, level:0, tex:PhantomData} }
 }
 
-impl<'a,F,T:TextureTarget<F>> From<&'a mut Texture<F,T>> for LevelMut<'a,F,T> {
-    #[inline] fn from(lvl: &'a mut Texture<F,T>) -> Self { LevelMut{id:lvl.id, level:0, tex:PhantomData} }
+impl<'a,F,T:TextureTarget<F>> From<&'a mut Texture<F,T>> for ImageMut<'a,F,T> {
+    #[inline] fn from(lvl: &'a mut Texture<F,T>) -> Self { ImageMut{id:lvl.id, level:0, tex:PhantomData} }
 }
 
-impl<'a,F,T:TextureTarget<F>> Level<'a,F,T> {
+impl<'a,F,T:TextureTarget<F>> Image<'a,F,T> {
     pub fn id(&self) -> GLuint { self.id }
     pub fn level(&self) -> GLuint { self.level }
 
@@ -82,12 +82,12 @@ impl<'a,F,T:TextureTarget<F>> Level<'a,F,T> {
 
 }
 
-impl<'a,F,T:TextureTarget<F>> LevelMut<'a,F,T> {
+impl<'a,F,T:TextureTarget<F>> ImageMut<'a,F,T> {
     pub fn id(&self) -> GLuint { self.id }
     pub fn level(&self) -> GLuint { self.level }
 
-    pub fn as_immut(&self) -> Level<F,T> { Level::from(self) }
-    pub fn as_mut(&mut self) -> LevelMut<F,T> { LevelMut::from(self) }
+    pub fn as_immut(&self) -> Image<F,T> { Image::from(self) }
+    pub fn as_mut(&mut self) -> ImageMut<F,T> { ImageMut::from(self) }
 
     pub fn width(&self) -> usize { self.as_immut().width() }
     pub fn height(&self) -> usize { self.as_immut().height() }
@@ -97,7 +97,7 @@ impl<'a,F,T:TextureTarget<F>> LevelMut<'a,F,T> {
 
 }
 
-impl<'a,F:InternalFormat,T:ImageTarget<F>> LevelMut<'a,F,T> {
+impl<'a,F:InternalFormat,T:ImageTarget<F>> ImageMut<'a,F,T> {
     pub(super) unsafe fn image_dim<P:PixelData<F::ClientFormat>>(&mut self, dim:T::Dim, data: &P) {
 
         size_check::<_,F,_>(dim, data);

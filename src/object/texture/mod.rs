@@ -7,12 +7,12 @@ use std::ops::*;
 pub use self::target::*;
 pub use self::dim::*;
 pub use self::uninit::*;
-pub use self::level::*;
+pub use self::image::*;
 
 mod target;
 mod dim;
 mod uninit;
-mod level;
+mod image;
 
 pub struct Texture<F, T:TextureTarget<F>> {
     id: GLuint,
@@ -84,8 +84,8 @@ impl<F:InternalFormat, T:TextureTarget<F>> Texture<F,T> {
         }
     }
 
-    pub fn base_image(&self) -> Level<F,T> { Level::from(self) }
-    pub fn base_image_mut(&mut self) -> LevelMut<F,T> { LevelMut::from(self) }
+    pub fn base_image(&self) -> Image<F,T> { Image::from(self) }
+    pub fn base_image_mut(&mut self) -> ImageMut<F,T> { ImageMut::from(self) }
 
 }
 
