@@ -9,7 +9,6 @@ use std::mem::*;
 use num_traits::{Zero,One};
 
 use crate::object::*;
-
 use crate::format::*;
 
 pub use self::c_bool::*;

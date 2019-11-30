@@ -7,9 +7,6 @@ use crate::object::buffer::AttribArray;
 use glsl::GLSLType;
 
 
-pub use self::attrib_format::*;
-mod attrib_format;
-
 pub trait Vertex: GLSLType {}
 
 
