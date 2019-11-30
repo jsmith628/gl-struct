@@ -8,11 +8,15 @@ mod align;
 mod pixel_data;
 
 use std::num::*;
+use std::convert::TryInto;
 
 pub trait ImageSrc<F:ClientFormat>: PixelSrc<F> {
     fn swap_bytes(&self) -> bool;
     fn lsb_first(&self) -> bool;
     fn row_alignment(&self) -> PixelRowAlignment;
+
+    fn row_length(&self) -> usize;
+    fn image_height(&self) -> usize;
 
     fn width(&self) -> NonZeroUsize;
     fn height(&self) -> NonZeroUsize;
@@ -32,14 +36,14 @@ pub(crate) unsafe fn apply_unpacking_settings<F:ClientFormat,I:ImageSrc<F>>(img:
     gl::PixelStorei(gl::UNPACK_SWAP_BYTES,   img.swap_bytes().into());
     gl::PixelStorei(gl::UNPACK_LSB_FIRST,    img.lsb_first().into());
     gl::PixelStorei(gl::UNPACK_ALIGNMENT,    img.row_alignment().0.into());
-    gl::PixelStorei(gl::UNPACK_ROW_LENGTH,   usize::from(img.width()) as GLint);
-    gl::PixelStorei(gl::UNPACK_IMAGE_HEIGHT, usize::from(img.height()) as GLint);
+    gl::PixelStorei(gl::UNPACK_ROW_LENGTH,   img.row_length().try_into().unwrap());
+    gl::PixelStorei(gl::UNPACK_IMAGE_HEIGHT, img.image_height().try_into().unwrap());
 }
 
 pub(crate) unsafe fn apply_packing_settings<F:ClientFormat,I:ImageSrc<F>>(img: &I) {
     gl::PixelStorei(gl::PACK_SWAP_BYTES,   img.swap_bytes().into());
     gl::PixelStorei(gl::PACK_LSB_FIRST,    img.lsb_first().into());
     gl::PixelStorei(gl::PACK_ALIGNMENT,    img.row_alignment().0.into());
-    gl::PixelStorei(gl::PACK_ROW_LENGTH,   usize::from(img.width()) as GLint);
-    gl::PixelStorei(gl::PACK_IMAGE_HEIGHT, usize::from(img.height()) as GLint);
+    gl::PixelStorei(gl::PACK_ROW_LENGTH,   img.row_length().try_into().unwrap());
+    gl::PixelStorei(gl::PACK_IMAGE_HEIGHT, img.image_height().try_into().unwrap());
 }
