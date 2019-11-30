@@ -84,6 +84,7 @@ impl<'a,F,T:TextureTarget<F>+BaseImage> From<&'a mut Texture<F,T>> for ImageMut<
 
 impl<'a,F,T:TextureTarget<F>> Image<'a,F,T> {
     pub fn id(&self) -> GLuint { self.id }
+    pub fn gl(&self) -> T::GL { unsafe {assume_supported()} }
     pub fn level(&self) -> GLuint { self.level }
 
     #[inline]
@@ -162,6 +163,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> Image<'a,F,T> {
 
 impl<'a,F,T:TextureTarget<F>> ImageMut<'a,F,T> {
     pub fn id(&self) -> GLuint { self.id }
+    pub fn gl(&self) -> T::GL { unsafe {assume_supported()} }
     pub fn level(&self) -> GLuint { self.level }
 
     pub fn as_immut(&self) -> Image<F,T> { Image::from(self) }

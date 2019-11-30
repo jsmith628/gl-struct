@@ -25,6 +25,7 @@ impl<F,T:TextureTarget<F>> !Send for Texture<F,T> {}
 
 impl<F, T:TextureTarget<F>> Texture<F,T> {
     pub fn id(&self) -> GLuint { self.id }
+    pub fn gl(&self) -> T::GL { unsafe {assume_supported()} }
 
     pub fn delete(self) { drop(self); }
     pub fn delete_textures(tex: Box<[Self]>) {
