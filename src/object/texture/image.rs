@@ -292,4 +292,14 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> ImageMut<'a,F,T> {
         unsafe { self.sub_image_unchecked(offset, data) }
     }
 
+    pub fn get_image<I:ImageDst<F::ClientFormat>>(&self, data: &mut I) { self.as_immut().get_image(data); }
+
+    pub fn into_image<I:OwnedImage<F::ClientFormat>>(&self) -> I where T::GL: Supports<I::GL> {
+        self.as_immut().into_image()
+    }
+
+    pub fn try_into_image<I:OwnedImage<F::ClientFormat>>(&self) -> Result<I,GLError> {
+        self.as_immut().try_into_image()
+    }
+
 }
