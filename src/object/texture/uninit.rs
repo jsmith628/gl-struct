@@ -54,6 +54,7 @@ impl<T:TextureType> UninitTex<T> {
         P:PixelData<F::ClientFormat>,
         T:PixelTransferTarget<F> + BaseImage
     {
+        if dim.pixels()==0 { panic!("Attempted to created an empty image"); }
         let mut tex = Texture { id:self.id(), phantom:PhantomData };
         unsafe { tex.base_image_mut().image_dim(dim, data); }
         forget(self);

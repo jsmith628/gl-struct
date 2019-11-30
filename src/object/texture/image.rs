@@ -11,9 +11,16 @@ glenum!{
     }
 }
 
+impl CubeMapFace {
+    pub fn faces() -> &'static [CubeMapFace] {
+        use self::CubeMapFace::*;
+        &[PositiveX, NegativeX, PositiveY, NegativeY, PositiveZ, NegativeZ]
+    }
+}
+
 impl Default for CubeMapFace { fn default() -> Self { Self::PositiveX } }
 
-trait ImageSelector: TextureType { type Selection: GLEnum + Default; }
+pub(super) trait ImageSelector: TextureType { type Selection: GLEnum + Default; }
 impl<T: TextureType> ImageSelector for T { default type Selection = Self; }
 impl<T: BaseImage> ImageSelector for T { type Selection = Self; }
 impl ImageSelector for TEXTURE_CUBE_MAP { type Selection = CubeMapFace; }
@@ -22,17 +29,17 @@ impl ImageSelector for TEXTURE_CUBE_MAP { type Selection = CubeMapFace; }
 #[derive(Derivative)]
 #[derivative(Clone(bound=""), Copy(bound=""))]
 pub struct Image<'a,F,T:TextureTarget<F>> {
-    id: GLuint,
-    level: GLuint,
-    face: <T as ImageSelector>::Selection,
-    tex: PhantomData<&'a Texture<F,T>>
+    pub(super) id: GLuint,
+    pub(super) level: GLuint,
+    pub(super) face: <T as ImageSelector>::Selection,
+    pub(super) tex: PhantomData<&'a Texture<F,T>>
 }
 
 pub struct ImageMut<'a,F,T:TextureTarget<F>> {
-    id: GLuint,
-    level: GLuint,
-    face: <T as ImageSelector>::Selection,
-    tex: PhantomData<&'a mut Texture<F,T>>
+    pub(super) id: GLuint,
+    pub(super) level: GLuint,
+    pub(super) face: <T as ImageSelector>::Selection,
+    pub(super) tex: PhantomData<&'a mut Texture<F,T>>
 }
 
 impl<'a,F,T:TextureTarget<F>> !Sync for Image<'a,F,T> {}
@@ -77,11 +84,6 @@ impl<'a,F,T:TextureTarget<F>+BaseImage> From<&'a mut Texture<F,T>> for ImageMut<
 impl<'a,F,T:TextureTarget<F>> Image<'a,F,T> {
     pub fn id(&self) -> GLuint { self.id }
     pub fn level(&self) -> GLuint { self.level }
-
-    #[inline]
-    pub(super) fn _base(tex: &'a Texture<F,T>) -> Self {
-        Image{id:tex.id, level:0, face:<T as ImageSelector>::Selection::default(), tex:PhantomData}
-    }
 
     #[inline]
     unsafe fn get_parameter_iv(&self, pname:GLenum) -> GLint {
