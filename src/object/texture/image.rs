@@ -226,4 +226,48 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> ImageMut<'a,F,T> {
             }
         )
     }
+
+    unsafe fn sub_image_unchecked<I:ImageSrc<F::ClientFormat>>(&mut self, offset:T::Dim, data: &I) {
+
+        if data.pixel_count()==0 { return; }
+
+        let ifmt = F::glenum() as GLint;
+        let (x, y, z) = (offset.width() as GLsizei, offset.height() as GLsizei, offset.depth() as GLsizei);
+
+        self.unpack(
+            data,
+            |face, [w,h,d], fmt, ty, ptr| {
+                match T::Dim::dim() {
+                    1 => gl::TexSubImage1D(face, x, w, 0, fmt, ty, ptr),
+                    2 => gl::TexSubImage2D(face, x,y, w,h, 0, fmt, ty, ptr),
+                    3 => gl::TexSubImage3D(face, x,y,z, w,h,d, 0, fmt, ty, ptr),
+                    n => panic!("{}D Textures not supported", n)
+                }
+            }
+        )
+
+    }
+
+    pub fn image<I:ImageSrc<F::ClientFormat>>(&mut self, data: &I) {
+        //get the current dimensions
+        let current_dim = self.dim();
+
+        //check if this image hasn't been initialized yet
+        if current_dim.pixels()==0 {
+            //if so, run glTexImage*D
+            let dim = self.base_dim().minimized(self.level());
+            size_check::<_,F::ClientFormat,_>(dim, data);
+            unsafe { self.image_unchecked(data) }
+        } else {
+            //else, run glTexSubImage*D
+            size_check::<_,F::ClientFormat,_>(current_dim, data);
+            unsafe { self.sub_image_unchecked(T::Dim::new(0,0,0), data) }
+        }
+    }
+
+    pub fn sub_image<I:ImageSrc<F::ClientFormat>>(&mut self, offset:T::Dim, data: &I) {
+        source_size_check::<_,F::ClientFormat,_>(offset, self.dim(), data);
+        unsafe { self.sub_image_unchecked(offset, data) }
+    }
+
 }

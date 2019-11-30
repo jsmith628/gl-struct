@@ -80,7 +80,7 @@ pub(super) fn dest_size_check<D:TexDim,F:ClientFormat,I:ImageSrc<F>>(dim:D, p:&I
     if D::dim()>=3 && p.depth()  < dim.depth()  {panic!("Image destination depth too small");}
 }
 
-pub(super) fn size_check<D:TexDim,F:ClientFormat,I:ImageSrc<F>>(offset:D, dim:D, p:&I) {
+pub(super) fn size_check<D:TexDim,F:ClientFormat,I:ImageSrc<F>>(dim:D, p:&I) {
     if D::dim()>=1 && p.width()  != dim.width()  {panic!("Image widths unequal");}
     if D::dim()>=2 && p.height() != dim.height() {panic!("Image heights unequal");}
     if D::dim()>=3 && p.depth()  != dim.depth()  {panic!("Image depths unequal");}
