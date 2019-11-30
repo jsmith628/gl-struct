@@ -120,6 +120,35 @@ impl<'a,F,T:TextureTarget<F>> Image<'a,F,T> {
 
 }
 
+impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> Image<'a,F,T> {
+
+    pub fn get_image<P:PixelDataMut<F::ClientFormat>>(&self, data: &mut P) {
+        unsafe {
+
+            size_check::<_,F,_>(self.dim(), data);
+            apply_packing_settings(data);
+
+            let mut target = BufferTarget::PixelPackBuffer.as_loc();
+            let pixels = data.pixels_mut();
+            let (binding, ptr, client_format) = match pixels {
+                PixelsMut::Slice(f, slice) => (None, slice as *mut [P::Pixel] as *mut GLvoid, f),
+                PixelsMut::Buffer(f, ref slice) => (Some(target.bind(slice)), slice.offset() as *mut GLvoid, f),
+            };
+
+            let (format, ty) = client_format.format_type();
+
+            T::bind_loc_level().map_bind(self,
+                |_| gl::GetTexImage(self.face.into(), self.level() as GLsizei, format.into(), ty.into(), ptr)
+            );
+
+            drop(binding);
+
+        }
+    }
+
+}
+
+
 impl<'a,F,T:TextureTarget<F>> ImageMut<'a,F,T> {
     pub fn id(&self) -> GLuint { self.id }
     pub fn level(&self) -> GLuint { self.level }
