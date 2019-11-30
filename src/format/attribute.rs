@@ -1,7 +1,6 @@
 
 use super::*;
 use glsl::*;
-use format::*;
 
 use std::mem::*;
 use std::convert::*;

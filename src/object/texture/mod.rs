@@ -1,5 +1,5 @@
 use super::*;
-use format::image_format::*;
+use format::pixel::*;
 
 use std::mem::*;
 use std::ops::*;
