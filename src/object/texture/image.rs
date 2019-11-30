@@ -112,9 +112,9 @@ impl<'a,F,T:TextureTarget<F>> Image<'a,F,T> {
     pub fn dim(&self) -> T::Dim {
         let coords = T::Dim::dim();
         T::Dim::new(
-            if coords>0 {self.width()} else {0},
-            if coords>1 {self.height()} else {0},
-            if coords>2 {self.depth()} else {0},
+            if coords>0 {self.width()} else {1},
+            if coords>1 {self.height()} else {1},
+            if coords>2 {self.depth()} else {1},
         )
     }
 
