@@ -117,7 +117,7 @@ impl UninitBuf {
     }
 
     pub fn storage_uninit_slice<T:Sized,A:Initialized>(
-        self, count: usize, gl: &GL44, hint: StorageHint
+        self, gl: &GL44, count: usize, hint: StorageHint
     ) -> Buffer<[MaybeUninit<T>],A> {
         unsafe { self.storage_raw(gl, slice_from_raw_parts(null(), count), hint) }
     }

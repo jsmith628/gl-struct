@@ -1,8 +1,4 @@
 use super::*;
-use std::borrow::Cow;
-use std::rc::Rc;
-use std::sync::Arc;
-use object::buffer::*;
 
 pub unsafe trait PixelSrc<F:ClientFormat> {
     fn pixels(&self) -> PixelPtr<F>;
@@ -45,7 +41,10 @@ impl_pixel_dst_deref!(for<P> Box<[P]>);
 impl_pixel_src_deref!(for<P> Rc<[P]>);
 impl_pixel_src_deref!(for<P> Arc<[P]>);
 impl_pixel_dst_deref!(for<P> Vec<P>);
-impl_pixel_src_deref!(for<'a,P> Cow<'a, [P]>);
+
+impl_pixel_src_deref!(for<'a,P> &'a [P]);
+impl_pixel_dst_deref!(for<'a,P> &'a mut [P]);
+impl_pixel_src_deref!(for<'a,P> Cow<'a,[P]>);
 
 
 unsafe impl<F:ClientFormat,P:Pixel<F>> FromPixels<F> for Box<[P]> {
@@ -113,3 +112,24 @@ macro_rules! impl_pixel_dst_buf {
 impl_pixel_dst_buf!(for<P,A> Buffer<[P],A>);
 impl_pixel_src_buf!(for<'a,P,A> Slice<'a,[P],A>);
 impl_pixel_dst_buf!(for<'a,P,A> SliceMut<'a,[P],A>);
+
+unsafe impl<F:ClientFormat,P:Pixel<F>,A:Initialized> FromPixels<F> for Buffer<[P],A> {
+    default type GL = GL44;
+    default unsafe fn from_pixels<G:FnOnce(PixelPtrMut<F>)>(_:&Self::GL, count: usize, get:G) -> Self {
+        //For persistent Buffers:
+        //we assume the GLs are supported as if A is NonPersistent, the specialization covers it
+
+        let mut buf = Buffer::gen(&assume_supported()).storage_uninit_slice(&assume_supported(), count, None);
+        get(PixelPtrMut::Buffer(P::format(), buf.id(), SliceMut::from(&mut buf).offset() as *mut GLvoid));
+        buf.assume_init()
+    }
+}
+
+unsafe impl<F:ClientFormat,P:Pixel<F>,A:NonPersistent> FromPixels<F> for Buffer<[P],A> {
+    type GL = GL15;
+    unsafe fn from_pixels<G:FnOnce(PixelPtrMut<F>)>(gl:&Self::GL, count: usize, get:G) -> Self {
+        let mut buf = Buffer::gen(gl).uninit_slice(count, None);
+        get(PixelPtrMut::Buffer(P::format(), buf.id(), SliceMut::from(&mut buf).offset() as *mut GLvoid));
+        buf.assume_init()
+    }
+}

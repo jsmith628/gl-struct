@@ -9,8 +9,12 @@ mod align;
 mod pixel_data;
 mod pixel_store;
 
-use context::*;
+use std::borrow::Cow;
+use std::rc::Rc;
+use std::sync::Arc;
 use std::convert::TryInto;
+use object::buffer::*;
+use context::*;
 
 pub trait ImageSrc<F:ClientFormat>: PixelSrc<F> {
     fn swap_bytes(&self) -> bool;
@@ -58,8 +62,8 @@ pub trait OwnedImage<F:ClientFormat>: ImageSrc<F> {
 }
 
 macro_rules! impl_img_src_slice {
-    (for<$($a:lifetime,)* $P:ident> $ty:ty) => {
-        impl<$($a,)* F:ClientFormat, $P:Pixel<F>> ImageSrc<F> for $ty {
+    (for<$($a:lifetime,)* $P:ident $(, $A:ident:$bound:ident)* > $ty:ty) => {
+        impl<$($a,)* $($A:$bound,)* F:ClientFormat, $P:Pixel<F>> ImageSrc<F> for $ty {
 
             fn swap_bytes(&self) -> bool {$P::swap_bytes()}
             fn lsb_first(&self) -> bool {$P::lsb_first()}
@@ -80,9 +84,9 @@ pub(self) fn pixel_count(dim: [usize;3]) -> usize {
 }
 
 macro_rules! impl_own_img_slice {
-    (for<$($a:lifetime,)* $P:ident> $ty:ty) => {
-        impl<$($a,)* F:ClientFormat, $P:Pixel<F>> OwnedImage<F> for $ty {
-            type GL = GL10;
+    (for<$($a:lifetime,)* $P:ident $(, $A:ident:$bound:ident)* > $ty:ty) => {
+        impl<$($a,)* $($A:$bound,)* F:ClientFormat, $P:Pixel<F>> OwnedImage<F> for $ty {
+            type GL = <Self as FromPixels<F>>::GL;
             unsafe fn from_gl<G:FnOnce(PixelStoreSettings, PixelPtrMut<F>)>(
                 gl:&Self::GL, dim: [usize;3], get:G
             ) -> Self {
@@ -110,11 +114,17 @@ impl_own_img_slice!(for<P> Box<[P]>);
 impl_img_src_slice!(for<P> Vec<P>);
 impl_own_img_slice!(for<P> Vec<P>);
 
-impl_img_src_slice!(for<P> ::std::rc::Rc<[P]>);
-impl_own_img_slice!(for<P> ::std::rc::Rc<[P]>);
+impl_img_src_slice!(for<P> Rc<[P]>);
+impl_own_img_slice!(for<P> Rc<[P]>);
 
-impl_img_src_slice!(for<P> ::std::sync::Arc<[P]>);
-impl_own_img_slice!(for<P> ::std::sync::Arc<[P]>);
+impl_img_src_slice!(for<P> Arc<[P]>);
+impl_own_img_slice!(for<P> Arc<[P]>);
 
-impl_img_src_slice!(for<'a,P> ::std::borrow::Cow<'a,[P]>);
-impl_own_img_slice!(for<'a,P> ::std::borrow::Cow<'a,[P]>);
+impl_img_src_slice!(for<'a,P> Cow<'a,[P]>);
+impl_own_img_slice!(for<'a,P> Cow<'a,[P]>);
+
+impl_img_src_slice!(for<'a,P,A:Initialized> Slice<'a,[P],A>);
+impl_img_src_slice!(for<'a,P,A:Initialized> SliceMut<'a,[P],A>);
+
+impl_img_src_slice!(for<P,A:Initialized> Buffer<[P],A>);
+impl_own_img_slice!(for<P,A:Initialized> Buffer<[P],A>);
