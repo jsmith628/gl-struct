@@ -126,7 +126,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> Image<'a,F,T> {
     pub fn get_image<I:ImageDst<F::ClientFormat>>(&self, data: &mut I) {
         unsafe {
 
-            size_check::<_,F,_>(self.dim(), data);
+            dest_size_check::<_,F::ClientFormat,_>(self.dim(), data);
             data.settings().apply_packing();
 
             let (id, ptr, client_format) = match data.pixels_mut() {
