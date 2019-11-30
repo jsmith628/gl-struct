@@ -9,7 +9,7 @@ pub use self::dim::*;
 pub use self::uninit::*;
 pub use self::image::*;
 
-mod target;
+pub mod target;
 mod dim;
 mod uninit;
 mod image;
@@ -124,6 +124,7 @@ impl<F:InternalFormat, T:MipmappedTarget<F>> Texture<F,T> {
         self.base_level()..=self.max_level()
     }
 
+    //TODO: return a result
     fn check_levels(&self, base:GLuint, max:GLuint, check_complete:bool) {
         //make sure the interval is ordered correctly
         if max < base { panic!("Max level lower than current base level"); }
