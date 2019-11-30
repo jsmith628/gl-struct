@@ -1,4 +1,5 @@
 use super::*;
+use std::convert::TryInto;
 
 glenum!{
     pub enum CubeMapFace {
@@ -166,6 +167,12 @@ impl<'a,F,T:TextureTarget<F>> ImageMut<'a,F,T> {
 impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> ImageMut<'a,F,T> {
     pub(super) unsafe fn image_unchecked<I:ImageSrc<F::ClientFormat>>(&mut self, data: &I) {
 
+        if data.pixel_count()==0 { return; }
+
+        if T::Dim::dim()==1 && data.height()!=1 { panic!("Attempted to create a 1D texture from a 2D image"); }
+        if T::Dim::dim()==2 && data.depth()!=1  { panic!("Attempted to create a 2D texture from a 3D image"); }
+        if T::Dim::dim()==1 && data.depth()!=1  { panic!("Attempted to create a 1D texture from a 3D image"); }
+
         data.settings().apply_unpacking();
 
         let (id, ptr, client_format) = match data.pixels() {
@@ -177,8 +184,8 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> ImageMut<'a,F,T> {
         let (format, ty) = client_format.format_type().into();
         let (internal, format, ty) = (F::glenum() as GLint, format.into(), ty.into());
 
-        let (w, h, d) = (usize::from(data.width()), usize::from(data.height()), usize::from(data.depth()));
-        let (w, h, d) = (w as GLsizei, h as GLsizei, d as GLsizei);
+        let (w, h, d) = (data.width(), data.height(), data.depth());
+        let (w, h, d) = (w.try_into().unwrap(), h.try_into().unwrap(), d.try_into().unwrap());
 
         T::bind_loc_level_mut().map_bind(self,
             |_| match T::Dim::dim() {

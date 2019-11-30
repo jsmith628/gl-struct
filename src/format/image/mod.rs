@@ -24,11 +24,15 @@ pub trait ImageSrc<F:ClientFormat>: PixelSrc<F> {
     fn row_length(&self) -> usize {0}
     fn image_height(&self) -> usize {0}
 
-    fn width(&self) -> NonZeroUsize;
-    fn height(&self) -> NonZeroUsize;
-    fn depth(&self) -> NonZeroUsize;
+    fn width(&self) -> usize;
+    fn height(&self) -> usize;
+    fn depth(&self) -> usize;
 
-    fn dim(&self) -> [NonZeroUsize; 3] { [self.width(), self.height(), self.depth()] }
+    fn dim(&self) -> [usize; 3] { [self.width(), self.height(), self.depth()] }
+
+    //since the image is already allocated, we can assume that the size does not overflow
+    fn pixel_count(&self) -> usize { self.width() * self.height() * self.depth() }
+
     fn settings(&self) -> PixelStoreSettings {
         PixelStoreSettings {
             swap_bytes: self.swap_bytes(),
@@ -47,7 +51,7 @@ pub trait ImageSrc<F:ClientFormat>: PixelSrc<F> {
 pub trait ImageDst<F:ClientFormat> = ImageSrc<F> + PixelDst<F>;
 
 pub trait OwnedImage<F:ClientFormat>: ImageSrc<F> {
-    unsafe fn from_gl<GL:FnOnce(PixelStoreSettings, PixelPtrMut<F>)>(dim: [NonZeroUsize;3], gl:GL) -> Self;
+    unsafe fn from_gl<GL:FnOnce(PixelStoreSettings, PixelPtrMut<F>)>(dim: [usize;3], gl:GL) -> Self;
 }
 
 macro_rules! impl_img_src_slice {
@@ -58,24 +62,27 @@ macro_rules! impl_img_src_slice {
             fn lsb_first(&self) -> bool {$P::lsb_first()}
             fn row_alignment(&self) -> PixelRowAlignment {PixelRowAlignment(1)}
 
-            fn width(&self) -> NonZeroUsize {NonZeroUsize::new(self.len()).expect("Images must not be zero-sized")}
-            fn height(&self) -> NonZeroUsize {NonZeroUsize::new(1).unwrap()}
-            fn depth(&self) -> NonZeroUsize {NonZeroUsize::new(1).unwrap()}
+            fn width(&self) -> usize {self.len()}
+            fn height(&self) -> usize {1}
+            fn depth(&self) -> usize {1}
 
         }
     }
+}
+
+pub(self) fn pixel_count(dim: [usize;3]) -> usize {
+    dim[0].checked_mul(dim[1])
+        .and_then(|m| m.checked_mul(dim[2]))
+        .expect("Overflow when computing buffer size")
 }
 
 macro_rules! impl_own_img_slice {
     (for<$($a:lifetime,)* $P:ident> $ty:ty) => {
         impl<$($a,)* F:ClientFormat, $P:Pixel<F>> OwnedImage<F> for $ty {
             unsafe fn from_gl<GL:FnOnce(PixelStoreSettings, PixelPtrMut<F>)>(
-                dim: [NonZeroUsize;3], gl:GL
+                dim: [usize;3], gl:GL
             ) -> Self {
-                let count = dim[0].get()
-                    .checked_mul(dim[1].get())
-                    .and_then(|m| m.checked_mul(dim[2].get()))
-                    .expect("Overflow when computing buffer size");
+                let count = pixel_count(dim);
 
                 let settings = PixelStoreSettings {
                     swap_bytes: $P::swap_bytes(),
