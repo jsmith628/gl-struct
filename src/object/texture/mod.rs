@@ -68,16 +68,16 @@ impl<F:InternalFormat, T:TextureTarget<F>> Texture<F,T> {
         unsafe { self.get_parameter_iv(gl::TEXTURE_IMMUTABLE_LEVELS) as GLuint }
     }
 
-    fn _base_image(&self) -> Image<F,T> { self._level(0, <T as ImageSelector>::Selection::default()) }
+    fn _base_image(&self) -> TexImage<F,T> { self._level(0, <T as ImageSelector>::Selection::default()) }
 
-    fn _level(&self, layer:GLuint, face:<T as ImageSelector>::Selection) -> Image<F,T> {
+    fn _level(&self, layer:GLuint, face:<T as ImageSelector>::Selection) -> TexImage<F,T> {
         if layer!=0 && layer>=self.max_levels() { panic!("Mipmap level out of range"); }
-        Image{id:self.id(), level:0, face:face, tex:PhantomData}
+        TexImage{id:self.id(), level:0, face:face, tex:PhantomData}
     }
 
-    fn _level_mut(&mut self, layer:GLuint, face:<T as ImageSelector>::Selection) -> ImageMut<F,T> {
+    fn _level_mut(&mut self, layer:GLuint, face:<T as ImageSelector>::Selection) -> TexImageMut<F,T> {
         if layer!=0 && layer>=self.max_levels() { panic!("Mipmap level out of range"); }
-        ImageMut{id:self.id(), level:0, face:face, tex:PhantomData}
+        TexImageMut{id:self.id(), level:0, face:face, tex:PhantomData}
     }
 
     pub fn width(&self) -> usize { self._base_image().width() }
@@ -101,18 +101,18 @@ impl<F:InternalFormat, T:TextureTarget<F>> Texture<F,T> {
 }
 
 impl<F:InternalFormat, T:TextureTarget<F>+BaseImage> Texture<F,T> {
-    pub fn base_image(&self) -> Image<F,T> { Image::from(self) }
-    pub fn base_image_mut(&mut self) -> ImageMut<F,T> { ImageMut::from(self) }
+    pub fn base_image(&self) -> TexImage<F,T> { TexImage::from(self) }
+    pub fn base_image_mut(&mut self) -> TexImageMut<F,T> { TexImageMut::from(self) }
 }
 
 impl<F:InternalFormat, T:MipmappedTarget<F>+BaseImage> Texture<F,T> {
-    pub fn level(&self, level:GLuint) -> Image<F,T> { self._level(level, T::default()) }
-    pub fn level_mut(&mut self, level:GLuint) -> ImageMut<F,T> { self._level_mut(level, T::default()) }
+    pub fn level(&self, level:GLuint) -> TexImage<F,T> { self._level(level, T::default()) }
+    pub fn level_mut(&mut self, level:GLuint) -> TexImageMut<F,T> { self._level_mut(level, T::default()) }
 }
 
 impl<F:InternalFormat> Texture<F,TEXTURE_CUBE_MAP> where TEXTURE_CUBE_MAP:TextureTarget<F> {
-    pub fn face(&self, face:CubeMapFace, level:GLuint) -> Image<F,TEXTURE_CUBE_MAP> { self._level(level, face) }
-    pub fn face_mut(&mut self, face:CubeMapFace, level:GLuint) -> ImageMut<F,TEXTURE_CUBE_MAP> {
+    pub fn face(&self, face:CubeMapFace, level:GLuint) -> TexImage<F,TEXTURE_CUBE_MAP> { self._level(level, face) }
+    pub fn face_mut(&mut self, face:CubeMapFace, level:GLuint) -> TexImageMut<F,TEXTURE_CUBE_MAP> {
         self._level_mut(level, face)
     }
 }

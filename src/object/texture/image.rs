@@ -29,60 +29,60 @@ impl ImageSelector for TEXTURE_CUBE_MAP { type Selection = CubeMapFace; }
 
 #[derive(Derivative)]
 #[derivative(Clone(bound=""), Copy(bound=""))]
-pub struct Image<'a,F,T:TextureTarget<F>> {
+pub struct TexImage<'a,F,T:TextureTarget<F>> {
     pub(super) id: GLuint,
     pub(super) level: GLuint,
     pub(super) face: <T as ImageSelector>::Selection,
     pub(super) tex: PhantomData<&'a Texture<F,T>>
 }
 
-pub struct ImageMut<'a,F,T:TextureTarget<F>> {
+pub struct TexImageMut<'a,F,T:TextureTarget<F>> {
     pub(super) id: GLuint,
     pub(super) level: GLuint,
     pub(super) face: <T as ImageSelector>::Selection,
     pub(super) tex: PhantomData<&'a mut Texture<F,T>>
 }
 
-impl<'a,F,T:TextureTarget<F>> !Sync for Image<'a,F,T> {}
-impl<'a,F,T:TextureTarget<F>> !Send for Image<'a,F,T> {}
-impl<'a,F,T:TextureTarget<F>> !Sync for ImageMut<'a,F,T> {}
-impl<'a,F,T:TextureTarget<F>> !Send for ImageMut<'a,F,T> {}
+impl<'a,F,T:TextureTarget<F>> !Sync for TexImage<'a,F,T> {}
+impl<'a,F,T:TextureTarget<F>> !Send for TexImage<'a,F,T> {}
+impl<'a,F,T:TextureTarget<F>> !Sync for TexImageMut<'a,F,T> {}
+impl<'a,F,T:TextureTarget<F>> !Send for TexImageMut<'a,F,T> {}
 
-impl<'a,'b:'a,F,T:TextureTarget<F>> From<&'a Image<'b,F,T>> for Image<'a,F,T> {
-    #[inline] fn from(lvl: &'a Image<'b,F,T>) -> Self {*lvl}
+impl<'a,'b:'a,F,T:TextureTarget<F>> From<&'a TexImage<'b,F,T>> for TexImage<'a,F,T> {
+    #[inline] fn from(lvl: &'a TexImage<'b,F,T>) -> Self {*lvl}
 }
 
-impl<'a,F,T:TextureTarget<F>> From<ImageMut<'a,F,T>> for Image<'a,F,T> {
-    #[inline] fn from(lvl: ImageMut<'a,F,T>) -> Self {
-        Image{id:lvl.id, level:lvl.level, face:lvl.face, tex:PhantomData}
+impl<'a,F,T:TextureTarget<F>> From<TexImageMut<'a,F,T>> for TexImage<'a,F,T> {
+    #[inline] fn from(lvl: TexImageMut<'a,F,T>) -> Self {
+        TexImage{id:lvl.id, level:lvl.level, face:lvl.face, tex:PhantomData}
     }
 }
 
-impl<'a,'b:'a,F,T:TextureTarget<F>> From<&'a ImageMut<'b,F,T>> for Image<'a,F,T> {
-    #[inline] fn from(lvl: &'a ImageMut<'b,F,T>) -> Self {
-        Image{id:lvl.id, level:lvl.level, face:lvl.face, tex:PhantomData}
+impl<'a,'b:'a,F,T:TextureTarget<F>> From<&'a TexImageMut<'b,F,T>> for TexImage<'a,F,T> {
+    #[inline] fn from(lvl: &'a TexImageMut<'b,F,T>) -> Self {
+        TexImage{id:lvl.id, level:lvl.level, face:lvl.face, tex:PhantomData}
     }
 }
 
-impl<'a,'b:'a,F,T:TextureTarget<F>> From<&'a mut ImageMut<'b,F,T>> for ImageMut<'a,F,T> {
-    #[inline] fn from(lvl: &'a mut ImageMut<'b,F,T>) -> Self {
-        ImageMut{id:lvl.id, level:lvl.level, face:lvl.face, tex:PhantomData}
+impl<'a,'b:'a,F,T:TextureTarget<F>> From<&'a mut TexImageMut<'b,F,T>> for TexImageMut<'a,F,T> {
+    #[inline] fn from(lvl: &'a mut TexImageMut<'b,F,T>) -> Self {
+        TexImageMut{id:lvl.id, level:lvl.level, face:lvl.face, tex:PhantomData}
     }
 }
 
-impl<'a,F,T:TextureTarget<F>+BaseImage> From<&'a Texture<F,T>> for Image<'a,F,T> {
+impl<'a,F,T:TextureTarget<F>+BaseImage> From<&'a Texture<F,T>> for TexImage<'a,F,T> {
     #[inline] fn from(tex: &'a Texture<F,T>) -> Self {
-        Image{id:tex.id, level:0, face:T::default(), tex:PhantomData}
+        TexImage{id:tex.id, level:0, face:T::default(), tex:PhantomData}
     }
 }
 
-impl<'a,F,T:TextureTarget<F>+BaseImage> From<&'a mut Texture<F,T>> for ImageMut<'a,F,T> {
+impl<'a,F,T:TextureTarget<F>+BaseImage> From<&'a mut Texture<F,T>> for TexImageMut<'a,F,T> {
     #[inline] fn from(tex: &'a mut Texture<F,T>) -> Self {
-        ImageMut{id:tex.id, level:0, face:T::default(), tex:PhantomData}
+        TexImageMut{id:tex.id, level:0, face:T::default(), tex:PhantomData}
     }
 }
 
-impl<'a,F,T:TextureTarget<F>> Image<'a,F,T> {
+impl<'a,F,T:TextureTarget<F>> TexImage<'a,F,T> {
     pub fn id(&self) -> GLuint { self.id }
     pub fn gl(&self) -> T::GL { unsafe {assume_supported()} }
     pub fn level(&self) -> GLuint { self.level }
@@ -133,7 +133,7 @@ impl<'a,F,T:TextureTarget<F>> Image<'a,F,T> {
 
 }
 
-impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> Image<'a,F,T> {
+impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImage<'a,F,T> {
 
     unsafe fn pack(&self, settings:PixelStoreSettings, pixels: PixelPtrMut<F::ClientFormat>) {
         settings.apply_packing();
@@ -173,7 +173,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> Image<'a,F,T> {
             let gl = upgrade_to(&self.gl())?;
             Ok(
                 I::from_gl(
-                    &gl, hint, 
+                    &gl, hint,
                     [dim.width(), dim.height(), dim.depth()],
                     |settings, ptr| self.pack(settings, ptr)
                 )
@@ -184,13 +184,13 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> Image<'a,F,T> {
 }
 
 
-impl<'a,F,T:TextureTarget<F>> ImageMut<'a,F,T> {
+impl<'a,F,T:TextureTarget<F>> TexImageMut<'a,F,T> {
     pub fn id(&self) -> GLuint { self.id }
     pub fn gl(&self) -> T::GL { unsafe {assume_supported()} }
     pub fn level(&self) -> GLuint { self.level }
 
-    pub fn as_immut(&self) -> Image<F,T> { Image::from(self) }
-    pub fn as_mut(&mut self) -> ImageMut<F,T> { ImageMut::from(self) }
+    pub fn as_immut(&self) -> TexImage<F,T> { TexImage::from(self) }
+    pub fn as_mut(&mut self) -> TexImageMut<F,T> { TexImageMut::from(self) }
 
     pub fn width(&self) -> usize { self.as_immut().width() }
     pub fn height(&self) -> usize { self.as_immut().height() }
@@ -206,7 +206,7 @@ impl<'a,F,T:TextureTarget<F>> ImageMut<'a,F,T> {
 
 }
 
-impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> ImageMut<'a,F,T> {
+impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImageMut<'a,F,T> {
 
     unsafe fn unpack<
         GL:FnOnce(GLenum, [GLsizei;3], GLenum, GLenum, *const GLvoid),

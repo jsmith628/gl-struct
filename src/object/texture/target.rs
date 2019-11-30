@@ -41,14 +41,14 @@ macro_rules! tex_target {
             unsafe fn bind(self, tex: &Texture<F,Self>) { gl::BindTexture(self.into(), tex.id()) }
             unsafe fn unbind(self) { gl::BindTexture(self.into(), 0) }
         }
-        impl<'a,F:$bound> Target<Image<'a,F,Self>> for $name {
+        impl<'a,F:$bound> Target<TexImage<'a,F,Self>> for $name {
             fn target_id(self) -> GLenum { self.into() }
-            unsafe fn bind(self, tex: &Image<'a,F,Self>) { gl::BindTexture(self.into(), tex.id()) }
+            unsafe fn bind(self, tex: &TexImage<'a,F,Self>) { gl::BindTexture(self.into(), tex.id()) }
             unsafe fn unbind(self) { gl::BindTexture(self.into(), 0) }
         }
-        impl<'a,F:$bound> Target<ImageMut<'a,F,Self>> for $name {
+        impl<'a,F:$bound> Target<TexImageMut<'a,F,Self>> for $name {
             fn target_id(self) -> GLenum { self.into() }
-            unsafe fn bind(self, tex: &ImageMut<'a,F,Self>) { gl::BindTexture(self.into(), tex.id()) }
+            unsafe fn bind(self, tex: &TexImageMut<'a,F,Self>) { gl::BindTexture(self.into(), tex.id()) }
             unsafe fn unbind(self) { gl::BindTexture(self.into(), 0) }
         }
 
@@ -68,12 +68,12 @@ pub unsafe trait TextureType: GLEnum + Default {
     }
 
     #[inline]
-    fn bind_loc_level<'a,F>() -> BindingLocation<Image<'a,F,Self>,Self> where Self: TextureTarget<F> {
+    fn bind_loc_level<'a,F>() -> BindingLocation<TexImage<'a,F,Self>,Self> where Self: TextureTarget<F> {
         unsafe {Self::default().as_loc()}
     }
 
     #[inline]
-    fn bind_loc_level_mut<'a,F>() -> BindingLocation<ImageMut<'a,F,Self>,Self> where Self: TextureTarget<F> {
+    fn bind_loc_level_mut<'a,F>() -> BindingLocation<TexImageMut<'a,F,Self>,Self> where Self: TextureTarget<F> {
         unsafe {Self::default().as_loc()}
     }
 
@@ -106,8 +106,8 @@ pub unsafe trait TextureType: GLEnum + Default {
 
 pub trait TextureTarget<F> = TextureType +
     Target<Texture<F,Self>> +
-    for<'a> Target<Image<'a,F,Self>> +
-    for<'a> Target<ImageMut<'a,F,Self>>;
+    for<'a> Target<TexImage<'a,F,Self>> +
+    for<'a> Target<TexImageMut<'a,F,Self>>;
 
 pub trait MipmappedTarget<F> = Mipmapped + TextureTarget<F>;
 pub trait MultisampledTarget<F> = Multisampled + TextureTarget<F>;
@@ -180,14 +180,14 @@ impl<T:TextureType> Target<UninitTex<Self>> for T {
     unsafe fn bind(self, tex: &UninitTex<Self>) { gl::BindTexture(self.into(), tex.id()) }
     unsafe fn unbind(self) { gl::BindTexture(self.into(), 0) }
 }
-impl<'a,T:TextureType> Target<Image<'a,!,Self>> for T {
+impl<'a,T:TextureType> Target<TexImage<'a,!,Self>> for T {
     fn target_id(self) -> GLenum { self.into() }
-    unsafe fn bind(self, tex: &Image<'a,!,Self>) { gl::BindTexture(self.into(), tex.id()) }
+    unsafe fn bind(self, tex: &TexImage<'a,!,Self>) { gl::BindTexture(self.into(), tex.id()) }
     unsafe fn unbind(self) { gl::BindTexture(self.into(), 0) }
 }
-impl<'a,T:TextureType> Target<ImageMut<'a,!,Self>> for T {
+impl<'a,T:TextureType> Target<TexImageMut<'a,!,Self>> for T {
     fn target_id(self) -> GLenum { self.into() }
-    unsafe fn bind(self, tex: &ImageMut<'a,!,Self>) { gl::BindTexture(self.into(), tex.id()) }
+    unsafe fn bind(self, tex: &TexImageMut<'a,!,Self>) { gl::BindTexture(self.into(), tex.id()) }
     unsafe fn unbind(self) { gl::BindTexture(self.into(), 0) }
 }
 
@@ -197,13 +197,13 @@ impl<F,T:TextureTarget<F>> Target<Texture<MaybeUninit<F>,Self>> for T {
     unsafe fn bind(self, tex: &Texture<MaybeUninit<F>,Self>) { gl::BindTexture(self.into(), tex.id()) }
     unsafe fn unbind(self) { gl::BindTexture(self.into(), 0) }
 }
-impl<'a,F,T:TextureTarget<F>> Target<Image<'a,MaybeUninit<F>,Self>> for T {
+impl<'a,F,T:TextureTarget<F>> Target<TexImage<'a,MaybeUninit<F>,Self>> for T {
     fn target_id(self) -> GLenum { self.into() }
-    unsafe fn bind(self, tex: &Image<'a,MaybeUninit<F>,Self>) { gl::BindTexture(self.into(), tex.id()) }
+    unsafe fn bind(self, tex: &TexImage<'a,MaybeUninit<F>,Self>) { gl::BindTexture(self.into(), tex.id()) }
     unsafe fn unbind(self) { gl::BindTexture(self.into(), 0) }
 }
-impl<'a,F,T:TextureTarget<F>> Target<ImageMut<'a,MaybeUninit<F>,Self>> for T {
+impl<'a,F,T:TextureTarget<F>> Target<TexImageMut<'a,MaybeUninit<F>,Self>> for T {
     fn target_id(self) -> GLenum { self.into() }
-    unsafe fn bind(self, tex: &ImageMut<'a,MaybeUninit<F>,Self>) { gl::BindTexture(self.into(), tex.id()) }
+    unsafe fn bind(self, tex: &TexImageMut<'a,MaybeUninit<F>,Self>) { gl::BindTexture(self.into(), tex.id()) }
     unsafe fn unbind(self) { gl::BindTexture(self.into(), 0) }
 }
