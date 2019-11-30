@@ -12,7 +12,7 @@ glenum!{
 }
 
 impl CubeMapFace {
-    pub fn faces() -> &'static [CubeMapFace] {
+    pub(super) fn faces() -> &'static [CubeMapFace] {
         use self::CubeMapFace::*;
         &[PositiveX, NegativeX, PositiveY, NegativeY, PositiveZ, NegativeZ]
     }
