@@ -156,24 +156,25 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> Image<'a,F,T> {
         unsafe { self.pack(data.settings(), data.pixels_mut()); }
     }
 
-    pub fn into_image<I:OwnedImage<F::ClientFormat>>(&self) -> I where T::GL: Supports<I::GL> {
+    pub fn into_image<I:OwnedImage<F::ClientFormat>>(&self, hint:I::Hint) -> I where T::GL: Supports<I::GL> {
         unsafe {
             let dim = self.dim();
             I::from_gl(
-                &assume_supported(),
+                &assume_supported(), hint,
                 [dim.width(), dim.height(), dim.depth()],
                 |settings, ptr| self.pack(settings, ptr)
             )
         }
     }
 
-    pub fn try_into_image<I:OwnedImage<F::ClientFormat>>(&self) -> Result<I,GLError> {
+    pub fn try_into_image<I:OwnedImage<F::ClientFormat>>(&self, hint:I::Hint) -> Result<I,GLError> {
         unsafe {
             let dim = self.dim();
             let gl = upgrade_to(&self.gl())?;
             Ok(
                 I::from_gl(
-                    &gl, [dim.width(), dim.height(), dim.depth()],
+                    &gl, hint, 
+                    [dim.width(), dim.height(), dim.depth()],
                     |settings, ptr| self.pack(settings, ptr)
                 )
             )
@@ -294,12 +295,12 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> ImageMut<'a,F,T> {
 
     pub fn get_image<I:ImageDst<F::ClientFormat>>(&self, data: &mut I) { self.as_immut().get_image(data); }
 
-    pub fn into_image<I:OwnedImage<F::ClientFormat>>(&self) -> I where T::GL: Supports<I::GL> {
-        self.as_immut().into_image()
+    pub fn into_image<I:OwnedImage<F::ClientFormat>>(&self, hint:I::Hint) -> I where T::GL: Supports<I::GL> {
+        self.as_immut().into_image(hint)
     }
 
-    pub fn try_into_image<I:OwnedImage<F::ClientFormat>>(&self) -> Result<I,GLError> {
-        self.as_immut().try_into_image()
+    pub fn try_into_image<I:OwnedImage<F::ClientFormat>>(&self, hint:I::Hint) -> Result<I,GLError> {
+        self.as_immut().try_into_image(hint)
     }
 
 }

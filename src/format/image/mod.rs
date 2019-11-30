@@ -56,8 +56,9 @@ pub trait ImageDst<F:ClientFormat> = ImageSrc<F> + PixelDst<F>;
 
 pub trait OwnedImage<F:ClientFormat>: ImageSrc<F> {
     type GL: GLVersion;
+    type Hint;
     unsafe fn from_gl<G:FnOnce(PixelStoreSettings, PixelPtrMut<F>)>(
-        gl:&Self::GL, dim: [usize;3], get:G
+        gl:&Self::GL, hint:Self::Hint, dim: [usize;3], get:G
     ) -> Self;
 }
 
@@ -87,8 +88,9 @@ macro_rules! impl_own_img_slice {
     (for<$($a:lifetime,)* $P:ident $(, $A:ident:$bound:ident)* > $ty:ty) => {
         impl<$($a,)* $($A:$bound,)* F:ClientFormat, $P:Pixel<F>> OwnedImage<F> for $ty {
             type GL = <Self as FromPixels<F>>::GL;
+            type Hint = <Self as FromPixels<F>>::Hint;
             unsafe fn from_gl<G:FnOnce(PixelStoreSettings, PixelPtrMut<F>)>(
-                gl:&Self::GL, dim: [usize;3], get:G
+                gl:&Self::GL, hint: Self::Hint, dim: [usize;3], get:G
             ) -> Self {
                 let count = pixel_count(dim);
 
@@ -100,7 +102,7 @@ macro_rules! impl_own_img_slice {
                     row_length: 0, image_height: 0,
                 };
 
-                Self::from_pixels(gl, count, |ptr| get(settings, ptr))
+                Self::from_pixels(gl, hint, count, |ptr| get(settings, ptr))
             }
         }
     }
