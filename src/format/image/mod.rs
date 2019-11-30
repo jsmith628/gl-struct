@@ -9,7 +9,7 @@ mod align;
 mod pixel_data;
 mod pixel_store;
 
-use std::num::*;
+use context::*;
 use std::convert::TryInto;
 
 pub trait ImageSrc<F:ClientFormat>: PixelSrc<F> {
@@ -51,7 +51,10 @@ pub trait ImageSrc<F:ClientFormat>: PixelSrc<F> {
 pub trait ImageDst<F:ClientFormat> = ImageSrc<F> + PixelDst<F>;
 
 pub trait OwnedImage<F:ClientFormat>: ImageSrc<F> {
-    unsafe fn from_gl<GL:FnOnce(PixelStoreSettings, PixelPtrMut<F>)>(dim: [usize;3], gl:GL) -> Self;
+    type GL: GLVersion;
+    unsafe fn from_gl<G:FnOnce(PixelStoreSettings, PixelPtrMut<F>)>(
+        gl:&Self::GL, dim: [usize;3], get:G
+    ) -> Self;
 }
 
 macro_rules! impl_img_src_slice {
@@ -79,8 +82,9 @@ pub(self) fn pixel_count(dim: [usize;3]) -> usize {
 macro_rules! impl_own_img_slice {
     (for<$($a:lifetime,)* $P:ident> $ty:ty) => {
         impl<$($a,)* F:ClientFormat, $P:Pixel<F>> OwnedImage<F> for $ty {
-            unsafe fn from_gl<GL:FnOnce(PixelStoreSettings, PixelPtrMut<F>)>(
-                dim: [usize;3], gl:GL
+            type GL = GL10;
+            unsafe fn from_gl<G:FnOnce(PixelStoreSettings, PixelPtrMut<F>)>(
+                gl:&Self::GL, dim: [usize;3], get:G
             ) -> Self {
                 let count = pixel_count(dim);
 
@@ -92,7 +96,7 @@ macro_rules! impl_own_img_slice {
                     row_length: 0, image_height: 0,
                 };
 
-                Self::from_pixels(count, |ptr| gl(settings, ptr))
+                Self::from_pixels(gl, count, |ptr| get(settings, ptr))
             }
         }
     }

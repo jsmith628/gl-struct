@@ -11,7 +11,8 @@ pub unsafe trait PixelDst<F:ClientFormat>: PixelSrc<F> {
     fn pixels_mut(&mut self) -> PixelPtrMut<F>;
 }
 pub unsafe trait FromPixels<F:ClientFormat>: PixelSrc<F> {
-    unsafe fn from_pixels<GL:FnOnce(PixelPtrMut<F>)>(count: usize, gl:GL) -> Self;
+    type GL: GLVersion;
+    unsafe fn from_pixels<G:FnOnce(PixelPtrMut<F>)>(gl:&Self::GL, count: usize, get:G) -> Self;
 }
 
 unsafe impl<F:ClientFormat,P:Pixel<F>> PixelSrc<F> for [P] {
@@ -48,37 +49,42 @@ impl_pixel_src_deref!(for<'a,P> Cow<'a, [P]>);
 
 
 unsafe impl<F:ClientFormat,P:Pixel<F>> FromPixels<F> for Box<[P]> {
-    unsafe fn from_pixels<GL:FnOnce(PixelPtrMut<F>)>(count: usize, gl:GL) -> Self {
+    type GL = GL10;
+    unsafe fn from_pixels<G:FnOnce(PixelPtrMut<F>)>(_:&Self::GL, count: usize, get:G) -> Self {
         let mut dest = Box::new_uninit_slice(count);
-        gl(PixelPtrMut::Slice(P::format(), dest.as_mut_ptr() as *mut GLvoid));
+        get(PixelPtrMut::Slice(P::format(), dest.as_mut_ptr() as *mut GLvoid));
         dest.assume_init()
     }
 }
 
 unsafe impl<F:ClientFormat,P:Pixel<F>> FromPixels<F> for Vec<P> {
-    unsafe fn from_pixels<GL:FnOnce(PixelPtrMut<F>)>(count: usize, gl:GL) -> Self {
-        Self::from(Box::from_pixels(count, gl))
+    type GL = GL10;
+    unsafe fn from_pixels<G:FnOnce(PixelPtrMut<F>)>(gl:&Self::GL, count: usize, get:G) -> Self {
+        Self::from(Box::from_pixels(gl, count, get))
     }
 }
 
 unsafe impl<'a,F:ClientFormat,P:Pixel<F>> FromPixels<F> for Cow<'a,[P]> {
-    unsafe fn from_pixels<GL:FnOnce(PixelPtrMut<F>)>(count: usize, gl:GL) -> Self {
-        Self::from(Vec::from_pixels(count, gl))
+    type GL = GL10;
+    unsafe fn from_pixels<G:FnOnce(PixelPtrMut<F>)>(gl:&Self::GL, count: usize, get:G) -> Self {
+        Self::from(Vec::from_pixels(gl, count, get))
     }
 }
 
 unsafe impl<F:ClientFormat,P:Pixel<F>> FromPixels<F> for Rc<[P]> {
-    unsafe fn from_pixels<GL:FnOnce(PixelPtrMut<F>)>(count: usize, gl:GL) -> Self {
+    type GL = GL10;
+    unsafe fn from_pixels<G:FnOnce(PixelPtrMut<F>)>(_:&Self::GL, count: usize, get:G) -> Self {
         let mut dest = Rc::new_uninit_slice(count);
-        gl(PixelPtrMut::Slice(P::format(), Rc::get_mut_unchecked(&mut dest) as *mut _ as *mut GLvoid));
+        get(PixelPtrMut::Slice(P::format(), Rc::get_mut_unchecked(&mut dest) as *mut _ as *mut GLvoid));
         dest.assume_init()
     }
 }
 
 unsafe impl<F:ClientFormat,P:Pixel<F>> FromPixels<F> for Arc<[P]> {
-    unsafe fn from_pixels<GL:FnOnce(PixelPtrMut<F>)>(count: usize, gl:GL) -> Self {
+    type GL = GL10;
+    unsafe fn from_pixels<G:FnOnce(PixelPtrMut<F>)>(_:&Self::GL, count: usize, get:G) -> Self {
         let mut dest = Arc::new_uninit_slice(count);
-        gl(PixelPtrMut::Slice(P::format(), Arc::get_mut_unchecked(&mut dest) as *mut _ as *mut GLvoid));
+        get(PixelPtrMut::Slice(P::format(), Arc::get_mut_unchecked(&mut dest) as *mut _ as *mut GLvoid));
         dest.assume_init()
     }
 }
