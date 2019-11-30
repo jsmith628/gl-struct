@@ -29,7 +29,7 @@ pub trait ImageSrc<F:ClientFormat>: PixelSrc<F> {
 pub trait ImageDst<F:ClientFormat> = ImageSrc<F> + PixelDst<F>;
 
 pub trait OwnedImage<F:ClientFormat>: ImageSrc<F> {
-    unsafe fn from_gl<GL:FnOnce(PixelPtrMut<F>)>(dim: [NonZeroUsize;3], gl:GL) -> Self;
+    unsafe fn from_gl<GL:for<'a> FnOnce(&'a Self, PixelPtrMut<F>)>(dim: [NonZeroUsize;3], gl:GL) -> Self;
 }
 
 pub(crate) unsafe fn apply_unpacking_settings<F:ClientFormat,I:ImageSrc<F>>(img: &I) {
