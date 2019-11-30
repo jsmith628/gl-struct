@@ -102,5 +102,8 @@ impl_own_img_slice!(for<P> Vec<P>);
 impl_img_src_slice!(for<P> ::std::rc::Rc<[P]>);
 impl_own_img_slice!(for<P> ::std::rc::Rc<[P]>);
 
+impl_img_src_slice!(for<P> ::std::sync::Arc<[P]>);
+impl_own_img_slice!(for<P> ::std::sync::Arc<[P]>);
+
 impl_img_src_slice!(for<'a,P> ::std::borrow::Cow<'a,[P]>);
 impl_own_img_slice!(for<'a,P> ::std::borrow::Cow<'a,[P]>);
