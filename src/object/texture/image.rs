@@ -230,8 +230,6 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> ImageMut<'a,F,T> {
     unsafe fn sub_image_unchecked<I:ImageSrc<F::ClientFormat>>(&mut self, offset:T::Dim, data: &I) {
 
         if data.pixel_count()==0 { return; }
-
-        let ifmt = F::glenum() as GLint;
         let (x, y, z) = (offset.width() as GLsizei, offset.height() as GLsizei, offset.depth() as GLsizei);
 
         self.unpack(
