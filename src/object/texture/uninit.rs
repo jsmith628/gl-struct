@@ -49,14 +49,13 @@ impl<T:TextureType> UninitTex<T> {
         }
     }
 
-    pub fn image<F,P>(self, dim: T::Dim, data: &P) -> Texture<F,T> where
+    pub fn image<F,I>(self, data: &I) -> Texture<F,T> where
         F:InternalFormat,
-        P:PixelData<F::ClientFormat>,
+        I:ImageSrc<F::ClientFormat>,
         T:PixelTransferTarget<F> + BaseImage
     {
-        if dim.pixels()==0 { panic!("Attempted to created an empty image"); }
         let mut tex = Texture { id:self.id(), phantom:PhantomData };
-        unsafe { tex.base_image_mut().image_dim(dim, data); }
+        unsafe { tex.base_image_mut().image_unchecked(data); }
         forget(self);
         tex
     }

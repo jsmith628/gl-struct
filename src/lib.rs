@@ -15,6 +15,7 @@
 #![feature(marker_trait_attr)]
 #![feature(new_uninit)]
 #![feature(slice_from_raw_parts)]
+#![feature(get_mut_unchecked)]
 #![recursion_limit="32768"]
 
 pub extern crate gl;

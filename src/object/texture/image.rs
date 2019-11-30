@@ -1,4 +1,5 @@
 use super::*;
+use std::convert::TryInto;
 
 glenum!{
     pub enum CubeMapFace {
@@ -122,18 +123,17 @@ impl<'a,F,T:TextureTarget<F>> Image<'a,F,T> {
 
 impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> Image<'a,F,T> {
 
-    pub fn get_image<P:PixelDataMut<F::ClientFormat>>(&self, data: &mut P) {
+    pub fn get_image<I:ImageDst<F::ClientFormat>>(&self, data: &mut I) {
         unsafe {
 
             size_check::<_,F,_>(self.dim(), data);
             apply_packing_settings(data);
 
-            let mut target = BufferTarget::PixelPackBuffer.as_loc();
-            let pixels = data.pixels_mut();
-            let (binding, ptr, client_format) = match pixels {
-                PixelsMut::Slice(f, slice) => (None, slice as *mut [P::Pixel] as *mut GLvoid, f),
-                PixelsMut::Buffer(f, ref slice) => (Some(target.bind(slice)), slice.offset() as *mut GLvoid, f),
+            let (id, ptr, client_format) = match data.pixels_mut() {
+                PixelPtrMut::Slice(f, slice) => (None, slice, f),
+                PixelPtrMut::Buffer(f, buf, offset) => (Some(buf), offset, f),
             };
+            id.map(|i| gl::BindBuffer(gl::PIXEL_PACK_BUFFER, i));
 
             let (format, ty) = client_format.format_type();
 
@@ -141,7 +141,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> Image<'a,F,T> {
                 |_| gl::GetTexImage(self.face.into(), self.level() as GLsizei, format.into(), ty.into(), ptr)
             );
 
-            drop(binding);
+            id.map(|_| gl::BindBuffer(gl::PIXEL_PACK_BUFFER, 0));
 
         }
     }
@@ -165,21 +165,21 @@ impl<'a,F,T:TextureTarget<F>> ImageMut<'a,F,T> {
 }
 
 impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> ImageMut<'a,F,T> {
-    pub(super) unsafe fn image_dim<P:PixelData<F::ClientFormat>>(&mut self, dim:T::Dim, data: &P) {
+    pub(super) unsafe fn image_unchecked<I:ImageSrc<F::ClientFormat>>(&mut self, data: &I) {
 
-        size_check::<_,F,_>(dim, data);
         apply_unpacking_settings(data);
 
-        let mut target = BufferTarget::PixelUnpackBuffer.as_loc();
-        let pixels = data.pixels();
-        let (binding, ptr, client_format) = match pixels {
-            Pixels::Slice(f, slice) => (None, slice as *const [P::Pixel] as *const GLvoid, f),
-            Pixels::Buffer(f, ref slice) => (Some(target.bind(slice)), slice.offset() as *const GLvoid, f),
+        let (id, ptr, client_format) = match data.pixels() {
+            PixelPtr::Slice(f, slice) => (None, slice, f),
+            PixelPtr::Buffer(f, buf, offset) => (Some(buf), offset, f),
         };
+        id.map(|i| gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, i));
 
         let (format, ty) = client_format.format_type().into();
         let (internal, format, ty) = (F::glenum() as GLint, format.into(), ty.into());
-        let (w, h, d) = (dim.width() as GLsizei, dim.height() as GLsizei, dim.depth() as GLsizei);
+
+        let (w, h, d) = (usize::from(data.width()), usize::from(data.height()), usize::from(data.depth()));
+        let (w, h, d) = (w as GLsizei, h as GLsizei, d as GLsizei);
 
         T::bind_loc_level_mut().map_bind(self,
             |_| match T::Dim::dim() {
@@ -190,6 +190,6 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> ImageMut<'a,F,T> {
             }
         );
 
-        drop(binding);
+        id.map(|_| gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, 0));
     }
 }

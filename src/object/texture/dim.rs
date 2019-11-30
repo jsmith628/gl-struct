@@ -74,8 +74,8 @@ unsafe impl TexDim for ([usize;2], usize) {
 }
 
 
-pub(super) fn size_check<D:TexDim,F:InternalFormat,P:PixelData<F::ClientFormat>>(dim:D, p:&P) {
-    if dim.pixels() != p.count() {panic!("Wrong number of pixels for image");}
-    if p.row_length()!=0 && p.row_length()!=dim.width() {panic!("Image row-lengths unequal");}
-    if p.image_height()!=0 && p.image_height()!=dim.height() {panic!("Image heights unequal");}
+pub(super) fn size_check<D:TexDim,F:InternalFormat,I:ImageSrc<F::ClientFormat>>(dim:D, p:&I) {
+    if D::dim()>=1 && usize::from(p.width())  != dim.width()  {panic!("Image widths unequal");}
+    if D::dim()>=2 && usize::from(p.height()) != dim.height() {panic!("Image heights unequal");}
+    if D::dim()>=3 && usize::from(p.depth())  != dim.depth()  {panic!("Image depths unequal");}
 }
