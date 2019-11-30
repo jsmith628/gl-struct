@@ -37,7 +37,7 @@ pub unsafe fn assume_supported<GL:GLVersion>() -> GL {
     (gl.get_major_version(), gl.get_minor_version()) <= version
 }
 
-fn upgrade_to<Test:GLVersion+?Sized, Version:GLVersion+Sized>(gl: &Test) -> Result<Version,GLError> {
+pub fn upgrade_to<Test:GLVersion+?Sized, Version:GLVersion+Sized>(gl: &Test) -> Result<Version,GLError> {
     let target: Version = unsafe { ::std::mem::zeroed() };
     if supports::<Test,Version>(gl){
         Ok(target)

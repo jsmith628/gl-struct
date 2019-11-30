@@ -135,26 +135,48 @@ impl<'a,F,T:TextureTarget<F>> Image<'a,F,T> {
 
 impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> Image<'a,F,T> {
 
+    unsafe fn pack(&self, settings:PixelStoreSettings, pixels: PixelPtrMut<F::ClientFormat>) {
+        settings.apply_packing();
+
+        let (id, ptr, client_format) = match pixels {
+            PixelPtrMut::Slice(f, slice) => (None, slice, f),
+            PixelPtrMut::Buffer(f, buf, offset) => (Some(buf), offset, f),
+        };
+        let (format, ty) = client_format.format_type();
+
+        id.map(|i| gl::BindBuffer(gl::PIXEL_PACK_BUFFER, i));
+        T::bind_loc_level().map_bind(self,
+            |_| gl::GetTexImage(self.face.into(), self.level() as GLsizei, format.into(), ty.into(), ptr)
+        );
+        id.map(|_| gl::BindBuffer(gl::PIXEL_PACK_BUFFER, 0));
+    }
+
     pub fn get_image<I:ImageDst<F::ClientFormat>>(&self, data: &mut I) {
+        dest_size_check::<_,F::ClientFormat,_>(self.dim(), data);
+        unsafe { self.pack(data.settings(), data.pixels_mut()); }
+    }
+
+    pub fn into_image<I:OwnedImage<F::ClientFormat>>(&self) -> I where T::GL: Supports<I::GL> {
         unsafe {
+            let dim = self.dim();
+            I::from_gl(
+                &assume_supported(),
+                [dim.width(), dim.height(), dim.depth()],
+                |settings, ptr| self.pack(settings, ptr)
+            )
+        }
+    }
 
-            dest_size_check::<_,F::ClientFormat,_>(self.dim(), data);
-            data.settings().apply_packing();
-
-            let (id, ptr, client_format) = match data.pixels_mut() {
-                PixelPtrMut::Slice(f, slice) => (None, slice, f),
-                PixelPtrMut::Buffer(f, buf, offset) => (Some(buf), offset, f),
-            };
-            id.map(|i| gl::BindBuffer(gl::PIXEL_PACK_BUFFER, i));
-
-            let (format, ty) = client_format.format_type();
-
-            T::bind_loc_level().map_bind(self,
-                |_| gl::GetTexImage(self.face.into(), self.level() as GLsizei, format.into(), ty.into(), ptr)
-            );
-
-            id.map(|_| gl::BindBuffer(gl::PIXEL_PACK_BUFFER, 0));
-
+    pub fn try_into_image<I:OwnedImage<F::ClientFormat>>(&self) -> Result<I,GLError> {
+        unsafe {
+            let dim = self.dim();
+            let gl = upgrade_to(&self.gl())?;
+            Ok(
+                I::from_gl(
+                    &gl, [dim.width(), dim.height(), dim.depth()],
+                    |settings, ptr| self.pack(settings, ptr)
+                )
+            )
         }
     }
 
