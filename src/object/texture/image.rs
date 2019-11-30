@@ -165,14 +165,11 @@ impl<'a,F,T:TextureTarget<F>> ImageMut<'a,F,T> {
 }
 
 impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> ImageMut<'a,F,T> {
-    pub(super) unsafe fn image_unchecked<I:ImageSrc<F::ClientFormat>>(&mut self, data: &I) {
 
-        if data.pixel_count()==0 { return; }
-
-        if T::Dim::dim()==1 && data.height()!=1 { panic!("Attempted to create a 1D texture from a 2D image"); }
-        if T::Dim::dim()==2 && data.depth()!=1  { panic!("Attempted to create a 2D texture from a 3D image"); }
-        if T::Dim::dim()==1 && data.depth()!=1  { panic!("Attempted to create a 1D texture from a 3D image"); }
-
+    unsafe fn unpack<
+        GL:FnOnce(GLenum, [GLsizei;3], GLenum, GLenum, *const GLvoid),
+        I:ImageSrc<F::ClientFormat>
+    >(&self, data: &I, gl:GL) {
         data.settings().apply_unpacking();
 
         let (id, ptr, client_format) = match data.pixels() {
@@ -182,20 +179,34 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> ImageMut<'a,F,T> {
         id.map(|i| gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, i));
 
         let (format, ty) = client_format.format_type().into();
-        let (internal, format, ty) = (F::glenum() as GLint, format.into(), ty.into());
+        let (format, ty) = (format.into(), ty.into());
 
         let (w, h, d) = (data.width(), data.height(), data.depth());
-        let (w, h, d) = (w.try_into().unwrap(), h.try_into().unwrap(), d.try_into().unwrap());
+        let dim = [w.try_into().unwrap(), h.try_into().unwrap(), d.try_into().unwrap()];
 
-        T::bind_loc_level_mut().map_bind(self,
-            |_| match T::Dim::dim() {
-                1 => gl::TexImage1D(self.face.into(), 0, internal, w, 0, format, ty, ptr),
-                2 => gl::TexImage2D(self.face.into(), 0, internal, w, h, 0, format, ty, ptr),
-                3 => gl::TexImage3D(self.face.into(), 0, internal, w, h, d, 0, format, ty, ptr),
-                n => panic!("{}D Textures not supported", n)
-            }
-        );
+        T::bind_loc_level_mut().map_bind(self, |_| gl(self.face.into(), dim, format, ty, ptr) );
 
         id.map(|_| gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, 0));
+    }
+
+    pub(super) unsafe fn image_unchecked<I:ImageSrc<F::ClientFormat>>(&mut self, data: &I) {
+
+        if data.pixel_count()==0 { panic!("Attempted to create a zero-sized texture image"); }
+
+        if T::Dim::dim()==1 && data.height()!=1 { panic!("Attempted to create a 1D texture from a 2D image"); }
+        if T::Dim::dim()==1 && data.depth()!=1  { panic!("Attempted to create a 1D texture from a 3D image"); }
+        if T::Dim::dim()==2 && data.depth()!=1  { panic!("Attempted to create a 2D texture from a 3D image"); }
+
+        self.unpack(
+            data,
+            |face, [w,h,d], fmt, ty, ptr| {
+                match T::Dim::dim() {
+                    1 => gl::TexImage1D(face, 0, F::glenum() as GLint, w, 0, fmt, ty, ptr),
+                    2 => gl::TexImage2D(face, 0, F::glenum() as GLint, w, h, 0, fmt, ty, ptr),
+                    3 => gl::TexImage3D(face, 0, F::glenum() as GLint, w, h, d, 0, fmt, ty, ptr),
+                    n => panic!("{}D Textures not supported", n)
+                }
+            }
+        )
     }
 }

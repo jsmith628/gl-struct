@@ -54,7 +54,6 @@ impl<T:TextureType> UninitTex<T> {
         I:ImageSrc<F::ClientFormat>,
         T:PixelTransferTarget<F> + BaseImage
     {
-        if data.pixel_count()==0 { panic!("Attempted to create a zero-sized Texture"); }
         let mut tex = Texture { id:self.id(), phantom:PhantomData };
         unsafe { tex.base_image_mut().image_unchecked(data); }
         forget(self);
