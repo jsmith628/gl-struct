@@ -9,6 +9,8 @@ pub mod client_format;
 
 pub unsafe trait Pixel<F: ClientFormat>: Copy+PartialEq {
     fn format() -> F;
+    fn swap_bytes() -> bool;
+    fn lsb_first() -> bool;
 }
 
 pub enum PixelPtr<F:ClientFormat> {

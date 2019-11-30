@@ -1,5 +1,4 @@
 use super::*;
-use std::convert::TryInto;
 
 glenum!{
     pub enum CubeMapFace {
@@ -127,7 +126,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> Image<'a,F,T> {
         unsafe {
 
             size_check::<_,F,_>(self.dim(), data);
-            apply_packing_settings(data);
+            data.settings().apply_packing();
 
             let (id, ptr, client_format) = match data.pixels_mut() {
                 PixelPtrMut::Slice(f, slice) => (None, slice, f),
@@ -167,7 +166,7 @@ impl<'a,F,T:TextureTarget<F>> ImageMut<'a,F,T> {
 impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> ImageMut<'a,F,T> {
     pub(super) unsafe fn image_unchecked<I:ImageSrc<F::ClientFormat>>(&mut self, data: &I) {
 
-        apply_unpacking_settings(data);
+        data.settings().apply_unpacking();
 
         let (id, ptr, client_format) = match data.pixels() {
             PixelPtr::Slice(f, slice) => (None, slice, f),
