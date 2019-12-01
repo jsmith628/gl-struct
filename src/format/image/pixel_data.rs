@@ -1,10 +1,10 @@
 use super::*;
 
 pub unsafe trait PixelSrc<F:ClientFormat> {
-    fn pixels(&self) -> PixelPtr<F>;
+    fn pixel_ptr(&self) -> PixelPtr<F>;
 }
 pub unsafe trait PixelDst<F:ClientFormat>: PixelSrc<F> {
-    fn pixels_mut(&mut self) -> PixelPtrMut<F>;
+    fn pixel_ptr_mut(&mut self) -> PixelPtrMut<F>;
 }
 pub unsafe trait FromPixels<F:ClientFormat>: PixelSrc<F> {
     type GL: GLVersion;
@@ -15,10 +15,10 @@ pub unsafe trait FromPixels<F:ClientFormat>: PixelSrc<F> {
 }
 
 unsafe impl<F:ClientFormat,P:Pixel<F>> PixelSrc<F> for [P] {
-    fn pixels(&self) -> PixelPtr<F> { PixelPtr::Slice(P::format(), self.as_ptr() as *const GLvoid) }
+    fn pixel_ptr(&self) -> PixelPtr<F> { PixelPtr::Slice(P::format(), self.as_ptr() as *const GLvoid) }
 }
 unsafe impl<F:ClientFormat,P:Pixel<F>> PixelDst<F> for [P] {
-    fn pixels_mut(&mut self) -> PixelPtrMut<F> {
+    fn pixel_ptr_mut(&mut self) -> PixelPtrMut<F> {
         PixelPtrMut::Slice(P::format(), self.as_mut_ptr() as *mut GLvoid)
     }
 }
@@ -26,7 +26,7 @@ unsafe impl<F:ClientFormat,P:Pixel<F>> PixelDst<F> for [P] {
 macro_rules! impl_pixel_src_deref {
     (for<$($a:lifetime,)* $P:ident> $ty:ty) => {
         unsafe impl<$($a,)* F:ClientFormat, $P:Pixel<F>> PixelSrc<F> for $ty {
-            fn pixels(&self) -> PixelPtr<F> { (&**self).pixels() }
+            fn pixel_ptr(&self) -> PixelPtr<F> { (&**self).pixel_ptr() }
         }
     }
 }
@@ -35,7 +35,7 @@ macro_rules! impl_pixel_dst_deref {
     (for<$($a:lifetime,)* $P:ident> $ty:ty) => {
         impl_pixel_src_deref!(for<$($a,)* $P> $ty);
         unsafe impl<$($a,)* F:ClientFormat, $P:Pixel<F>> PixelDst<F> for $ty {
-            fn pixels_mut(&mut self) -> PixelPtrMut<F> { (&mut **self).pixels_mut() }
+            fn pixel_ptr_mut(&mut self) -> PixelPtrMut<F> { (&mut **self).pixel_ptr_mut() }
         }
     }
 }
@@ -99,7 +99,7 @@ unsafe impl<F:ClientFormat,P:Pixel<F>> FromPixels<F> for Arc<[P]> {
 macro_rules! impl_pixel_src_buf {
     (for<$($a:lifetime,)* $P:ident, $A:ident> $ty:ty) => {
         unsafe impl<$($a,)* F:ClientFormat, $P:Pixel<F>, $A:Initialized> PixelSrc<F> for $ty {
-            fn pixels(&self) -> PixelPtr<F> {
+            fn pixel_ptr(&self) -> PixelPtr<F> {
                 PixelPtr::Buffer($P::format(), self.id(), Slice::from(self).offset() as *const GLvoid)
             }
         }
@@ -110,7 +110,7 @@ macro_rules! impl_pixel_dst_buf {
     (for<$($a:lifetime,)* $P:ident, $A:ident> $ty:ty) => {
         impl_pixel_src_buf!(for<$($a,)* $P, $A> $ty);
         unsafe impl<$($a,)* F:ClientFormat, $P:Pixel<F>, $A:Initialized> PixelDst<F> for $ty {
-            fn pixels_mut(&mut self) -> PixelPtrMut<F> {
+            fn pixel_ptr_mut(&mut self) -> PixelPtrMut<F> {
                 PixelPtrMut::Buffer($P::format(), self.id(), SliceMut::from(self).offset() as *mut GLvoid)
             }
         }

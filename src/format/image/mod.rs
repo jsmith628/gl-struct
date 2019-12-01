@@ -16,7 +16,7 @@ use std::convert::TryInto;
 use object::buffer::*;
 use context::*;
 
-pub trait ImageSrc<F:ClientFormat>: PixelSrc<F> {
+pub unsafe trait ImageSrc<F:ClientFormat> {
     fn swap_bytes(&self) -> bool;
     fn lsb_first(&self) -> bool;
     fn row_alignment(&self) -> PixelRowAlignment;
@@ -50,11 +50,15 @@ pub trait ImageSrc<F:ClientFormat>: PixelSrc<F> {
         }
     }
 
+    fn pixels(&self) -> PixelPtr<F>;
+
 }
 
-pub trait ImageDst<F:ClientFormat> = ImageSrc<F> + PixelDst<F>;
+pub unsafe trait ImageDst<F:ClientFormat>: ImageSrc<F> {
+    fn pixels_mut(&mut self) -> PixelPtrMut<F>;
+}
 
-pub trait OwnedImage<F:ClientFormat>: ImageSrc<F> {
+pub unsafe trait OwnedImage<F:ClientFormat>: ImageSrc<F> {
     type GL: GLVersion;
     type Hint;
     unsafe fn from_gl<G:FnOnce(PixelStoreSettings, PixelPtrMut<F>)>(
@@ -64,7 +68,7 @@ pub trait OwnedImage<F:ClientFormat>: ImageSrc<F> {
 
 macro_rules! impl_img_src_slice {
     (for<$($a:lifetime,)* $P:ident $(, $A:ident:$bound:ident)* > $ty:ty) => {
-        impl<$($a,)* $($A:$bound,)* F:ClientFormat, $P:Pixel<F>> ImageSrc<F> for $ty {
+        unsafe impl<$($a,)* $($A:$bound,)* F:ClientFormat, $P:Pixel<F>> ImageSrc<F> for $ty {
 
             fn swap_bytes(&self) -> bool {$P::swap_bytes()}
             fn lsb_first(&self) -> bool {$P::lsb_first()}
@@ -74,6 +78,17 @@ macro_rules! impl_img_src_slice {
             fn height(&self) -> usize {1}
             fn depth(&self) -> usize {1}
 
+            fn pixels(&self) -> PixelPtr<F> { self.pixel_ptr() }
+
+        }
+    }
+}
+
+macro_rules! impl_img_dst_slice {
+    (for<$($a:lifetime,)* $P:ident $(, $A:ident:$bound:ident)* > $ty:ty) => {
+        impl_img_src_slice!(for<$($a,)* $P $(, $A:$bound)* > $ty);
+        unsafe impl<$($a,)* $($A:$bound,)* F:ClientFormat, $P:Pixel<F>> ImageDst<F> for $ty {
+            fn pixels_mut(&mut self) -> PixelPtrMut<F> { self.pixel_ptr_mut() }
         }
     }
 }
@@ -86,7 +101,7 @@ pub(self) fn pixel_count(dim: [usize;3]) -> usize {
 
 macro_rules! impl_own_img_slice {
     (for<$($a:lifetime,)* $P:ident $(, $A:ident:$bound:ident)* > $ty:ty) => {
-        impl<$($a,)* $($A:$bound,)* F:ClientFormat, $P:Pixel<F>> OwnedImage<F> for $ty {
+        unsafe impl<$($a,)* $($A:$bound,)* F:ClientFormat, $P:Pixel<F>> OwnedImage<F> for $ty {
             type GL = <Self as FromPixels<F>>::GL;
             type Hint = <Self as FromPixels<F>>::Hint;
             unsafe fn from_gl<G:FnOnce(PixelStoreSettings, PixelPtrMut<F>)>(
@@ -108,12 +123,12 @@ macro_rules! impl_own_img_slice {
     }
 }
 
-impl_img_src_slice!(for<P> [P]);
+impl_img_dst_slice!(for<P> [P]);
 
-impl_img_src_slice!(for<P> Box<[P]>);
+impl_img_dst_slice!(for<P> Box<[P]>);
 impl_own_img_slice!(for<P> Box<[P]>);
 
-impl_img_src_slice!(for<P> Vec<P>);
+impl_img_dst_slice!(for<P> Vec<P>);
 impl_own_img_slice!(for<P> Vec<P>);
 
 impl_img_src_slice!(for<P> Rc<[P]>);
@@ -126,7 +141,7 @@ impl_img_src_slice!(for<'a,P> Cow<'a,[P]>);
 impl_own_img_slice!(for<'a,P> Cow<'a,[P]>);
 
 impl_img_src_slice!(for<'a,P,A:Initialized> Slice<'a,[P],A>);
-impl_img_src_slice!(for<'a,P,A:Initialized> SliceMut<'a,[P],A>);
+impl_img_dst_slice!(for<'a,P,A:Initialized> SliceMut<'a,[P],A>);
 
-impl_img_src_slice!(for<P,A:Initialized> Buffer<[P],A>);
+impl_img_dst_slice!(for<P,A:Initialized> Buffer<[P],A>);
 impl_own_img_slice!(for<P,A:Initialized> Buffer<[P],A>);
