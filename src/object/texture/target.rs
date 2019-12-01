@@ -132,8 +132,8 @@ tex_target! {
     [TEXTURE_BUFFER "Texture Buffer"]; InternalFormatColor; GL31; usize,
     [TEXTURE_CUBE_MAP "Texture Cube Map"]; GL13; <TEXTURE_2D as TextureType>::Dim,
     [TEXTURE_CUBE_MAP_ARRAY "Texture Cube Map Array"]; GL40; <TEXTURE_2D_ARRAY as TextureType>::Dim,
-    [TEXTURE_2D_MULTISAMPLE "Texture 2D Multisample"]; GL32; <TEXTURE_2D as TextureType>::Dim,
-    [TEXTURE_2D_MULTISAMPLE_ARRAY "Texture 2D Multisample Array"]; GL32; <TEXTURE_2D_ARRAY as TextureType>::Dim,
+    [TEXTURE_2D_MULTISAMPLE "Texture 2D Multisample"]; Renderable; GL32; <TEXTURE_2D as TextureType>::Dim,
+    [TEXTURE_2D_MULTISAMPLE_ARRAY "Texture 2D Multisample Array"]; Renderable; GL32; <TEXTURE_2D_ARRAY as TextureType>::Dim,
 }
 
 unsafe impl BaseImage for TEXTURE_1D { }
