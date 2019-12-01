@@ -80,8 +80,13 @@ pub unsafe trait GLVersion {
     fn major_version(&self) -> GLuint;
     fn minor_version(&self) -> GLuint;
 
-    #[inline] fn get_major_version(&self) -> GLuint { get_integerv(gl::MAJOR_VERSION) as GLuint }
-    #[inline] fn get_minor_version(&self) -> GLuint { get_integerv(gl::MINOR_VERSION) as GLuint }
+    #[inline] fn get_major_version(&self) -> GLuint {
+        if gl::GetIntegerv::is_loaded() {get_integerv(gl::MAJOR_VERSION) as GLuint} else {0}
+    }
+
+    #[inline] fn get_minor_version(&self) -> GLuint {
+        if gl::GetIntegerv::is_loaded() {get_integerv(gl::MINOR_VERSION) as GLuint} else {0}
+    }
 
     #[inline(always)] fn as_gl10(&self) -> GL10 {GL10 {_private:()}}
 
@@ -163,6 +168,11 @@ macro_rules! version_struct {
     };
 
     ({$($prev:ident)*} ) => {}
+}
+
+unsafe impl GLVersion for ! {
+    fn major_version(&self) -> GLuint {!0}
+    fn minor_version(&self) -> GLuint {!0}
 }
 
 version_struct!{ {}
