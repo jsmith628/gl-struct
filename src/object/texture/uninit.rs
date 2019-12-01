@@ -49,7 +49,7 @@ impl<T:TextureType> UninitTex<T> {
         }
     }
 
-    pub fn image<F,I>(self, data: &I) -> Texture<F,T> where
+    pub fn image<F,I>(self, #[allow(unused_variables)] gl: &F::GL, data: &I) -> Texture<F,T> where
         F:InternalFormat,
         I:ImageSrc<F::ClientFormat>,
         T:PixelTransferTarget<F> + BaseImage
