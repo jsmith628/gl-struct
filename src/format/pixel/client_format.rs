@@ -164,12 +164,16 @@ impl ClientFormat for ClientFormatInt {
 #[derive(Copy,Clone,PartialEq,Eq,Hash,Debug)]
 pub enum ClientFormatFloat {
     Float(FormatFloat, FloatType),
-    Fixed(ClientFormatInt),
+    Normalized(ClientFormatInt),
     UByte3_3_2, UByte2_3_3Rev,
     UShort5_6_5, UShort5_6_5Rev
 }
 
 display_from_debug!(ClientFormatFloat);
+
+impl From<ClientFormatInt> for ClientFormatFloat {
+    fn from(fmt: ClientFormatInt) -> Self { ClientFormatFloat::Normalized(fmt) }
+}
 
 impl ClientFormat for ClientFormatFloat {
     type Format = FormatFloat;
@@ -178,7 +182,7 @@ impl ClientFormat for ClientFormatFloat {
     fn size(self) -> usize {
         match self {
             Self::Float(format, ty) => format.components() * ty.size_of(),
-            Self::Fixed(int) => int.size(),
+            Self::Normalized(int) => int.size(),
             Self::UByte3_3_2 | Self::UByte2_3_3Rev => 1,
             Self::UShort5_6_5 | Self::UShort5_6_5Rev => 2
         }
@@ -188,7 +192,7 @@ impl ClientFormat for ClientFormatFloat {
     unsafe fn format_type(self) -> (Self::Format, PixelType) {
         match self {
             Self::Float(format, ty) => (format, ty.into()),
-            Self::Fixed(int) => {let ft = int.format_type(); (ft.0.into(), ft.1)},
+            Self::Normalized(int) => {let ft = int.format_type(); (ft.0.into(), ft.1)},
             Self::UByte3_3_2 => (FormatFloat::RGB, PixelType::UNSIGNED_BYTE_3_3_2),
             Self::UByte2_3_3Rev => (FormatFloat::RGB, PixelType::UNSIGNED_BYTE_2_3_3_REV),
             Self::UShort5_6_5 => (FormatFloat::RGB, PixelType::UNSIGNED_SHORT_5_6_5),
@@ -199,8 +203,16 @@ impl ClientFormat for ClientFormatFloat {
 
 #[derive(Copy,Clone,PartialEq,Eq,Hash,Debug)]
 pub enum ClientFormatDepth {
-    Fixed(IntType),
-    Float(FloatType)
+    Float(FloatType),
+    Normalized(IntType)
+}
+
+impl From<FloatType> for ClientFormatDepth {
+    fn from(ty:FloatType) -> Self { ClientFormatDepth::Float(ty) }
+}
+
+impl From<IntType> for ClientFormatDepth {
+    fn from(ty:IntType) -> Self { ClientFormatDepth::Normalized(ty) }
 }
 
 display_from_debug!(ClientFormatDepth);
@@ -211,16 +223,16 @@ impl ClientFormat for ClientFormatDepth {
     #[inline]
     fn size(self) -> usize {
         match self {
-            Self::Fixed(ty) => ty.size_of(),
-            Self::Float(ty) => ty.size_of()
+            Self::Float(ty) => ty.size_of(),
+            Self::Normalized(ty) => ty.size_of()
         }
     }
 
     #[inline]
     unsafe fn format_type(self) -> (Self::Format, PixelType) {
         match self {
-            Self::Fixed(ty) => (FormatDepth::DEPTH_COMPONENT, ty.into()),
-            Self::Float(ty) => (FormatDepth::DEPTH_COMPONENT, ty.into())
+            Self::Float(ty) => (FormatDepth::DEPTH_COMPONENT, ty.into()),
+            Self::Normalized(ty) => (FormatDepth::DEPTH_COMPONENT, ty.into())
         }
     }
 }
@@ -229,6 +241,10 @@ impl ClientFormat for ClientFormatDepth {
 pub struct ClientFormatStencil(pub IntType);
 
 display_from_debug!(ClientFormatStencil);
+
+impl From<IntType> for ClientFormatStencil {
+    fn from(ty:IntType) -> Self { ClientFormatStencil(ty) }
+}
 
 impl ClientFormat for ClientFormatStencil {
     type Format = FormatStencil;
@@ -241,6 +257,18 @@ pub enum ClientFormatDepthStencil {
     DepthComponent(ClientFormatDepth),
     StencilIndex(ClientFormatStencil),
     UInt24_8
+}
+
+impl From<FloatType> for ClientFormatDepthStencil {
+    fn from(fmt:FloatType) -> Self { ClientFormatDepth::from(fmt).into() }
+}
+
+impl From<ClientFormatDepth> for ClientFormatDepthStencil {
+    fn from(fmt:ClientFormatDepth) -> Self { ClientFormatDepthStencil::DepthComponent(fmt) }
+}
+
+impl From<ClientFormatStencil> for ClientFormatDepthStencil {
+    fn from(fmt:ClientFormatStencil) -> Self { ClientFormatDepthStencil::StencilIndex(fmt) }
 }
 
 impl ClientFormat for ClientFormatDepthStencil {
