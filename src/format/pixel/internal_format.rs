@@ -1,8 +1,10 @@
 use crate::*;
 use super::*;
+use crate::context::*;
 
 pub unsafe trait InternalFormat {
     type ClientFormat: ClientFormat;
+    type GL: GLVersion;
     fn glenum() -> GLenum;
 }
 
@@ -22,7 +24,12 @@ pub unsafe trait SizedInternalFormat: InternalFormat {
     #[inline] fn shared_bits() -> u8 {0}
 }
 
-pub unsafe trait CompressedInternalFormat: InternalFormat {}
+pub unsafe trait Compressed: InternalFormat {}
+pub unsafe trait SpecificCompressed: Compressed {}
+
+pub unsafe trait InternalFormatColor: InternalFormat {}
+pub unsafe trait Renderable: InternalFormat {}
+pub unsafe trait ReqRenderBuffer: Renderable {}
 
 pub unsafe trait InternalFormatFloat: InternalFormat<ClientFormat = ClientFormatFloat> + InternalFormatColor {}
 pub unsafe trait InternalFormatInt: InternalFormat<ClientFormat = ClientFormatInt> + InternalFormatColor {}
@@ -30,8 +37,6 @@ pub unsafe trait InternalFormatUInt: InternalFormat<ClientFormat = ClientFormatI
 pub unsafe trait InternalFormatDepth: InternalFormat<ClientFormat = ClientFormatDepth> {}
 pub unsafe trait InternalFormatStencil: InternalFormat<ClientFormat = ClientFormatStencil> {}
 pub unsafe trait InternalFormatDepthStencil: InternalFormat<ClientFormat = ClientFormatDepthStencil> {}
-
-pub unsafe trait InternalFormatColor: InternalFormat {}
 
 pub unsafe trait InternalFormatRed: InternalFormatColor {}
 pub unsafe trait InternalFormatRG: InternalFormatColor {}
@@ -104,19 +109,42 @@ macro_rules! internal_format {
         unsafe impl InternalFormatRGBA for $fmt {}
     };
 
-    (@$kind:ident $fmt:ident cmpr, $($tt:tt)*) => {
-        internal_format!(@$kind $fmt,);
-        unsafe impl CompressedInternalFormat for $fmt {}
-        internal_format!(@$kind $($tt)*);
+    (@$kind:ident $fmt:ident: cmpr + $GL:tt, $($tt:tt)*) => {
+        unsafe impl InternalFormatColor for $fmt {}
+        unsafe impl Compressed for $fmt {}
+        internal_format!(@$kind $fmt: $GL, $($tt)*);
     };
 
-    (@$kind:ident $fmt:ident $sizes:tt, $($tt:tt)*) => {
-        internal_format!(@$kind $fmt,);
+    (@$kind:ident $fmt:ident: specific + $GL:tt, $($tt:tt)*) => {
+        unsafe impl InternalFormatColor for $fmt {}
+        unsafe impl Compressed for $fmt {}
+        unsafe impl SpecificCompressed for $fmt {}
+        internal_format!(@$kind $fmt: $GL, $($tt)*);
+    };
+
+    (@$kind:ident $fmt:ident: req_rend + $GL:tt, $($tt:tt)*) => {
+        unsafe impl Renderable for $fmt {}
+        unsafe impl ReqRenderBuffer for $fmt {}
+        internal_format!(@$kind $fmt: $GL, $($tt)*);
+    };
+
+    (@$kind:ident $fmt:ident $sizes:tt: cr + $GL:tt, $($tt:tt)*) => {
+        unsafe impl Renderable for $fmt {}
+        internal_format!(@$kind $fmt $sizes: $GL, $($tt)*);
+    };
+
+    (@$kind:ident $fmt:ident $sizes:tt: req_rend + $GL:tt, $($tt:tt)*) => {
+        unsafe impl Renderable for $fmt {}
+        unsafe impl ReqRenderBuffer for $fmt {}
+        internal_format!(@$kind $fmt $sizes: $GL, $($tt)*);
+    };
+
+    (@$kind:ident $fmt:ident $sizes:tt: $GL:tt, $($tt:tt)*) => {
+        internal_format!(@$kind $fmt: $GL, $($tt)*);
         internal_format!(@sized $fmt $sizes);
-        internal_format!(@$kind $($tt)*);
     };
 
-    (@$kind:ident $fmt:ident, $($tt:tt)*) => {
+    (@$kind:ident $fmt:ident: $GL:tt, $($tt:tt)*) => {
 
         #[allow(non_camel_case_types)]
         #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -124,6 +152,7 @@ macro_rules! internal_format {
 
         unsafe impl InternalFormat for $fmt {
             type ClientFormat = internal_format!(@fmt_ty $kind);
+            type GL = $GL;
             #[inline] fn glenum() -> GLenum {gl::$fmt}
         }
 
@@ -144,98 +173,176 @@ macro_rules! internal_format {
 internal_format! {
     pub enum InternalFormatFloat {
         //Base Internal Formats (ie let the implementation decide the specifics)
-        RED, RG, RGB, RGBA, //uncompressed
-        COMPRESSED_RED cmpr, COMPRESSED_RG cmpr, COMPRESSED_RGB cmpr, COMPRESSED_RGBA cmpr, //compressed
-        COMPRESSED_SRGB cmpr, COMPRESSED_SRGB_ALPHA cmpr, //compressed sRGB
+        RED: req_rend + GL30,
+        RG: req_rend + GL30,
+        RGB: req_rend + GL11,
+        RGBA: req_rend + GL11,
+        COMPRESSED_RED: cmpr + GL30,
+        COMPRESSED_RG: cmpr + GL30,
+        COMPRESSED_RGB: cmpr + GL13,
+        COMPRESSED_RGBA: cmpr + GL13,
+        COMPRESSED_SRGB: cmpr + GL21,
+        COMPRESSED_SRGB_ALPHA: cmpr + GL21,
 
         //
         //fixed-point (normalized integer)
         //
 
         //Red
-        R8[8],R8_SNORM[8],
-        R16[16],R16_SNORM[16],
+        R8[8]: req_rend + GL30,
+        R8_SNORM[8]: cr + GL31,
+        R16[16]: req_rend + GL30,
+        R16_SNORM[16]: cr + GL31,
 
         //RG
-        RG8[8,8],RG8_SNORM[8,8],
-        RG16[16,16],RG16_SNORM[16,16],
+        RG8[8,8]: req_rend + GL30,
+        RG8_SNORM[8,8]: cr + GL31,
+        RG16[16,16]: req_rend + GL30,
+        RG16_SNORM[16,16]: cr + GL31,
 
         //RGB
-        R3_G3_B2[3,3,2],
-        RGB4[4,4,4], RGB5[4,4,4], RGB565[5,6,5],
-        RGB8[8,8,8],RGB8_SNORM[8,8,8],
-        RGB10[10,10,10],RGB12[12,12,12],
-        RGB16[16,16,16],RGB16_SNORM[16,16,16],
+        R3_G3_B2[3,3,2]: cr + GL11,
+        RGB4[4,4,4]: cr + GL11,
+        RGB5[4,4,4]: cr + GL11,
+        RGB565[5,6,5]: req_rend + GL42,
+        RGB8[8,8,8]: cr + GL11,
+        RGB8_SNORM[8,8,8]: cr + GL31,
+        RGB10[10,10,10]: cr + GL11,
+        RGB12[12,12,12]: cr + GL11,
+        RGB16[16,16,16]: cr + GL11,
+        RGB16_SNORM[16,16,16]: cr + GL31,
 
         //RGBA
-        RGBA2[2,2,2,2],
-        RGBA4[4,4,4,4],
-        RGB5_A1[5,5,5,1],
-        RGBA8[8,8,8,8],RGBA8_SNORM[8,8,8,8],
-        RGB10_A2[10,10,10,2], RGBA12[12,12,12,12],
-        RGBA16[16,16,16,16],RGBA16_SNORM[16,16,16,16],
-        RGB9_E5,
+        RGBA2[2,2,2,2]: cr + GL11,
+        RGBA4[4,4,4,4]: req_rend + GL11,
+        RGB5_A1[5,5,5,1]: req_rend + GL11,
+        RGBA8[8,8,8,8]: req_rend + GL11,
+        RGBA8_SNORM[8,8,8,8]: cr + GL31,
+        RGB10_A2[10,10,10,2]: req_rend + GL11,
+        RGBA12[12,12,12,12]: cr + GL11,
+        RGBA16[16,16,16,16]: req_rend + GL11,
+        RGBA16_SNORM[16,16,16,16]: cr + GL31,
+        RGB9_E5: GL30,
 
         //sRGB
-        SRGB8[8,8,8],SRGB8_ALPHA8[8,8,8,8],
+        SRGB8[8,8,8]: cr + GL21,
+        SRGB8_ALPHA8[8,8,8,8]: req_rend + GL21,
 
         //
         //floating point
         //
 
-        R16F[16], RG16F[16,16], RGB16F[16,16,16], RGBA16F[16,16,16,16], //Half-float
-        R32F[32], RG32F[32,32], RGB32F[32,32,32], RGBA32F[32,32,32,32], //Single-float
-        R11F_G11F_B10F[11,11,10], //Weird-ass-float
+        //half-precision float
+        R16F[16]: req_rend + GL30,
+        RG16F[16,16]: req_rend + GL30,
+        RGB16F[16,16,16]: cr + GL30,
+        RGBA16F[16,16,16,16]: req_rend + GL30, //Half-float
+
+        //single-precision float
+        R32F[32]: req_rend + GL30,
+        RG32F[32,32]: req_rend + GL30,
+        RGB32F[32,32,32]: cr + GL30,
+        RGBA32F[32,32,32,32]: req_rend + GL30,
+
+        //weird-ass float
+        R11F_G11F_B10F[11,11,10]: req_rend + GL30,
 
         //
         //compressed
         //
 
-        COMPRESSED_RED_RGTC1 cmpr, COMPRESSED_SIGNED_RED_RGTC1 cmpr,
-        COMPRESSED_RG_RGTC2 cmpr, COMPRESSED_SIGNED_RG_RGTC2 cmpr,
-        COMPRESSED_RGBA_BPTC_UNORM cmpr, COMPRESSED_SRGB_ALPHA_BPTC_UNORM cmpr,
-        COMPRESSED_RGB_BPTC_SIGNED_FLOAT cmpr, COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT cmpr,
-        COMPRESSED_RGB8_ETC2 cmpr, COMPRESSED_SRGB8_ETC2 cmpr,
-        COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2 cmpr, COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2 cmpr,
-        COMPRESSED_RGBA8_ETC2_EAC cmpr, COMPRESSED_SRGB8_ALPHA8_ETC2_EAC cmpr,
-        COMPRESSED_R11_EAC cmpr, COMPRESSED_SIGNED_R11_EAC cmpr, COMPRESSED_RG11_EAC cmpr, COMPRESSED_SIGNED_RG11_EAC cmpr,
+        //Red-green Texture Compression
+        COMPRESSED_RED_RGTC1: specific + GL30,
+        COMPRESSED_SIGNED_RED_RGTC1: specific + GL30,
+        COMPRESSED_RG_RGTC2: specific + GL30,
+        COMPRESSED_SIGNED_RG_RGTC2: specific + GL30,
+
+        //BPTC
+        COMPRESSED_RGBA_BPTC_UNORM: specific + GL42,
+        COMPRESSED_SRGB_ALPHA_BPTC_UNORM: specific + GL42,
+        COMPRESSED_RGB_BPTC_SIGNED_FLOAT: specific + GL42,
+        COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT: specific + GL42,
+
+        //Ericsson Texture Compression
+        COMPRESSED_RGB8_ETC2: specific + GL43,
+        COMPRESSED_SRGB8_ETC2: specific + GL43,
+        COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2: specific + GL43,
+        COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2: specific + GL43,
+        COMPRESSED_RGBA8_ETC2_EAC: specific + GL43,
+        COMPRESSED_SRGB8_ALPHA8_ETC2_EAC: specific + GL43,
+        COMPRESSED_R11_EAC: specific + GL43,
+        COMPRESSED_SIGNED_R11_EAC: specific + GL43,
+        COMPRESSED_RG11_EAC: specific + GL43,
+        COMPRESSED_SIGNED_RG11_EAC: specific + GL43,
     }
 
     pub enum InternalFormatInt {
-        R8I[8], R16I[16], R32I[32], //1-component
-        RG8I[8,8], RG16I[16,16], RG32I[32,32], //2-component
-        RGB8I[8,8,8], RGB16I[16,16,16], RGB32I[32,32,32], //3-component
-        RGBA8I[8,8,8,8], RGBA16I[16,16,16,16], RGBA32I[32,32,32,32], //4-component
+        //1-component
+        R8I[8]: req_rend + GL30,
+        R16I[16]: req_rend + GL30,
+        R32I[32]: req_rend + GL30,
+
+        //2-component
+        RG8I[8,8]: req_rend + GL30,
+        RG16I[16,16]: req_rend + GL30,
+        RG32I[32,32]: req_rend + GL30,
+
+        //3-component
+        RGB8I[8,8,8]: cr + GL30,
+        RGB16I[16,16,16]: cr + GL30,
+        RGB32I[32,32,32]: cr + GL30,
+
+        //4-component
+        RGBA8I[8,8,8,8]: req_rend + GL30,
+        RGBA16I[16,16,16,16]: req_rend + GL30,
+        RGBA32I[32,32,32,32]: req_rend + GL30,
     }
 
     pub enum InternalFormatUInt {
-        R8UI[8], R16UI[16], R32UI[32],  //1-component
-        RG8UI[8,8], RG16UI[16,16], RG32UI[32,32],  //2-component
-        RGB8UI[8,8,8], RGB16UI[16,16,16], RGB32UI[32,32,32],  //3-component
-        RGBA8UI[8,8,8,8], RGBA16UI[16,16,16,16], RGBA32UI[32,32,32,32],  //4-component
-        RGB10_A2UI[10,10,10,2],  //Weird shit
+        //1-component
+        R8UI[8]: req_rend + GL30,
+        R16UI[16]: req_rend + GL30,
+        R32UI[32]: req_rend + GL30,
+
+        //2-component
+        RG8UI[8,8]: req_rend + GL30,
+        RG16UI[16,16]: req_rend + GL30,
+        RG32UI[32,32]: req_rend + GL30,
+
+        //3-component
+        RGB8UI[8,8,8]: cr + GL30,
+        RGB16UI[16,16,16]: cr + GL30,
+        RGB32UI[32,32,32]: cr + GL30,
+
+        //4-component
+        RGBA8UI[8,8,8,8]: req_rend + GL30,
+        RGBA16UI[16,16,16,16]: req_rend + GL30,
+        RGBA32UI[32,32,32,32]: req_rend + GL30,
+
+        //Weird shit
+        RGB10_A2UI[10,10,10,2]: req_rend + GL33,
     }
 
     pub enum InternalFormatDepth {
-        DEPTH_COMPONENT, //base internal format
-        DEPTH_COMPONENT16(16),
-        DEPTH_COMPONENT24(24),
-        DEPTH_COMPONENT32(32),
-        DEPTH_COMPONENT32F(32),
+        DEPTH_COMPONENT: req_rend + GL14, //base internal format
+        DEPTH_COMPONENT16(16): req_rend + GL14,
+        DEPTH_COMPONENT24(24): req_rend + GL14,
+        DEPTH_COMPONENT32(32): cr + !,
+        DEPTH_COMPONENT32F(32): req_rend + GL30,
     }
 
     pub enum InternalFormatStencil {
-        STENCIL_INDEX(0, 32), //base internal format
-        STENCIL_INDEX1(0,1),
-        STENCIL_INDEX4(0,4),
-        STENCIL_INDEX8(0,8),
-        STENCIL_INDEX16(0,16),
+        STENCIL_INDEX: req_rend + GL44, //base internal format
+        STENCIL_INDEX1(0,1): cr + !,
+        STENCIL_INDEX4(0,4): cr + !,
+        STENCIL_INDEX8(0,8): req_rend + GL44,
+        STENCIL_INDEX16(0,16): cr + !,
     }
 
     pub enum InternalFormatDepthStencil {
-        DEPTH_STENCIL, //base internal format
-        DEPTH24_STENCIL8(24,8),
-        DEPTH32F_STENCIL8(32,8),
+        DEPTH_STENCIL: req_rend + GL30, //base internal format
+        DEPTH24_STENCIL8(24,8): req_rend + GL30,
+        DEPTH32F_STENCIL8(32,8): req_rend + GL30,
     }
 }
 
@@ -258,49 +365,24 @@ unsafe impl InternalFormatRGB for RGB {}
 unsafe impl InternalFormatColor for RGBA {}
 unsafe impl InternalFormatRGBA for RGBA {}
 
-unsafe impl InternalFormatColor for COMPRESSED_RED {}
 unsafe impl InternalFormatRed for COMPRESSED_RED {}
-unsafe impl InternalFormatColor for COMPRESSED_RG {}
 unsafe impl InternalFormatRG for COMPRESSED_RG {}
-unsafe impl InternalFormatColor for COMPRESSED_RGB {}
 unsafe impl InternalFormatRGB for COMPRESSED_RGB {}
-unsafe impl InternalFormatColor for COMPRESSED_RGBA {}
 unsafe impl InternalFormatRGBA for COMPRESSED_RGBA {}
 
-unsafe impl InternalFormatColor for COMPRESSED_SRGB {}
-unsafe impl InternalFormatColor for COMPRESSED_SRGB_ALPHA {}
-
-unsafe impl InternalFormatColor for COMPRESSED_RED_RGTC1 {}
 unsafe impl InternalFormatRed for COMPRESSED_RED_RGTC1 {}
-unsafe impl InternalFormatColor for COMPRESSED_SIGNED_RED_RGTC1 {}
 unsafe impl InternalFormatRed for COMPRESSED_SIGNED_RED_RGTC1 {}
-unsafe impl InternalFormatColor for COMPRESSED_RG_RGTC2 {}
 unsafe impl InternalFormatRG for COMPRESSED_RG_RGTC2 {}
-unsafe impl InternalFormatColor for COMPRESSED_SIGNED_RG_RGTC2 {}
 unsafe impl InternalFormatRG for COMPRESSED_SIGNED_RG_RGTC2 {}
-unsafe impl InternalFormatColor for COMPRESSED_RGBA_BPTC_UNORM {}
 unsafe impl InternalFormatRGBA for COMPRESSED_RGBA_BPTC_UNORM {}
-unsafe impl InternalFormatColor for COMPRESSED_SRGB_ALPHA_BPTC_UNORM {}
-unsafe impl InternalFormatColor for COMPRESSED_RGB_BPTC_SIGNED_FLOAT {}
 unsafe impl InternalFormatRGB for COMPRESSED_RGB_BPTC_SIGNED_FLOAT {}
-unsafe impl InternalFormatColor for COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT {}
 unsafe impl InternalFormatRGB for COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT {}
-unsafe impl InternalFormatColor for COMPRESSED_RGB8_ETC2 {}
 unsafe impl InternalFormatRGB for COMPRESSED_RGB8_ETC2 {}
-unsafe impl InternalFormatColor for COMPRESSED_SRGB8_ETC2 {}
-unsafe impl InternalFormatColor for COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2 {}
 unsafe impl InternalFormatRGB for COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2 {}
-unsafe impl InternalFormatColor for COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2 {}
-unsafe impl InternalFormatColor for COMPRESSED_RGBA8_ETC2_EAC {}
 unsafe impl InternalFormatRGBA for COMPRESSED_RGBA8_ETC2_EAC {}
-unsafe impl InternalFormatColor for COMPRESSED_SRGB8_ALPHA8_ETC2_EAC {}
-unsafe impl InternalFormatColor for COMPRESSED_R11_EAC {}
 unsafe impl InternalFormatRed for COMPRESSED_R11_EAC {}
-unsafe impl InternalFormatColor for COMPRESSED_SIGNED_R11_EAC {}
 unsafe impl InternalFormatRed for COMPRESSED_SIGNED_R11_EAC {}
-unsafe impl InternalFormatColor for COMPRESSED_RG11_EAC {}
 unsafe impl InternalFormatRG for COMPRESSED_RG11_EAC {}
-unsafe impl InternalFormatColor for COMPRESSED_SIGNED_RG11_EAC {}
 unsafe impl InternalFormatRG for COMPRESSED_SIGNED_RG11_EAC {}
 
 macro_rules! compat_with {
