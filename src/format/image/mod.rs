@@ -12,6 +12,7 @@ mod pixel_data;
 mod pixel_store;
 mod client_image;
 mod client_sub_image;
+mod impls;
 
 use std::borrow::Cow;
 use std::rc::Rc;
@@ -73,81 +74,10 @@ pub unsafe trait OwnedImage: ImageSrc {
     ) -> Self;
 }
 
-macro_rules! impl_img_src_slice {
-    (for<$($a:lifetime,)* $P:ident $(, $A:ident:$bound:ident)* > $ty:ty) => {
-        unsafe impl<$($a,)* $($A:$bound,)* $P> ImageSrc for $ty {
 
-            type Pixel = $P;
-
-            fn swap_bytes(&self) -> bool {false}
-            fn lsb_first(&self) -> bool {false}
-            fn row_alignment(&self) -> PixelRowAlignment {PixelRowAlignment(1)}
-
-            fn width(&self) -> usize {self.len()}
-            fn height(&self) -> usize {1}
-            fn depth(&self) -> usize {1}
-
-            fn pixels(&self) -> PixelPtr<[$P]> { self.pixel_ptr() }
-
-        }
-    }
-}
-
-macro_rules! impl_img_dst_slice {
-    (for<$($a:lifetime,)* $P:ident $(, $A:ident:$bound:ident)* > $ty:ty) => {
-        impl_img_src_slice!(for<$($a,)* $P $(, $A:$bound)* > $ty);
-        unsafe impl<$($a,)* $($A:$bound,)* $P> ImageDst for $ty {
-            fn pixels_mut(&mut self) -> PixelPtrMut<[$P]> { self.pixel_ptr_mut() }
-        }
-    }
-}
 
 pub(self) fn pixel_count(dim: [usize;3]) -> usize {
     dim[0].checked_mul(dim[1])
         .and_then(|m| m.checked_mul(dim[2]))
         .expect("Overflow when computing buffer size")
 }
-
-macro_rules! impl_own_img_slice {
-    (for<$($a:lifetime,)* $P:ident $(, $A:ident:$bound:ident)* > $ty:ty) => {
-        unsafe impl<$($a,)* $($A:$bound,)* $P> OwnedImage for $ty {
-
-            type GL = <Self as FromPixels>::GL;
-            type Hint = <Self as FromPixels>::Hint;
-
-            unsafe fn from_gl<G:FnOnce(PixelStoreSettings, PixelPtrMut<[$P]>)>(
-                gl:&Self::GL, hint: Self::Hint, dim: [usize;3], get:G
-            ) -> Self {
-                let count = pixel_count(dim);
-                let settings = Default::default();
-                Self::from_pixels(gl, hint, count, |ptr| get(settings, ptr))
-            }
-
-        }
-    }
-}
-
-impl_img_dst_slice!(for<P> [P]);
-impl_img_src_slice!(for<'a,P> &'a [P]);
-impl_img_dst_slice!(for<'a,P> &'a mut [P]);
-
-impl_img_dst_slice!(for<P> Box<[P]>);
-impl_own_img_slice!(for<P> Box<[P]>);
-
-impl_img_dst_slice!(for<P> Vec<P>);
-impl_own_img_slice!(for<P> Vec<P>);
-
-impl_img_src_slice!(for<P> Rc<[P]>);
-impl_own_img_slice!(for<P> Rc<[P]>);
-
-impl_img_src_slice!(for<P> Arc<[P]>);
-impl_own_img_slice!(for<P> Arc<[P]>);
-
-// impl_img_src_slice!(for<'a,P> Cow<'a,[P]>);
-// impl_own_img_slice!(for<'a,P> Cow<'a,[P]>);
-
-impl_img_src_slice!(for<'a,P,A:Initialized> Slice<'a,[P],A>);
-impl_img_dst_slice!(for<'a,P,A:Initialized> SliceMut<'a,[P],A>);
-
-impl_img_dst_slice!(for<P,A:Initialized> Buffer<[P],A>);
-impl_own_img_slice!(for<P,A:Initialized> Buffer<[P],A>);
