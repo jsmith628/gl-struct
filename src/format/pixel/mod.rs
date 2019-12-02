@@ -13,14 +13,34 @@ pub unsafe trait Pixel<F: ClientFormat>: Copy+PartialEq {
     fn lsb_first() -> bool {false}
 }
 
+#[derive(Clone, Copy)]
 pub enum PixelPtr<P:?Sized> {
     Slice(*const P),
     Buffer(GLuint, *const P)
 }
 
+impl<P> PixelPtr<[P]> {
+    pub fn len(self) -> usize {
+        match self {
+            Self::Slice(ptr) => unsafe { (&*ptr).len() },
+            Self::Buffer(_,ptr) => unsafe { (&*ptr).len() },
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
 pub enum PixelPtrMut<P:?Sized> {
     Slice(*mut P),
     Buffer(GLuint, *mut P)
+}
+
+impl<P> PixelPtrMut<[P]> {
+    pub fn len(self) -> usize {
+        match self {
+            Self::Slice(ptr) => unsafe { (&*ptr).len() },
+            Self::Buffer(_,ptr) => unsafe { (&*ptr).len() },
+        }
+    }
 }
 
 macro_rules! impl_int {

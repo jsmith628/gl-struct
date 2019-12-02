@@ -4,10 +4,12 @@ use super::pixel::*;
 pub use self::align::*;
 pub use self::pixel_data::*;
 pub use self::pixel_store::*;
+pub use self::client_image::*;
 
 mod align;
 mod pixel_data;
 mod pixel_store;
+mod client_image;
 
 use std::borrow::Cow;
 use std::rc::Rc;
