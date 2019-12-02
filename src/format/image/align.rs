@@ -30,3 +30,7 @@ impl TryFrom<u8> for PixelRowAlignment {
         }
     }
 }
+
+impl Default for PixelRowAlignment {
+    fn default() -> Self { ALIGN_1 }
+}

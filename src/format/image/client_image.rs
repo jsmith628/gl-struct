@@ -49,12 +49,12 @@ impl<P, B:PixelSrc<Pixels=[P]>> ClientImage<B> {
 
 }
 
-unsafe impl<F:ClientFormat, P:Pixel<F>, B:PixelSrc<Pixels=[P]>> ImageSrc<F> for ClientImage<B> {
+unsafe impl<P, B:PixelSrc<Pixels=[P]>> ImageSrc for ClientImage<B> {
 
     type Pixel = P;
 
-    fn swap_bytes(&self) -> bool {P::swap_bytes()}
-    fn lsb_first(&self) -> bool {P::lsb_first()}
+    fn swap_bytes(&self) -> bool {false}
+    fn lsb_first(&self) -> bool {false}
     fn row_alignment(&self) -> PixelRowAlignment {PixelRowAlignment(1)}
 
     fn width(&self) -> usize {self.dim[0]}
@@ -67,11 +67,11 @@ unsafe impl<F:ClientFormat, P:Pixel<F>, B:PixelSrc<Pixels=[P]>> ImageSrc<F> for 
 
 }
 
-unsafe impl<F:ClientFormat, P:Pixel<F>, B:PixelDst<Pixels=[P]>> ImageDst<F> for ClientImage<B> {
+unsafe impl<P, B:PixelDst<Pixels=[P]>> ImageDst for ClientImage<B> {
     fn pixels_mut(&mut self) -> PixelPtrMut<[P]> { self.pixels.pixel_ptr_mut() }
 }
 
-unsafe impl<F:ClientFormat, P:Pixel<F>, B:FromPixels<Pixels=[P]>> OwnedImage<F> for ClientImage<B> {
+unsafe impl<P, B:FromPixels<Pixels=[P]>> OwnedImage for ClientImage<B> {
 
     type GL = B::GL;
     type Hint = B::Hint;
@@ -79,17 +79,9 @@ unsafe impl<F:ClientFormat, P:Pixel<F>, B:FromPixels<Pixels=[P]>> OwnedImage<F> 
     unsafe fn from_gl<G:FnOnce(PixelStoreSettings, PixelPtrMut<[P]>)>(
         gl:&B::GL, hint:B::Hint, dim: [usize;3], get:G
     ) -> Self {
-
-        let settings = PixelStoreSettings {
-            swap_bytes: P::swap_bytes(), lsb_first: P::lsb_first(),
-            row_alignment: PixelRowAlignment(1),
-            skip_pixels: 0, skip_rows: 0, skip_images: 0,
-            row_length: dim[0], image_height: dim[1],
-        };
-
+        let settings = Default::default();
         ClientImage {
-            dim: dim,
-            pixels: B::from_pixels(gl, hint, pixel_count(dim), |ptr| get(settings, ptr))
+            dim: dim, pixels: B::from_pixels(gl, hint, pixel_count(dim), |ptr| get(settings, ptr))
         }
     }
 }

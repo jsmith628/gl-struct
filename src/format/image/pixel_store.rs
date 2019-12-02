@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Clone,Copy,PartialEq,Eq,Hash)]
+#[derive(Clone,Copy,PartialEq,Eq,Hash,Default,Debug)]
 pub struct PixelStoreSettings {
     pub swap_bytes: bool,
     pub lsb_first: bool,
