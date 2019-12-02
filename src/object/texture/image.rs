@@ -140,9 +140,11 @@ impl<'a,F,T:TextureTarget<F>> TexImage<'a,F,T> {
 impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImage<'a,F,T> {
 
     unsafe fn pack<P:Pixel<F::ClientFormat>>(
-        &self, settings:PixelStoreSettings, pixels: PixelPtrMut<[P]>
+        &self, mut settings:PixelStoreSettings, pixels: PixelPtrMut<[P]>
     ) {
 
+        settings.swap_bytes ^= P::swap_bytes();
+        settings.lsb_first ^= P::lsb_first();
         settings.apply_packing();
 
         let (fmt, ty) = P::format().format_type();
@@ -220,7 +222,11 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImageMut<'a,F,T> {
         GL:FnOnce(GLenum, [GLsizei;3], GLenum, GLenum, *const GLvoid),
         I:TexImageSrc<F>
     >(&self, data: &I, gl:GL) {
-        data.settings().apply_unpacking();
+
+        let mut settings = data.settings();
+        settings.swap_bytes ^= I::Pixel::swap_bytes();
+        settings.lsb_first ^= I::Pixel::lsb_first();
+        settings.apply_unpacking();
 
 
         let (format, ty) = I::Pixel::format().format_type();
