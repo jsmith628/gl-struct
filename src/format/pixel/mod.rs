@@ -13,14 +13,14 @@ pub unsafe trait Pixel<F: ClientFormat>: Copy+PartialEq {
     fn lsb_first() -> bool {false}
 }
 
-pub enum PixelPtr<F:ClientFormat> {
-    Slice(F, *const GLvoid),
-    Buffer(F, GLuint, *const GLvoid)
+pub enum PixelPtr<P:?Sized> {
+    Slice(*const P),
+    Buffer(GLuint, *const P)
 }
 
-pub enum PixelPtrMut<F:ClientFormat> {
-    Slice(F, *mut GLvoid),
-    Buffer(F, GLuint, *mut GLvoid)
+pub enum PixelPtrMut<P:?Sized> {
+    Slice(*mut P),
+    Buffer(GLuint, *mut P)
 }
 
 macro_rules! impl_int {

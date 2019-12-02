@@ -135,20 +135,24 @@ impl<'a,F,T:TextureTarget<F>> TexImage<'a,F,T> {
 
 impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImage<'a,F,T> {
 
-    unsafe fn pack(&self, settings:PixelStoreSettings, pixels: PixelPtrMut<F::ClientFormat>) {
+    unsafe fn pack<P:Pixel<F::ClientFormat>>(
+        &self, settings:PixelStoreSettings, pixels: PixelPtrMut<[P]>
+    ) {
+
         settings.apply_packing();
 
-        let (id, ptr, client_format) = match pixels {
-            PixelPtrMut::Slice(f, slice) => (None, slice, f),
-            PixelPtrMut::Buffer(f, buf, offset) => (Some(buf), offset, f),
+        let (fmt, ty) = P::format().format_type();
+        let (id, ptr) = match pixels {
+            PixelPtrMut::Slice(slice) => (None, slice as *mut GLvoid),
+            PixelPtrMut::Buffer(buf, offset) => (Some(buf), offset as *mut GLvoid),
         };
-        let (format, ty) = client_format.format_type();
 
         id.map(|i| gl::BindBuffer(gl::PIXEL_PACK_BUFFER, i));
         T::bind_loc_level().map_bind(self,
-            |_| gl::GetTexImage(self.face.into(), self.level() as GLsizei, format.into(), ty.into(), ptr)
+            |_| gl::GetTexImage(self.face.into(), self.level() as GLsizei, fmt.into(), ty.into(), ptr)
         );
         id.map(|_| gl::BindBuffer(gl::PIXEL_PACK_BUFFER, 0));
+
     }
 
     pub fn get_image<I:ImageDst<F::ClientFormat>>(&self, data: &mut I) {
@@ -214,20 +218,20 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImageMut<'a,F,T> {
     >(&self, data: &I, gl:GL) {
         data.settings().apply_unpacking();
 
-        let (id, ptr, client_format) = match data.pixels() {
-            PixelPtr::Slice(f, slice) => (None, slice, f),
-            PixelPtr::Buffer(f, buf, offset) => (Some(buf), offset, f),
-        };
-        id.map(|i| gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, i));
 
-        let (format, ty) = client_format.format_type().into();
+        let (format, ty) = I::Pixel::format().format_type();
         let (format, ty) = (format.into(), ty.into());
 
         let (w, h, d) = (data.width(), data.height(), data.depth());
         let dim = [w.try_into().unwrap(), h.try_into().unwrap(), d.try_into().unwrap()];
 
-        T::bind_loc_level_mut().map_bind(self, |_| gl(self.face.into(), dim, format, ty, ptr) );
+        let (id, ptr) = match data.pixels() {
+            PixelPtr::Slice(slice) => (None, slice as *const GLvoid),
+            PixelPtr::Buffer(buf, offset) => (Some(buf), offset as *const GLvoid),
+        };
 
+        id.map(|i| gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, i));
+        T::bind_loc_level_mut().map_bind(self, |_| gl(self.face.into(), dim, format, ty, ptr));
         id.map(|_| gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, 0));
     }
 
