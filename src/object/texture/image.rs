@@ -43,6 +43,10 @@ pub struct TexImageMut<'a,F,T:TextureTarget<F>> {
     pub(super) tex: PhantomData<&'a mut Texture<F,T>>
 }
 
+pub trait TexImageSrc<F:InternalFormat> = ImageSrc where <Self as ImageSrc>::Pixel: Pixel<<F as InternalFormat>::ClientFormat>;
+pub trait TexImageDst<F:InternalFormat> = ImageDst + TexImageSrc<F>;
+pub trait OwnedTexImage<F:InternalFormat> = OwnedImage + TexImageSrc<F>;
+
 impl<'a,F,T:TextureTarget<F>> !Sync for TexImage<'a,F,T> {}
 impl<'a,F,T:TextureTarget<F>> !Send for TexImage<'a,F,T> {}
 impl<'a,F,T:TextureTarget<F>> !Sync for TexImageMut<'a,F,T> {}
@@ -155,15 +159,12 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImage<'a,F,T> {
 
     }
 
-    pub fn get_image<I:ImageDst>(&self, data: &mut I) where I::Pixel: Pixel<F::ClientFormat> {
+    pub fn get_image<I:TexImageDst<F>>(&self, data: &mut I) {
         dest_size_check(self.dim(), data);
         unsafe { self.pack(data.settings(), data.pixels_mut()); }
     }
 
-    pub fn into_image<I:OwnedImage>(&self, hint:I::Hint) -> I where
-        I::Pixel:Pixel<F::ClientFormat>,
-        T::GL: Supports<I::GL>
-    {
+    pub fn into_image<I:OwnedTexImage<F>>(&self, hint:I::Hint) -> I where T::GL: Supports<I::GL> {
         unsafe {
             let dim = self.dim();
             I::from_gl(
@@ -174,9 +175,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImage<'a,F,T> {
         }
     }
 
-    pub fn try_into_image<I:OwnedImage>(&self, hint:I::Hint) -> Result<I,GLError> where
-        I::Pixel: Pixel<F::ClientFormat>
-    {
+    pub fn try_into_image<I:OwnedTexImage<F>>(&self, hint:I::Hint) -> Result<I,GLError> {
         unsafe {
             let dim = self.dim();
             let gl = upgrade_to(&self.gl())?;
@@ -219,10 +218,8 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImageMut<'a,F,T> {
 
     unsafe fn unpack<
         GL:FnOnce(GLenum, [GLsizei;3], GLenum, GLenum, *const GLvoid),
-        I:ImageSrc
-    >(&self, data: &I, gl:GL) where
-        I::Pixel: Pixel<F::ClientFormat>
-    {
+        I:TexImageSrc<F>
+    >(&self, data: &I, gl:GL) {
         data.settings().apply_unpacking();
 
 
@@ -242,7 +239,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImageMut<'a,F,T> {
         id.map(|_| gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, 0));
     }
 
-    pub(super) unsafe fn image_unchecked<I:ImageSrc>(&mut self, data: &I) where I::Pixel: Pixel<F::ClientFormat> {
+    pub(super) unsafe fn image_unchecked<I:TexImageSrc<F>>(&mut self, data: &I) {
 
         if data.pixel_count()==0 { panic!("Attempted to create a zero-sized texture image"); }
         if T::glenum() == gl::TEXTURE_CUBE_MAP_ARRAY && data.depth()%6 != 0 {
@@ -266,9 +263,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImageMut<'a,F,T> {
         )
     }
 
-    unsafe fn sub_image_unchecked<I:ImageSrc>(&mut self, offset:T::Dim, data: &I) where
-        I::Pixel: Pixel<F::ClientFormat>
-    {
+    unsafe fn sub_image_unchecked<I:TexImageSrc<F>>(&mut self, offset:T::Dim, data: &I) {
 
         if data.pixel_count()==0 { return; }
         let (x, y, z) = (offset.width() as GLsizei, offset.height() as GLsizei, offset.depth() as GLsizei);
@@ -287,7 +282,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImageMut<'a,F,T> {
 
     }
 
-    pub fn image<I:ImageSrc>(&mut self, data: &I) where I::Pixel: Pixel<F::ClientFormat> {
+    pub fn image<I:TexImageSrc<F>>(&mut self, data: &I) {
         //get the current dimensions
         let current_dim = self.dim();
 
@@ -304,25 +299,20 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImageMut<'a,F,T> {
         }
     }
 
-    pub fn sub_image<I:ImageSrc>(&mut self, offset:T::Dim, data: &I) where I::Pixel: Pixel<F::ClientFormat> {
+    pub fn sub_image<I:TexImageSrc<F>>(&mut self, offset:T::Dim, data: &I) {
         source_size_check(offset, self.dim(), data);
         unsafe { self.sub_image_unchecked(offset, data) }
     }
 
-    pub fn get_image<I:ImageDst>(&self, data: &mut I) where I::Pixel: Pixel<F::ClientFormat> {
+    pub fn get_image<I:TexImageDst<F>>(&self, data: &mut I) {
         self.as_immut().get_image(data);
     }
 
-    pub fn into_image<I:OwnedImage>(&self, hint:I::Hint) -> I where
-        I::Pixel: Pixel<F::ClientFormat>,
-        T::GL: Supports<I::GL>
-    {
+    pub fn into_image<I:OwnedTexImage<F>>(&self, hint:I::Hint) -> I where T::GL: Supports<I::GL> {
         self.as_immut().into_image(hint)
     }
 
-    pub fn try_into_image<I:OwnedImage>(&self, hint:I::Hint) -> Result<I,GLError> where
-        I::Pixel: Pixel<F::ClientFormat>
-    {
+    pub fn try_into_image<I:OwnedTexImage<F>>(&self, hint:I::Hint) -> Result<I,GLError> where {
         self.as_immut().try_into_image(hint)
     }
 

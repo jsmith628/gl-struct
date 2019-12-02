@@ -50,9 +50,10 @@ impl<T:TextureType> UninitTex<T> {
     }
 
     #[allow(unused_variables)]
-    pub fn image<F:InternalFormat,I:ImageSrc>(self, gl: &F::GL, data: &I) -> Texture<F,T> where
-        I::Pixel: Pixel<F::ClientFormat>,
-        T:PixelTransferTarget<F> + BaseImage
+    pub fn image<F,I>(self, gl: &F::GL, data: &I) -> Texture<F,T> where
+        F: InternalFormat,
+        I: TexImageSrc<F>,
+        T: PixelTransferTarget<F> + BaseImage
     {
         let mut tex = Texture { id:self.id(), phantom:PhantomData };
         unsafe { tex.base_image_mut().image_unchecked(data); }
