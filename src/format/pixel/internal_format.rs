@@ -25,7 +25,13 @@ pub unsafe trait SizedInternalFormat: InternalFormat {
 }
 
 pub unsafe trait Compressed: InternalFormat {}
-pub unsafe trait SpecificCompressed: Compressed {}
+pub unsafe trait SpecificCompressed: Compressed {
+    type Block: Copy;
+    fn block_width() -> u8;
+    fn block_height() -> u8;
+    fn block_depth() -> u8;
+    #[inline] fn block_size() -> usize { ::std::mem::size_of::<Self::Block>() }
+}
 
 pub unsafe trait InternalFormatColor: InternalFormat {}
 pub unsafe trait Renderable: InternalFormat {}
@@ -58,20 +64,31 @@ macro_rules! internal_format {
     (@fmt_ty InternalFormatStencil) => {ClientFormatStencil};
     (@fmt_ty InternalFormatDepthStencil) => {ClientFormatDepthStencil};
 
-    (@sized $fmt:ident ($D:tt)) => {
+    (@sized $fmt:ident ($D:literal)) => {
         unsafe impl SizedInternalFormat for $fmt {
             #[inline] fn depth_bits() -> u8 {$D}
         }
     };
 
-    (@sized $fmt:ident ($D:tt, $S:tt)) => {
+    (@sized $fmt:ident ($D:literal, $S:literal)) => {
         unsafe impl SizedInternalFormat for $fmt {
             #[inline] fn depth_bits() -> u8 {$D}
             #[inline] fn stencil_bits() -> u8 {$S}
         }
     };
 
-    (@sized $fmt:ident [$R:tt]) => {
+    (@sized $fmt:ident [$block:ty; $w:literal, $h:literal, $d:literal]) => {
+        unsafe impl InternalFormatColor for $fmt {}
+        unsafe impl Compressed for $fmt {}
+        unsafe impl SpecificCompressed for $fmt {
+            type Block = $block;
+            fn block_width() -> u8 {$w}
+            fn block_height() -> u8 {$h}
+            fn block_depth() -> u8 {$d}
+        }
+    };
+
+    (@sized $fmt:ident [$R:literal]) => {
         unsafe impl SizedInternalFormat for $fmt {
             #[inline] fn red_bits() -> u8 {$R}
         }
@@ -79,7 +96,7 @@ macro_rules! internal_format {
         unsafe impl InternalFormatRed for $fmt {}
     };
 
-    (@sized $fmt:ident [$R:tt, $G:tt]) => {
+    (@sized $fmt:ident [$R:literal, $G:literal]) => {
         unsafe impl SizedInternalFormat for $fmt {
             #[inline] fn red_bits() -> u8 {$R}
             #[inline] fn green_bits() -> u8 {$G}
@@ -88,7 +105,7 @@ macro_rules! internal_format {
         unsafe impl InternalFormatRG for $fmt {}
     };
 
-    (@sized $fmt:ident [$R:tt, $G:tt, $B:tt]) => {
+    (@sized $fmt:ident [$R:literal, $G:literal, $B:literal]) => {
         unsafe impl SizedInternalFormat for $fmt {
             #[inline] fn red_bits() -> u8 {$R}
             #[inline] fn green_bits() -> u8 {$G}
@@ -98,7 +115,7 @@ macro_rules! internal_format {
         unsafe impl InternalFormatRGB for $fmt {}
     };
 
-    (@sized $fmt:ident [$R:tt, $G:tt, $B:tt, $A:tt]) => {
+    (@sized $fmt:ident [$R:literal, $G:literal, $B:literal, $A:literal]) => {
         unsafe impl SizedInternalFormat for $fmt {
             #[inline] fn red_bits() -> u8 {$R}
             #[inline] fn green_bits() -> u8 {$G}
@@ -112,13 +129,6 @@ macro_rules! internal_format {
     (@$kind:ident $fmt:ident: cmpr + $GL:tt, $($tt:tt)*) => {
         unsafe impl InternalFormatColor for $fmt {}
         unsafe impl Compressed for $fmt {}
-        internal_format!(@$kind $fmt: $GL, $($tt)*);
-    };
-
-    (@$kind:ident $fmt:ident: specific + $GL:tt, $($tt:tt)*) => {
-        unsafe impl InternalFormatColor for $fmt {}
-        unsafe impl Compressed for $fmt {}
-        unsafe impl SpecificCompressed for $fmt {}
         internal_format!(@$kind $fmt: $GL, $($tt)*);
     };
 
@@ -252,28 +262,28 @@ internal_format! {
         //
 
         //Red-green Texture Compression
-        COMPRESSED_RED_RGTC1: specific + GL30,
-        COMPRESSED_SIGNED_RED_RGTC1: specific + GL30,
-        COMPRESSED_RG_RGTC2: specific + GL30,
-        COMPRESSED_SIGNED_RG_RGTC2: specific + GL30,
+        COMPRESSED_RED_RGTC1[u64; 4, 4, 1]: GL30,
+        COMPRESSED_SIGNED_RED_RGTC1[u64; 4, 4, 1]: GL30,
+        COMPRESSED_RG_RGTC2[[u64;2]; 4, 4, 1]: GL30,
+        COMPRESSED_SIGNED_RG_RGTC2[[u64;2]; 4, 4, 1]: GL30,
 
         //BPTC
-        COMPRESSED_RGBA_BPTC_UNORM: specific + GL42,
-        COMPRESSED_SRGB_ALPHA_BPTC_UNORM: specific + GL42,
-        COMPRESSED_RGB_BPTC_SIGNED_FLOAT: specific + GL42,
-        COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT: specific + GL42,
+        COMPRESSED_RGBA_BPTC_UNORM[u128; 4, 4, 1]: GL42,
+        COMPRESSED_SRGB_ALPHA_BPTC_UNORM[u128; 4, 4, 1]: GL42,
+        COMPRESSED_RGB_BPTC_SIGNED_FLOAT[u128; 4, 4, 1]: GL42,
+        COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT[u128; 4, 4, 1]: GL42,
 
         //Ericsson Texture Compression
-        COMPRESSED_RGB8_ETC2: specific + GL43,
-        COMPRESSED_SRGB8_ETC2: specific + GL43,
-        COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2: specific + GL43,
-        COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2: specific + GL43,
-        COMPRESSED_RGBA8_ETC2_EAC: specific + GL43,
-        COMPRESSED_SRGB8_ALPHA8_ETC2_EAC: specific + GL43,
-        COMPRESSED_R11_EAC: specific + GL43,
-        COMPRESSED_SIGNED_R11_EAC: specific + GL43,
-        COMPRESSED_RG11_EAC: specific + GL43,
-        COMPRESSED_SIGNED_RG11_EAC: specific + GL43,
+        COMPRESSED_RGB8_ETC2[u64; 4, 4, 1]: GL43,
+        COMPRESSED_SRGB8_ETC2[u64; 4, 4, 1]: GL43,
+        COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2[u64; 4, 4, 1]: GL43,
+        COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2[u64; 4, 4, 1]: GL43,
+        COMPRESSED_RGBA8_ETC2_EAC[u128; 4, 4, 1]: GL43,
+        COMPRESSED_SRGB8_ALPHA8_ETC2_EAC[u128; 4, 4, 1]: GL43,
+        COMPRESSED_R11_EAC[u64; 4, 4, 1]: GL43,
+        COMPRESSED_SIGNED_R11_EAC[u64; 4, 4, 1]: GL43,
+        COMPRESSED_RG11_EAC[[u64;2]; 4, 4, 1]: GL43,
+        COMPRESSED_SIGNED_RG11_EAC[[u64;2]; 4, 4, 1]: GL43,
     }
 
     pub enum InternalFormatInt {
