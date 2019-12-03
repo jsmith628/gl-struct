@@ -36,7 +36,7 @@ impl<I:ImageSrc> ClientSubImage<I> {
 
 }
 
-unsafe impl<I:ImageSrc> ImageSrc for ClientSubImage<I> {
+impl<I:ImageSrc> ImageSrc for ClientSubImage<I> {
 
     type Pixel = I::Pixel;
 
@@ -61,6 +61,6 @@ unsafe impl<I:ImageSrc> ImageSrc for ClientSubImage<I> {
 
 }
 
-unsafe impl<I:ImageDst> ImageDst for ClientSubImage<I> {
+impl<I:ImageDst> ImageDst for ClientSubImage<I> {
     fn pixels_mut(&mut self) -> PixelPtrMut<[Self::Pixel]> { self.image.pixels_mut() }
 }

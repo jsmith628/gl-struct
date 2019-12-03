@@ -49,7 +49,7 @@ impl<P, B:PixelSrc<Pixels=[P]>> ClientImage<B> {
 
 }
 
-unsafe impl<P, B:PixelSrc<Pixels=[P]>> ImageSrc for ClientImage<B> {
+impl<P, B:PixelSrc<Pixels=[P]>> ImageSrc for ClientImage<B> {
 
     type Pixel = P;
 
@@ -67,11 +67,11 @@ unsafe impl<P, B:PixelSrc<Pixels=[P]>> ImageSrc for ClientImage<B> {
 
 }
 
-unsafe impl<P, B:PixelDst<Pixels=[P]>> ImageDst for ClientImage<B> {
+impl<P, B:PixelDst<Pixels=[P]>> ImageDst for ClientImage<B> {
     fn pixels_mut(&mut self) -> PixelPtrMut<[P]> { self.pixels.pixel_ptr_mut() }
 }
 
-unsafe impl<P, B:FromPixels<Pixels=[P]>> OwnedImage for ClientImage<B> {
+impl<P, B:FromPixels<Pixels=[P]>> OwnedImage for ClientImage<B> {
 
     type GL = B::GL;
     type Hint = B::Hint;

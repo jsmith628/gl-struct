@@ -2,7 +2,7 @@ use super::*;
 
 macro_rules! impl_img_src_slice {
     (for<$($a:lifetime,)* $P:ident $(, $A:ident:$bound:ident)* > $ty:ty) => {
-        unsafe impl<$($a,)* $($A:$bound,)* $P> ImageSrc for $ty {
+        impl<$($a,)* $($A:$bound,)* $P> ImageSrc for $ty {
 
             type Pixel = $P;
 
@@ -23,7 +23,7 @@ macro_rules! impl_img_src_slice {
 macro_rules! impl_img_dst_slice {
     (for<$($a:lifetime,)* $P:ident $(, $A:ident:$bound:ident)* > $ty:ty) => {
         impl_img_src_slice!(for<$($a,)* $P $(, $A:$bound)* > $ty);
-        unsafe impl<$($a,)* $($A:$bound,)* $P> ImageDst for $ty {
+        impl<$($a,)* $($A:$bound,)* $P> ImageDst for $ty {
             fn pixels_mut(&mut self) -> PixelPtrMut<[$P]> { self.pixel_ptr_mut() }
         }
     }
@@ -31,7 +31,7 @@ macro_rules! impl_img_dst_slice {
 
 macro_rules! impl_own_img_slice {
     (for<$($a:lifetime,)* $P:ident $(, $A:ident:$bound:ident)* > $ty:ty) => {
-        unsafe impl<$($a,)* $($A:$bound,)* $P> OwnedImage for $ty {
+        impl<$($a,)* $($A:$bound,)* $P> OwnedImage for $ty {
 
             type GL = <Self as FromPixels>::GL;
             type Hint = <Self as FromPixels>::Hint;
@@ -68,7 +68,7 @@ impl_own_img_slice!(for<P,A:Initialized> Buffer<[P],A>);
 
 macro_rules! impl_img_src_deref {
     (for<$($a:lifetime,)* $P:ident> $ty:ty) => {
-        unsafe impl<$($a,)* $P:ImageSrc+?Sized> ImageSrc for $ty {
+        impl<$($a,)* $P:ImageSrc+?Sized> ImageSrc for $ty {
 
             type Pixel = $P::Pixel;
 
@@ -100,7 +100,7 @@ macro_rules! impl_img_src_deref {
 macro_rules! impl_img_dst_deref {
     (for<$($a:lifetime,)* $P:ident> $ty:ty) => {
         impl_img_src_deref!(for<$($a,)* $P> $ty);
-        unsafe impl<$($a,)* $P:ImageDst+?Sized> ImageDst for $ty {
+        impl<$($a,)* $P:ImageDst+?Sized> ImageDst for $ty {
             fn pixels_mut(&mut self) -> PixelPtrMut<[Self::Pixel]> { (&mut **self).pixels_mut() }
         }
     }

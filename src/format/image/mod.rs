@@ -21,7 +21,7 @@ use std::convert::TryInto;
 use object::buffer::*;
 use context::*;
 
-pub unsafe trait ImageSrc {
+pub trait ImageSrc {
 
     type Pixel;
 
@@ -62,11 +62,11 @@ pub unsafe trait ImageSrc {
 
 }
 
-pub unsafe trait ImageDst: ImageSrc {
+pub trait ImageDst: ImageSrc {
     fn pixels_mut(&mut self) -> PixelPtrMut<[Self::Pixel]>;
 }
 
-pub unsafe trait OwnedImage: ImageSrc {
+pub trait OwnedImage: ImageSrc {
     type GL: GLVersion;
     type Hint;
     unsafe fn from_gl<G:FnOnce(PixelStoreSettings, PixelPtrMut<[Self::Pixel]>)>(
