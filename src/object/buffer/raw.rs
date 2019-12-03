@@ -186,18 +186,18 @@ impl<T> BufPtr<[T]> {
 ///
 ///Any type that can be cloned within a [buffer](super::Buffer) by simple byte-wise copies of its data.
 ///
-#[marker] pub unsafe trait GPUCopy {}
+#[marker] pub trait GPUCopy {}
 
-unsafe impl<T:Copy> GPUCopy for T {}
-unsafe impl<T:Copy> GPUCopy for [T] {}
-unsafe impl GPUCopy for str {}
-unsafe impl GPUCopy for std::ffi::CStr {}
-unsafe impl GPUCopy for std::ffi::OsStr {}
-unsafe impl GPUCopy for std::path::Path {}
+impl<T:Copy> GPUCopy for T {}
+impl<T:Copy> GPUCopy for [T] {}
+impl GPUCopy for str {}
+impl GPUCopy for std::ffi::CStr {}
+impl GPUCopy for std::ffi::OsStr {}
+impl GPUCopy for std::path::Path {}
 
 macro_rules! impl_tuple_gpucopy {
     ({$($T:ident:$t:ident)*} $Last:ident:$l:ident) => {
-        unsafe impl<$($T:GPUCopy,)* $Last: GPUCopy+?Sized> GPUCopy for ($($T,)* $Last,) {}
+        impl<$($T:GPUCopy,)* $Last: GPUCopy+?Sized> GPUCopy for ($($T,)* $Last,) {}
     };
 }
 impl_tuple!(impl_tuple_gpucopy @with_last);
