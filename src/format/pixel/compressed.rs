@@ -7,16 +7,21 @@ pub struct CompressedPixels<F:SpecificCompressed> {
 }
 
 impl<F:SpecificCompressed> CompressedPixels<F> {
-    
-    fn format(&self) -> GLenum { F::glenum() }
-    fn block_width(&self) -> u8 { F::block_width() }
-    fn block_height(&self) -> u8 { F::block_height() }
-    fn block_depth(&self) -> u8 { F::block_depth() }
-    fn block_size(&self) -> usize { size_of::<F::Block>() }
 
-    fn size(&self) -> usize { size_of_val(self) }
-    fn blocks(&self) -> usize { data.len() }
-    fn count(&self) -> usize { self.blocks()*self.block_width()*self.block_height()*self.block_depth() }
+    pub fn format(&self) -> GLenum { F::glenum() }
+    pub fn block_width(&self) -> u8 { F::block_width() }
+    pub fn block_height(&self) -> u8 { F::block_height() }
+    pub fn block_depth(&self) -> u8 { F::block_depth() }
+    pub fn block_size(&self) -> usize { size_of::<F::Block>() }
+
+    pub fn size(&self) -> usize { size_of_val(self) }
+    pub fn blocks(&self) -> usize { self.data.len() }
+    pub fn pixel_count(&self) -> usize {
+        self.blocks() *
+        self.block_width() as usize *
+        self.block_height() as usize *
+        self.block_depth() as usize
+    }
 
 }
 
