@@ -20,7 +20,6 @@ pub use self::slice::*;
 pub use self::any::*;
 pub use self::cmp::*;
 pub use self::fmt::*;
-pub use self::pixel_transfer::*;
 pub use self::attrib_array::*;
 
 pub mod storage;
@@ -33,7 +32,6 @@ mod slice;
 mod any;
 mod cmp;
 mod fmt;
-mod pixel_transfer;
 mod attrib_array;
 
 pub struct Buffer<T:?Sized, A:BufferStorage> {
