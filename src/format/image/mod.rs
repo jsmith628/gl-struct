@@ -51,7 +51,7 @@ pub unsafe trait ImageDst: ImageSrc {
 pub unsafe trait OwnedImage: ImageSrc {
     type GL: GLVersion;
     type Hint;
-    unsafe fn from_gl<G:FnOnce(PixelStoreSettings, PixelPtrMut<Self::Pixels>)>(
+    unsafe fn from_gl<G:FnOnce(PixelStore, PixelPtrMut<Self::Pixels>)>(
         gl:&Self::GL, hint:Self::Hint, dim: [usize;3], get:G
     ) -> Self;
 }

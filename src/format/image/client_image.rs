@@ -12,11 +12,12 @@ pub enum ImageError {
     NotBlockAligned,
 }
 
-impl ::std::fmt::Display for ImageCreationError {
+impl ::std::fmt::Display for ImageError {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         match self {
-            ImageCreationError::SizeOverflow => write!(f, "Overflow in computing buffer size"),
-            ImageCreationError::InvalidDimensions(_,_) => write!(f, "Invalid dimensions for buffer size")
+            ImageError::SizeOverflow => write!(f, "Overflow in computing buffer size"),
+            ImageError::InvalidDimensions(_,_) => write!(f, "Invalid dimensions for buffer size"),
+            ImageError::NotBlockAligned => write!(f, "Image dimensions not divisible by compressed block dimensions")
         }
     }
 }
@@ -37,10 +38,10 @@ impl<P, B:PixelSrc<Pixels=[P]>> ClientImage<B> {
             if n!=len {
                 Ok( unsafe {Self::new_unchecked(dim, pixels)} )
             } else {
-                Err(ImageCreationError::InvalidDimensions(dim, len))
+                Err(ImageError::InvalidDimensions(dim, len))
             }
         } else {
-            Err(ImageCreationError::SizeOverflow)
+            Err(ImageError::SizeOverflow)
         }
     }
 
@@ -87,7 +88,7 @@ unsafe impl<B:FromPixels> OwnedImage for ClientImage<B> {
     type GL = B::GL;
     type Hint = B::Hint;
 
-    unsafe fn from_gl<G:FnOnce(PixelStoreSettings, PixelPtrMut<Self::Pixels>)>(
+    unsafe fn from_gl<G:FnOnce(PixelStore, PixelPtrMut<Self::Pixels>)>(
         gl:&B::GL, hint:B::Hint, dim: [usize;3], get:G
     ) -> Self {
         let settings = Default::default();

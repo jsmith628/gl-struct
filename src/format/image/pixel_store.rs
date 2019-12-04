@@ -1,7 +1,7 @@
 use super::*;
 
 #[derive(Clone,Copy,PartialEq,Eq,Hash,Default,Debug)]
-pub struct PixelStoreSettings {
+pub struct PixelStore {
     pub swap_bytes: bool,
     pub lsb_first: bool,
     pub row_alignment: PixelRowAlignment,
@@ -12,10 +12,10 @@ pub struct PixelStoreSettings {
     pub image_height: usize,
 }
 
-impl PixelStoreSettings {
+impl PixelStore {
 
     pub fn from<I:ImageSrc>(img:&I) -> Self {
-        PixelStoreSettings {
+        PixelStore {
             swap_bytes: img.swap_bytes(),
             lsb_first: img.lsb_first(),
             row_alignment: img.row_alignment(),

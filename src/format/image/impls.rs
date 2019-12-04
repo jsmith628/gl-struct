@@ -43,7 +43,7 @@ macro_rules! impl_own_img_slice {
             type GL = <Self as FromPixels>::GL;
             type Hint = <Self as FromPixels>::Hint;
 
-            unsafe fn from_gl<G:FnOnce(PixelStoreSettings, PixelPtrMut<[$P]>)>(
+            unsafe fn from_gl<G:FnOnce(PixelStore, PixelPtrMut<[$P]>)>(
                 gl:&Self::GL, hint: Self::Hint, dim: [usize;3], get:G
             ) -> Self {
                 let count = pixel_count(dim);
