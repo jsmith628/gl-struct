@@ -4,16 +4,20 @@ use format::image::*;
 
 use std::mem::*;
 use std::ops::*;
+use std::convert::*;
 
 pub use self::target::*;
 pub use self::dim::*;
 pub use self::uninit::*;
 pub use self::image::*;
+pub use self::pack::*;
 
 pub mod target;
 mod dim;
 mod uninit;
 mod image;
+mod pack;
+mod unpack;
 
 pub struct Texture<F, T:TextureTarget<F>> {
     id: GLuint,
