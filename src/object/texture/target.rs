@@ -112,12 +112,14 @@ pub trait TextureTarget<F> = TextureType +
 pub trait MipmappedTarget<F> = Mipmapped + TextureTarget<F>;
 pub trait MultisampledTarget<F> = Multisampled + TextureTarget<F>;
 pub trait PixelTransferTarget<F> = PixelTransfer + TextureTarget<F>;
+pub trait CompressedTransferTarget<F> = CompressedTransfer + TextureTarget<F>;
 pub trait LayeredTarget<F> = Layered + TextureTarget<F>;
 pub trait CubeMapTarget<F> = CubeMapped + TextureTarget<F>;
 
 #[marker] pub unsafe trait Mipmapped: TextureType {}
 #[marker] pub unsafe trait Multisampled: TextureType {}
 #[marker] pub unsafe trait PixelTransfer: TextureType {}
+#[marker] pub unsafe trait CompressedTransfer: PixelTransfer {}
 #[marker] pub unsafe trait BaseImage: TextureType {}
 #[marker] pub unsafe trait CubeMapped: TextureType {}
 #[marker] pub unsafe trait Layered: TextureType {}
@@ -154,6 +156,14 @@ unsafe impl PixelTransfer for TEXTURE_2D_ARRAY { }
 unsafe impl PixelTransfer for TEXTURE_RECTANGLE { }
 unsafe impl PixelTransfer for TEXTURE_CUBE_MAP {}
 unsafe impl PixelTransfer for TEXTURE_CUBE_MAP_ARRAY {}
+
+unsafe impl CompressedTransfer for TEXTURE_1D { }
+unsafe impl CompressedTransfer for TEXTURE_2D { }
+unsafe impl CompressedTransfer for TEXTURE_3D { }
+unsafe impl CompressedTransfer for TEXTURE_1D_ARRAY { }
+unsafe impl CompressedTransfer for TEXTURE_2D_ARRAY { }
+unsafe impl CompressedTransfer for TEXTURE_CUBE_MAP {}
+unsafe impl CompressedTransfer for TEXTURE_CUBE_MAP_ARRAY {}
 
 unsafe impl Mipmapped for TEXTURE_1D {}
 unsafe impl Mipmapped for TEXTURE_2D {}

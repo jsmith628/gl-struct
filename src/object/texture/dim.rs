@@ -14,6 +14,7 @@ pub unsafe trait TexDim: Sized + Copy + Eq + Hash + Debug {
     #[inline] fn width(&self) -> usize {1}
     #[inline] fn height(&self) -> usize {1}
     #[inline] fn depth(&self) -> usize {1}
+    #[inline] fn into_array(&self) -> [usize;3] {[self.width(), self.height(), self.depth()]}
 
 }
 
