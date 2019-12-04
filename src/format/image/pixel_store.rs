@@ -14,6 +14,19 @@ pub struct PixelStoreSettings {
 
 impl PixelStoreSettings {
 
+    pub fn from<I:ImageSrc>(img:&I) -> Self {
+        PixelStoreSettings {
+            swap_bytes: img.swap_bytes(),
+            lsb_first: img.lsb_first(),
+            row_alignment: img.row_alignment(),
+            skip_pixels: img.skip_pixels(),
+            skip_rows: img.skip_rows(),
+            skip_images: img.skip_images(),
+            row_length: img.row_length(),
+            image_height: img.image_height(),
+        }
+    }
+
     pub unsafe fn apply_unpacking(self) {
         gl::PixelStorei(gl::UNPACK_SWAP_BYTES,   self.swap_bytes.into());
         gl::PixelStorei(gl::UNPACK_LSB_FIRST,    self.lsb_first.into());

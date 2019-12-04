@@ -2,17 +2,24 @@ use super::*;
 
 macro_rules! impl_img_src_slice {
     (for<$($a:lifetime,)* $P:ident $(, $A:ident:$bound:ident)* > $ty:ty) => {
-        impl<$($a,)* $($A:$bound,)* $P> ImageSrc for $ty {
+        unsafe impl<$($a,)* $($A:$bound,)* $P> ImageSrc for $ty {
 
-            type Pixel = $P;
+            type Pixels = [$P];
 
             fn swap_bytes(&self) -> bool {false}
             fn lsb_first(&self) -> bool {false}
             fn row_alignment(&self) -> PixelRowAlignment {PixelRowAlignment(1)}
 
+            fn row_length(&self) -> usize {self.len()}
+            fn image_height(&self) -> usize {1}
+
             fn width(&self) -> usize {self.len()}
             fn height(&self) -> usize {1}
             fn depth(&self) -> usize {1}
+
+            fn skip_pixels(&self) -> usize {0}
+            fn skip_rows(&self) -> usize {0}
+            fn skip_images(&self) -> usize {0}
 
             fn pixels(&self) -> PixelPtr<[$P]> { self.pixel_ptr() }
 
@@ -23,7 +30,7 @@ macro_rules! impl_img_src_slice {
 macro_rules! impl_img_dst_slice {
     (for<$($a:lifetime,)* $P:ident $(, $A:ident:$bound:ident)* > $ty:ty) => {
         impl_img_src_slice!(for<$($a,)* $P $(, $A:$bound)* > $ty);
-        impl<$($a,)* $($A:$bound,)* $P> ImageDst for $ty {
+        unsafe impl<$($a,)* $($A:$bound,)* $P> ImageDst for $ty {
             fn pixels_mut(&mut self) -> PixelPtrMut<[$P]> { self.pixel_ptr_mut() }
         }
     }
@@ -31,7 +38,7 @@ macro_rules! impl_img_dst_slice {
 
 macro_rules! impl_own_img_slice {
     (for<$($a:lifetime,)* $P:ident $(, $A:ident:$bound:ident)* > $ty:ty) => {
-        impl<$($a,)* $($A:$bound,)* $P> OwnedImage for $ty {
+        unsafe impl<$($a,)* $($A:$bound,)* $P> OwnedImage for $ty {
 
             type GL = <Self as FromPixels>::GL;
             type Hint = <Self as FromPixels>::Hint;
@@ -68,9 +75,9 @@ impl_own_img_slice!(for<P,A:Initialized> Buffer<[P],A>);
 
 macro_rules! impl_img_src_deref {
     (for<$($a:lifetime,)* $P:ident> $ty:ty) => {
-        impl<$($a,)* $P:ImageSrc+?Sized> ImageSrc for $ty {
+        unsafe impl<$($a,)* $P:ImageSrc+?Sized> ImageSrc for $ty {
 
-            type Pixel = $P::Pixel;
+            type Pixels = $P::Pixels;
 
             fn swap_bytes(&self) -> bool { (&**self).swap_bytes() }
             fn lsb_first(&self) -> bool { (&**self).lsb_first() }
@@ -87,11 +94,7 @@ macro_rules! impl_img_src_deref {
             fn height(&self) -> usize { (&**self).height() }
             fn depth(&self) -> usize { (&**self).depth() }
 
-            fn dim(&self) -> [usize; 3] { (&**self).dim() }
-            fn pixel_count(&self) -> usize { (&**self).pixel_count() }
-            fn settings(&self) -> PixelStoreSettings { (&**self).settings() }
-
-            fn pixels(&self) -> PixelPtr<[Self::Pixel]> { (&**self).pixels() }
+            fn pixels(&self) -> PixelPtr<Self::Pixels> { (&**self).pixels() }
 
         }
     }
@@ -100,8 +103,8 @@ macro_rules! impl_img_src_deref {
 macro_rules! impl_img_dst_deref {
     (for<$($a:lifetime,)* $P:ident> $ty:ty) => {
         impl_img_src_deref!(for<$($a,)* $P> $ty);
-        impl<$($a,)* $P:ImageDst+?Sized> ImageDst for $ty {
-            fn pixels_mut(&mut self) -> PixelPtrMut<[Self::Pixel]> { (&mut **self).pixels_mut() }
+        unsafe impl<$($a,)* $P:ImageDst+?Sized> ImageDst for $ty {
+            fn pixels_mut(&mut self) -> PixelPtrMut<Self::Pixels> { (&mut **self).pixels_mut() }
         }
     }
 }

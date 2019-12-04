@@ -43,10 +43,6 @@ pub struct TexImageMut<'a,F,T:TextureTarget<F>> {
     pub(super) tex: PhantomData<&'a mut Texture<F,T>>
 }
 
-pub trait TexImageSrc<F:InternalFormat> = ImageSrc where <Self as ImageSrc>::Pixel: Pixel<<F as InternalFormat>::ClientFormat>;
-pub trait TexImageDst<F:InternalFormat> = ImageDst + TexImageSrc<F>;
-pub trait OwnedTexImage<F:InternalFormat> = OwnedImage + TexImageSrc<F>;
-
 impl<'a,F,T:TextureTarget<F>> !Sync for TexImage<'a,F,T> {}
 impl<'a,F,T:TextureTarget<F>> !Send for TexImage<'a,F,T> {}
 impl<'a,F,T:TextureTarget<F>> !Sync for TexImageMut<'a,F,T> {}
@@ -163,7 +159,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImage<'a,F,T> {
 
     pub fn get_image<I:TexImageDst<F>>(&self, data: &mut I) {
         dest_size_check(self.dim(), data);
-        unsafe { self.pack(data.settings(), data.pixels_mut()); }
+        unsafe { self.pack(PixelStoreSettings::from(data), data.pixels_mut()); }
     }
 
     pub fn into_image<I:OwnedTexImage<F>>(&self, hint:I::Hint) -> I where T::GL: Supports<I::GL> {
@@ -223,7 +219,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImageMut<'a,F,T> {
         I:TexImageSrc<F>
     >(&self, data: &I, gl:GL) {
 
-        let mut settings = data.settings();
+        let mut settings = PixelStoreSettings::from(data);
         settings.swap_bytes ^= I::Pixel::swap_bytes();
         settings.lsb_first ^= I::Pixel::lsb_first();
         settings.apply_unpacking();
@@ -247,7 +243,10 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImageMut<'a,F,T> {
 
     pub(super) unsafe fn image_unchecked<I:TexImageSrc<F>>(&mut self, data: &I) {
 
-        if data.pixel_count()==0 { panic!("Attempted to create a zero-sized texture image"); }
+        if data.width()==0 || data.height()==0 || data.depth()==0 {
+            panic!("Attempted to create a zero-sized texture image");
+        }
+
         if T::glenum() == gl::TEXTURE_CUBE_MAP_ARRAY && data.depth()%6 != 0 {
             panic!("Attempted to make a cube-map array with a depth not divisible by 6 ");
         }
@@ -271,7 +270,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImageMut<'a,F,T> {
 
     unsafe fn sub_image_unchecked<I:TexImageSrc<F>>(&mut self, offset:T::Dim, data: &I) {
 
-        if data.pixel_count()==0 { return; }
+        if data.width()==0 || data.height()==0 || data.depth()==0 { return; }
         let (x, y, z) = (offset.width() as GLsizei, offset.height() as GLsizei, offset.depth() as GLsizei);
 
         self.unpack(

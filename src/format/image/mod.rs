@@ -21,58 +21,57 @@ use std::convert::TryInto;
 use object::buffer::*;
 use context::*;
 
-pub trait ImageSrc {
+pub unsafe trait ImageSrc {
 
-    type Pixel;
+    type Pixels: ?Sized;
 
     fn swap_bytes(&self) -> bool;
     fn lsb_first(&self) -> bool;
     fn row_alignment(&self) -> PixelRowAlignment;
 
-    fn skip_pixels(&self) -> usize {0}
-    fn skip_rows(&self) -> usize {0}
-    fn skip_images(&self) -> usize {0}
-
-    fn row_length(&self) -> usize {self.width()}
-    fn image_height(&self) -> usize {self.height()}
+    fn row_length(&self) -> usize;
+    fn image_height(&self) -> usize;
 
     fn width(&self) -> usize;
     fn height(&self) -> usize;
     fn depth(&self) -> usize;
 
-    fn dim(&self) -> [usize; 3] { [self.width(), self.height(), self.depth()] }
+    fn skip_pixels(&self) -> usize;
+    fn skip_rows(&self) -> usize;
+    fn skip_images(&self) -> usize;
 
-    //since the image is already allocated, we can assume that the size does not overflow
-    fn pixel_count(&self) -> usize { self.width() * self.height() * self.depth() }
-
-    fn settings(&self) -> PixelStoreSettings {
-        PixelStoreSettings {
-            swap_bytes: self.swap_bytes(),
-            lsb_first: self.lsb_first(),
-            row_alignment: self.row_alignment(),
-            skip_pixels: self.skip_pixels(),
-            skip_rows: self.skip_rows(),
-            skip_images: self.skip_images(),
-            row_length: self.row_length(),
-            image_height: self.image_height(),
-        }
-    }
-
-    fn pixels(&self) -> PixelPtr<[Self::Pixel]>;
+    fn pixels(&self) -> PixelPtr<Self::Pixels>;
 
 }
 
-pub trait ImageDst: ImageSrc {
-    fn pixels_mut(&mut self) -> PixelPtrMut<[Self::Pixel]>;
+pub unsafe trait ImageDst: ImageSrc {
+    fn pixels_mut(&mut self) -> PixelPtrMut<Self::Pixels>;
 }
 
-pub trait OwnedImage: ImageSrc {
+pub unsafe trait OwnedImage: ImageSrc {
     type GL: GLVersion;
     type Hint;
-    unsafe fn from_gl<G:FnOnce(PixelStoreSettings, PixelPtrMut<[Self::Pixel]>)>(
+    unsafe fn from_gl<G:FnOnce(PixelStoreSettings, PixelPtrMut<Self::Pixels>)>(
         gl:&Self::GL, hint:Self::Hint, dim: [usize;3], get:G
     ) -> Self;
 }
+
+pub trait UncompressedImage: ImageSrc { type Pixel; }
+pub trait CompressedImage: ImageSrc { type Format: SpecificCompressed; }
+
+pub trait TexImageSrc<F:InternalFormat> =
+    UncompressedImage + ImageSrc<Pixels=[<Self as UncompressedImage>::Pixel]>
+where
+    <Self as UncompressedImage>::Pixel: Pixel<<F as InternalFormat>::ClientFormat>;
+
+pub trait TexImageDst<F:InternalFormat> = TexImageSrc<F> + ImageDst;
+pub trait OwnedTexImage<F:InternalFormat> = TexImageSrc<F> + OwnedImage;
+
+pub trait CompressedImageSrc =
+    CompressedImage + ImageSrc<Pixels=CompressedPixels<<Self as CompressedImage>::Format>>;
+
+pub trait CompressedImageDst = CompressedImageSrc + ImageDst;
+pub trait OwnedCompressedImage = CompressedImageSrc + OwnedImage;
 
 
 
