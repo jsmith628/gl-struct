@@ -61,4 +61,16 @@ impl<T:TextureType> UninitTex<T> {
         tex
     }
 
+    #[allow(unused_variables)]
+    pub fn compressed_image<F,I>(self, gl: &F::GL, data: &I) -> Texture<F,T> where
+        F: SpecificCompressed,
+        I: CompressedImageSrc<Format=F>,
+        T: CompressedTransferTarget<F> + BaseImage
+    {
+        let mut tex = Texture { id:self.id(), phantom:PhantomData };
+        unsafe { tex.base_image_mut().compressed_image_unchecked(data); }
+        forget(self);
+        tex
+    }
+
 }

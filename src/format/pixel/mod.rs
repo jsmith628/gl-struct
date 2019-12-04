@@ -21,6 +21,15 @@ pub enum PixelPtr<P:?Sized> {
     Buffer(GLuint, *const P)
 }
 
+impl<P:?Sized> PixelPtr<P> {
+    pub fn size(self) -> usize {
+        match self {
+            Self::Slice(ptr) => unsafe { ::std::mem::size_of_val(&*ptr) },
+            Self::Buffer(_,ptr) => unsafe { ::std::mem::size_of_val(&*ptr) },
+        }
+    }
+}
+
 impl<P> PixelPtr<[P]> {
     pub fn len(self) -> usize {
         match self {
@@ -34,6 +43,15 @@ impl<P> PixelPtr<[P]> {
 pub enum PixelPtrMut<P:?Sized> {
     Slice(*mut P),
     Buffer(GLuint, *mut P)
+}
+
+impl<P:?Sized> PixelPtrMut<P> {
+    pub fn size(self) -> usize {
+        match self {
+            Self::Slice(ptr) => unsafe { ::std::mem::size_of_val(&*ptr) },
+            Self::Buffer(_,ptr) => unsafe { ::std::mem::size_of_val(&*ptr) },
+        }
+    }
 }
 
 impl<P> PixelPtrMut<[P]> {
