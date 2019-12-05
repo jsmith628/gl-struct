@@ -41,17 +41,20 @@ unsafe impl<F:SpecificCompressed> SizedFormat for F {}
 #[marker] pub unsafe trait Renderable: InternalFormat {}
 #[marker] pub unsafe trait ReqRenderBuffer: Renderable {}
 
-#[marker] pub unsafe trait FloatFormat: InternalFormat<ClientFormat = ClientFormatFloat> + ColorFormat {}
-#[marker] pub unsafe trait IntFormat: InternalFormat<ClientFormat = ClientFormatInt> + ColorFormat {}
-#[marker] pub unsafe trait UIntFormat: InternalFormat<ClientFormat = ClientFormatInt> + ColorFormat {}
-#[marker] pub unsafe trait DepthFormat: InternalFormat<ClientFormat = ClientFormatDepth> {}
-#[marker] pub unsafe trait StencilFormat: InternalFormat<ClientFormat = ClientFormatStencil> {}
-#[marker] pub unsafe trait DepthStencilFormat: InternalFormat<ClientFormat = ClientFormatDepthStencil> {}
-
 #[marker] pub unsafe trait RedFormat: ColorFormat {}
 #[marker] pub unsafe trait RGFormat: ColorFormat {}
 #[marker] pub unsafe trait RGBFormat: ColorFormat {}
 #[marker] pub unsafe trait RGBAFormat: ColorFormat {}
+
+#[marker] pub unsafe trait SignedFormat: InternalFormat {}
+#[marker] pub unsafe trait UnsignedFormat: InternalFormat {}
+
+pub trait FloatFormat = InternalFormat<ClientFormat = ClientFormatFloat> + ColorFormat;
+pub trait IntFormat = InternalFormat<ClientFormat = ClientFormatInt> + ColorFormat + SignedFormat;
+pub trait UIntFormat = InternalFormat<ClientFormat = ClientFormatInt> + ColorFormat + UnsignedFormat;
+pub trait DepthFormat = InternalFormat<ClientFormat = ClientFormatDepth>;
+pub trait StencilFormat = InternalFormat<ClientFormat = ClientFormatStencil>;
+pub trait DepthStencilFormat = InternalFormat<ClientFormat = ClientFormatDepthStencil>;
 
 #[marker] pub unsafe trait ViewCompatible<F:SizedFormat>: SizedFormat {}
 #[marker] pub unsafe trait ImageCompatible<F:SizedPixelFormat>: SizedPixelFormat {}
@@ -130,6 +133,16 @@ macro_rules! internal_format {
         unsafe impl RGBAFormat for $fmt {}
     };
 
+    (@$kind:ident $fmt:ident: usign + $($tt:tt)*) => {
+        unsafe impl UnsignedFormat for $fmt {}
+        internal_format!(@$kind $fmt: $($tt)*);
+    };
+
+    (@$kind:ident $fmt:ident: sign + $($tt:tt)*) => {
+        unsafe impl SignedFormat for $fmt {}
+        internal_format!(@$kind $fmt: $($tt)*);
+    };
+
     (@$kind:ident $fmt:ident: cmpr + $($tt:tt)*) => {
         unsafe impl ColorFormat for $fmt {}
         unsafe impl CompressedFormat for $fmt {}
@@ -169,8 +182,6 @@ macro_rules! internal_format {
             #[inline] fn glenum() -> GLenum {gl::$fmt}
         }
 
-        unsafe impl $kind for $fmt {}
-
         internal_format!(@$kind $($tt)*);
 
     };
@@ -186,154 +197,154 @@ macro_rules! internal_format {
 internal_format! {
     pub enum FloatFormat {
         //Base Internal Formats (ie let the implementation decide the specifics)
-        RED: req_rend + GL30,
-        RG: req_rend + GL30,
-        RGB: req_rend + GL11,
-        RGBA: req_rend + GL11,
-        COMPRESSED_RED: cmpr + GL30,
-        COMPRESSED_RG: cmpr + GL30,
-        COMPRESSED_RGB: cmpr + GL13,
-        COMPRESSED_RGBA: cmpr + GL13,
-        COMPRESSED_SRGB: cmpr + GL21,
-        COMPRESSED_SRGB_ALPHA: cmpr + GL21,
+        RED: req_rend + usign + GL30,
+        RG: req_rend + usign + GL30,
+        RGB: req_rend + usign + GL11,
+        RGBA: req_rend + usign + GL11,
+        COMPRESSED_RED: cmpr + usign + GL30,
+        COMPRESSED_RG: cmpr + usign + GL30,
+        COMPRESSED_RGB: cmpr + usign + GL13,
+        COMPRESSED_RGBA: cmpr + usign + GL13,
+        COMPRESSED_SRGB: cmpr + usign + GL21,
+        COMPRESSED_SRGB_ALPHA: cmpr + usign + GL21,
 
         //
         //fixed-point (normalized integer)
         //
 
         //Red
-        R8[8]: req_rend + GL30,
-        R8_SNORM[8]: cr + GL31,
-        R16[16]: req_rend + GL30,
-        R16_SNORM[16]: cr + GL31,
+        R8[8]: req_rend + usign + GL30,
+        R8_SNORM[8]: cr + sign + GL31,
+        R16[16]: req_rend + usign + GL30,
+        R16_SNORM[16]: cr + sign + GL31,
 
         //RG
-        RG8[8,8]: req_rend + GL30,
-        RG8_SNORM[8,8]: cr + GL31,
-        RG16[16,16]: req_rend + GL30,
-        RG16_SNORM[16,16]: cr + GL31,
+        RG8[8,8]: req_rend + usign + GL30,
+        RG8_SNORM[8,8]: cr + sign + GL31,
+        RG16[16,16]: req_rend + usign + GL30,
+        RG16_SNORM[16,16]: cr + sign + GL31,
 
         //RGB
-        R3_G3_B2[3,3,2]: cr + GL11,
-        RGB4[4,4,4]: cr + GL11,
-        RGB5[4,4,4]: cr + GL11,
-        RGB565[5,6,5]: req_rend + GL42,
-        RGB8[8,8,8]: cr + GL11,
-        RGB8_SNORM[8,8,8]: cr + GL31,
-        RGB10[10,10,10]: cr + GL11,
-        RGB12[12,12,12]: cr + GL11,
-        RGB16[16,16,16]: cr + GL11,
-        RGB16_SNORM[16,16,16]: cr + GL31,
+        R3_G3_B2[3,3,2]: cr + usign + GL11,
+        RGB4[4,4,4]: cr + usign + GL11,
+        RGB5[4,4,4]: cr + usign + GL11,
+        RGB565[5,6,5]: req_rend + usign + GL42,
+        RGB8[8,8,8]: cr + usign + GL11,
+        RGB8_SNORM[8,8,8]: cr + sign + GL31,
+        RGB10[10,10,10]: cr + usign + GL11,
+        RGB12[12,12,12]: cr + usign + GL11,
+        RGB16[16,16,16]: cr + usign + GL11,
+        RGB16_SNORM[16,16,16]: cr + sign + GL31,
 
         //RGBA
-        RGBA2[2,2,2,2]: cr + GL11,
-        RGBA4[4,4,4,4]: req_rend + GL11,
-        RGB5_A1[5,5,5,1]: req_rend + GL11,
-        RGBA8[8,8,8,8]: req_rend + GL11,
-        RGBA8_SNORM[8,8,8,8]: cr + GL31,
-        RGB10_A2[10,10,10,2]: req_rend + GL11,
-        RGBA12[12,12,12,12]: cr + GL11,
-        RGBA16[16,16,16,16]: req_rend + GL11,
-        RGBA16_SNORM[16,16,16,16]: cr + GL31,
-        RGB9_E5: GL30,
+        RGBA2[2,2,2,2]: cr + usign + GL11,
+        RGBA4[4,4,4,4]: req_rend + usign + GL11,
+        RGB5_A1[5,5,5,1]: req_rend + usign + GL11,
+        RGBA8[8,8,8,8]: req_rend + usign + GL11,
+        RGBA8_SNORM[8,8,8,8]: cr + sign + GL31,
+        RGB10_A2[10,10,10,2]: req_rend + usign + GL11,
+        RGBA12[12,12,12,12]: cr + usign + GL11,
+        RGBA16[16,16,16,16]: req_rend + usign + GL11,
+        RGBA16_SNORM[16,16,16,16]: cr + sign + GL31,
+        RGB9_E5: usign + GL30,
 
         //sRGB
-        SRGB8[8,8,8]: cr + GL21,
-        SRGB8_ALPHA8[8,8,8,8]: req_rend + GL21,
+        SRGB8[8,8,8]: cr + usign + GL21,
+        SRGB8_ALPHA8[8,8,8,8]: req_rend + usign + GL21,
 
         //
         //floating point
         //
 
         //half-precision float
-        R16F[16]: req_rend + GL30,
-        RG16F[16,16]: req_rend + GL30,
-        RGB16F[16,16,16]: cr + GL30,
-        RGBA16F[16,16,16,16]: req_rend + GL30, //Half-float
+        R16F[16]: req_rend + sign + GL30,
+        RG16F[16,16]: req_rend + sign + GL30,
+        RGB16F[16,16,16]: cr + sign + GL30,
+        RGBA16F[16,16,16,16]: req_rend + sign + GL30, //Half-float
 
         //single-precision float
-        R32F[32]: req_rend + GL30,
-        RG32F[32,32]: req_rend + GL30,
-        RGB32F[32,32,32]: cr + GL30,
-        RGBA32F[32,32,32,32]: req_rend + GL30,
+        R32F[32]: req_rend + sign + GL30,
+        RG32F[32,32]: req_rend + sign + GL30,
+        RGB32F[32,32,32]: cr + sign + GL30,
+        RGBA32F[32,32,32,32]: req_rend + sign + GL30,
 
         //weird-ass float
-        R11F_G11F_B10F[11,11,10]: req_rend + GL30,
+        R11F_G11F_B10F[11,11,10]: req_rend + sign + GL30,
 
         //
         //compressed
         //
 
         //Red-green Texture Compression
-        COMPRESSED_RED_RGTC1[u64; 4, 4, 1]: GL30,
-        COMPRESSED_SIGNED_RED_RGTC1[u64; 4, 4, 1]: GL30,
-        COMPRESSED_RG_RGTC2[[u64;2]; 4, 4, 1]: GL30,
-        COMPRESSED_SIGNED_RG_RGTC2[[u64;2]; 4, 4, 1]: GL30,
+        COMPRESSED_RED_RGTC1[u64; 4, 4, 1]: usign + GL30,
+        COMPRESSED_SIGNED_RED_RGTC1[u64; 4, 4, 1]: sign + GL30,
+        COMPRESSED_RG_RGTC2[[u64;2]; 4, 4, 1]: usign + GL30,
+        COMPRESSED_SIGNED_RG_RGTC2[[u64;2]; 4, 4, 1]: sign + GL30,
 
         //BPTC
-        COMPRESSED_RGBA_BPTC_UNORM[u128; 4, 4, 1]: GL42,
-        COMPRESSED_SRGB_ALPHA_BPTC_UNORM[u128; 4, 4, 1]: GL42,
-        COMPRESSED_RGB_BPTC_SIGNED_FLOAT[u128; 4, 4, 1]: GL42,
-        COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT[u128; 4, 4, 1]: GL42,
+        COMPRESSED_RGBA_BPTC_UNORM[u128; 4, 4, 1]: usign + GL42,
+        COMPRESSED_SRGB_ALPHA_BPTC_UNORM[u128; 4, 4, 1]: usign + GL42,
+        COMPRESSED_RGB_BPTC_SIGNED_FLOAT[u128; 4, 4, 1]: sign + GL42,
+        COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT[u128; 4, 4, 1]: usign + GL42,
 
         //Ericsson Texture Compression
-        COMPRESSED_RGB8_ETC2[u64; 4, 4, 1]: GL43,
-        COMPRESSED_SRGB8_ETC2[u64; 4, 4, 1]: GL43,
-        COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2[u64; 4, 4, 1]: GL43,
-        COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2[u64; 4, 4, 1]: GL43,
-        COMPRESSED_RGBA8_ETC2_EAC[u128; 4, 4, 1]: GL43,
-        COMPRESSED_SRGB8_ALPHA8_ETC2_EAC[u128; 4, 4, 1]: GL43,
-        COMPRESSED_R11_EAC[u64; 4, 4, 1]: GL43,
-        COMPRESSED_SIGNED_R11_EAC[u64; 4, 4, 1]: GL43,
-        COMPRESSED_RG11_EAC[[u64;2]; 4, 4, 1]: GL43,
-        COMPRESSED_SIGNED_RG11_EAC[[u64;2]; 4, 4, 1]: GL43,
+        COMPRESSED_RGB8_ETC2[u64; 4, 4, 1]: usign + GL43,
+        COMPRESSED_SRGB8_ETC2[u64; 4, 4, 1]: usign + GL43,
+        COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2[u64; 4, 4, 1]: usign + GL43,
+        COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2[u64; 4, 4, 1]: usign + GL43,
+        COMPRESSED_RGBA8_ETC2_EAC[u128; 4, 4, 1]: usign + GL43,
+        COMPRESSED_SRGB8_ALPHA8_ETC2_EAC[u128; 4, 4, 1]: usign + GL43,
+        COMPRESSED_R11_EAC[u64; 4, 4, 1]: usign + GL43,
+        COMPRESSED_SIGNED_R11_EAC[u64; 4, 4, 1]: sign + GL43,
+        COMPRESSED_RG11_EAC[[u64;2]; 4, 4, 1]: usign + GL43,
+        COMPRESSED_SIGNED_RG11_EAC[[u64;2]; 4, 4, 1]: sign + GL43,
     }
 
     pub enum IntFormat {
         //1-component
-        R8I[8]: req_rend + GL30,
-        R16I[16]: req_rend + GL30,
-        R32I[32]: req_rend + GL30,
+        R8I[8]: req_rend + sign + GL30,
+        R16I[16]: req_rend + sign + GL30,
+        R32I[32]: req_rend + sign + GL30,
 
         //2-component
-        RG8I[8,8]: req_rend + GL30,
-        RG16I[16,16]: req_rend + GL30,
-        RG32I[32,32]: req_rend + GL30,
+        RG8I[8,8]: req_rend + sign + GL30,
+        RG16I[16,16]: req_rend + sign + GL30,
+        RG32I[32,32]: req_rend + sign + GL30,
 
         //3-component
-        RGB8I[8,8,8]: cr + GL30,
-        RGB16I[16,16,16]: cr + GL30,
-        RGB32I[32,32,32]: cr + GL30,
+        RGB8I[8,8,8]: cr + sign + GL30,
+        RGB16I[16,16,16]: cr + sign + GL30,
+        RGB32I[32,32,32]: cr + sign + GL30,
 
         //4-component
-        RGBA8I[8,8,8,8]: req_rend + GL30,
-        RGBA16I[16,16,16,16]: req_rend + GL30,
-        RGBA32I[32,32,32,32]: req_rend + GL30,
+        RGBA8I[8,8,8,8]: req_rend + sign + GL30,
+        RGBA16I[16,16,16,16]: req_rend + sign + GL30,
+        RGBA32I[32,32,32,32]: req_rend + sign + GL30,
     }
 
     pub enum UIntFormat {
         //1-component
-        R8UI[8]: req_rend + GL30,
-        R16UI[16]: req_rend + GL30,
-        R32UI[32]: req_rend + GL30,
+        R8UI[8]: req_rend + usign + GL30,
+        R16UI[16]: req_rend + usign + GL30,
+        R32UI[32]: req_rend + usign + GL30,
 
         //2-component
-        RG8UI[8,8]: req_rend + GL30,
-        RG16UI[16,16]: req_rend + GL30,
-        RG32UI[32,32]: req_rend + GL30,
+        RG8UI[8,8]: req_rend + usign + GL30,
+        RG16UI[16,16]: req_rend + usign + GL30,
+        RG32UI[32,32]: req_rend + usign + GL30,
 
         //3-component
-        RGB8UI[8,8,8]: cr + GL30,
-        RGB16UI[16,16,16]: cr + GL30,
-        RGB32UI[32,32,32]: cr + GL30,
+        RGB8UI[8,8,8]: cr + usign + GL30,
+        RGB16UI[16,16,16]: cr + usign + GL30,
+        RGB32UI[32,32,32]: cr + usign + GL30,
 
         //4-component
-        RGBA8UI[8,8,8,8]: req_rend + GL30,
-        RGBA16UI[16,16,16,16]: req_rend + GL30,
-        RGBA32UI[32,32,32,32]: req_rend + GL30,
+        RGBA8UI[8,8,8,8]: req_rend + usign + GL30,
+        RGBA16UI[16,16,16,16]: req_rend + usign + GL30,
+        RGBA32UI[32,32,32,32]: req_rend + usign + GL30,
 
         //Weird shit
-        RGB10_A2UI[10,10,10,2]: req_rend + GL33,
+        RGB10_A2UI[10,10,10,2]: req_rend + usign + GL33,
     }
 
     pub enum DepthFormat {
