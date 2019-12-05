@@ -58,11 +58,16 @@ pub trait DepthFormat = InternalFormat<ClientFormat = ClientFormatDepth>;
 pub trait StencilFormat = InternalFormat<ClientFormat = ClientFormatStencil>;
 pub trait DepthStencilFormat = InternalFormat<ClientFormat = ClientFormatDepthStencil>;
 
-#[marker] pub unsafe trait ViewCompatible<F:SizedFormat>: SizedFormat {}
-#[marker] pub unsafe trait ImageCompatible<F:SizedPixelFormat>: SizedPixelFormat {}
+pub unsafe trait BufferTextureFormat: ColorFormat {
+    type Pixel: Pixel<Self::ClientFormat>;
+}
 
+#[marker] pub unsafe trait ViewCompatible<F:SizedFormat>: SizedFormat {}
 unsafe impl<F:SizedFormat> ViewCompatible<F> for F {}
-unsafe impl<F:SizedPixelFormat> ImageCompatible<F> for F {}
+
+#[marker] pub unsafe trait ImageLoadStore: SizedPixelFormat {}
+pub trait ImageCompatible<F:SizedPixelFormat> = ViewCompatible<F> + ImageLoadStore;
+
 
 macro_rules! internal_format {
 
@@ -133,6 +138,11 @@ macro_rules! internal_format {
         }
         unsafe impl ColorFormat for $fmt {}
         unsafe impl RGBAFormat for $fmt {}
+    };
+
+    (@$kind:ident $fmt:ident: img + $($tt:tt)*) => {
+        unsafe impl ImageLoadStore for $fmt {}
+        internal_format!(@$kind $fmt: $($tt)*);
     };
 
     (@$kind:ident $fmt:ident: usign + $($tt:tt)*) => {
@@ -219,16 +229,16 @@ internal_format! {
         //
 
         //Red
-        R8[8]: req_rend + usign + GL30,
-        R8_SNORM[8]: cr + sign + GL31,
-        R16[16]: req_rend + usign + GL30,
-        R16_SNORM[16]: cr + sign + GL31,
+        R8[8]: img + req_rend + usign + GL30,
+        R8_SNORM[8]: img + cr + sign + GL31,
+        R16[16]: img + req_rend + usign + GL30,
+        R16_SNORM[16]: img + cr + sign + GL31,
 
         //RG
-        RG8[8,8]: req_rend + usign + GL30,
-        RG8_SNORM[8,8]: cr + sign + GL31,
-        RG16[16,16]: req_rend + usign + GL30,
-        RG16_SNORM[16,16]: cr + sign + GL31,
+        RG8[8,8]: img + req_rend + usign + GL30,
+        RG8_SNORM[8,8]: img + cr + sign + GL31,
+        RG16[16,16]: img + req_rend + usign + GL30,
+        RG16_SNORM[16,16]: img + cr + sign + GL31,
 
         //RGB
         R3_G3_B2[3,3,2]: cr + usign + GL11,
@@ -246,12 +256,12 @@ internal_format! {
         RGBA2[2,2,2,2]: cr + usign + GL11,
         RGBA4[4,4,4,4]: req_rend + usign + GL11,
         RGB5_A1[5,5,5,1]: req_rend + usign + GL11,
-        RGBA8[8,8,8,8]: req_rend + usign + GL11,
-        RGBA8_SNORM[8,8,8,8]: cr + sign + GL31,
-        RGB10_A2[10,10,10,2]: req_rend + usign + GL11,
+        RGBA8[8,8,8,8]: img + req_rend + usign + GL11,
+        RGBA8_SNORM[8,8,8,8]: img + cr + sign + GL31,
+        RGB10_A2[10,10,10,2]: img + req_rend + usign + GL11,
         RGBA12[12,12,12,12]: cr + usign + GL11,
-        RGBA16[16,16,16,16]: req_rend + usign + GL11,
-        RGBA16_SNORM[16,16,16,16]: cr + sign + GL31,
+        RGBA16[16,16,16,16]: img + req_rend + usign + GL11,
+        RGBA16_SNORM[16,16,16,16]: img + cr + sign + GL31,
         RGB9_E5: usign + GL30,
 
         //sRGB
@@ -263,19 +273,19 @@ internal_format! {
         //
 
         //half-precision float
-        R16F[16]: req_rend + sign + GL30,
-        RG16F[16,16]: req_rend + sign + GL30,
+        R16F[16]: img + req_rend + sign + GL30,
+        RG16F[16,16]: img + req_rend + sign + GL30,
         RGB16F[16,16,16]: cr + sign + GL30,
-        RGBA16F[16,16,16,16]: req_rend + sign + GL30, //Half-float
+        RGBA16F[16,16,16,16]: img + req_rend + sign + GL30, //Half-float
 
         //single-precision float
-        R32F[32]: req_rend + sign + GL30,
+        R32F[32]: img + req_rend + sign + GL30,
         RG32F[32,32]: req_rend + sign + GL30,
-        RGB32F[32,32,32]: cr + sign + GL30,
-        RGBA32F[32,32,32,32]: req_rend + sign + GL30,
+        RGB32F[32,32,32]: img + cr + sign + GL30,
+        RGBA32F[32,32,32,32]: img + req_rend + sign + GL30,
 
         //weird-ass float
-        R11F_G11F_B10F[11,11,10]: req_rend + sign + GL30,
+        R11F_G11F_B10F[11,11,10]: img + req_rend + sign + GL30,
 
         //
         //compressed
@@ -308,14 +318,14 @@ internal_format! {
 
     pub enum IntFormat {
         //1-component
-        R8I[8]: req_rend + sign + GL30,
-        R16I[16]: req_rend + sign + GL30,
-        R32I[32]: req_rend + sign + GL30,
+        R8I[8]: img + req_rend + sign + GL30,
+        R16I[16]: img + req_rend + sign + GL30,
+        R32I[32]: img + req_rend + sign + GL30,
 
         //2-component
-        RG8I[8,8]: req_rend + sign + GL30,
-        RG16I[16,16]: req_rend + sign + GL30,
-        RG32I[32,32]: req_rend + sign + GL30,
+        RG8I[8,8]: img + req_rend + sign + GL30,
+        RG16I[16,16]: img + req_rend + sign + GL30,
+        RG32I[32,32]: img + req_rend + sign + GL30,
 
         //3-component
         RGB8I[8,8,8]: cr + sign + GL30,
@@ -323,21 +333,21 @@ internal_format! {
         RGB32I[32,32,32]: cr + sign + GL30,
 
         //4-component
-        RGBA8I[8,8,8,8]: req_rend + sign + GL30,
-        RGBA16I[16,16,16,16]: req_rend + sign + GL30,
-        RGBA32I[32,32,32,32]: req_rend + sign + GL30,
+        RGBA8I[8,8,8,8]: img + req_rend + sign + GL30,
+        RGBA16I[16,16,16,16]: img + req_rend + sign + GL30,
+        RGBA32I[32,32,32,32]: img + req_rend + sign + GL30,
     }
 
     pub enum UIntFormat {
         //1-component
-        R8UI[8]: req_rend + usign + GL30,
-        R16UI[16]: req_rend + usign + GL30,
-        R32UI[32]: req_rend + usign + GL30,
+        R8UI[8]: img + req_rend + usign + GL30,
+        R16UI[16]: img + req_rend + usign + GL30,
+        R32UI[32]: img + req_rend + usign + GL30,
 
         //2-component
-        RG8UI[8,8]: req_rend + usign + GL30,
-        RG16UI[16,16]: req_rend + usign + GL30,
-        RG32UI[32,32]: req_rend + usign + GL30,
+        RG8UI[8,8]: img + req_rend + usign + GL30,
+        RG16UI[16,16]: img + req_rend + usign + GL30,
+        RG32UI[32,32]: img + req_rend + usign + GL30,
 
         //3-component
         RGB8UI[8,8,8]: cr + usign + GL30,
@@ -345,12 +355,12 @@ internal_format! {
         RGB32UI[32,32,32]: cr + usign + GL30,
 
         //4-component
-        RGBA8UI[8,8,8,8]: req_rend + usign + GL30,
-        RGBA16UI[16,16,16,16]: req_rend + usign + GL30,
-        RGBA32UI[32,32,32,32]: req_rend + usign + GL30,
+        RGBA8UI[8,8,8,8]: img + req_rend + usign + GL30,
+        RGBA16UI[16,16,16,16]: img + req_rend + usign + GL30,
+        RGBA32UI[32,32,32,32]: img + req_rend + usign + GL30,
 
         //Weird shit
-        RGB10_A2UI[10,10,10,2]: req_rend + usign + GL33,
+        RGB10_A2UI[10,10,10,2]: img + req_rend + usign + GL33,
     }
 
     pub enum DepthFormat {
@@ -442,3 +452,55 @@ compat_with!(COMPRESSED_RED_RGTC1 COMPRESSED_SIGNED_RED_RGTC1; ViewCompatible);
 compat_with!(COMPRESSED_RG_RGTC2 COMPRESSED_SIGNED_RG_RGTC2; ViewCompatible);
 compat_with!(COMPRESSED_RGBA_BPTC_UNORM COMPRESSED_SRGB_ALPHA_BPTC_UNORM; ViewCompatible);
 compat_with!(COMPRESSED_RGB_BPTC_SIGNED_FLOAT COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT; ViewCompatible);
+
+macro_rules! impl_buffer_tex {
+    ($($fmt:ty = $pixel:ty;)*) => {
+        $(
+            unsafe impl BufferTextureFormat for $fmt { type Pixel = $pixel; }
+        )*
+    }
+}
+
+impl_buffer_tex!{
+    //RED
+    R8       = GLubyte;
+    R16      = GLushort;
+//  R16F     = GLhalf;
+    R32F     = GLfloat;
+    R8I      = GLbyte;
+    R16I     = GLshort;
+    R32I     = GLint;
+    R8UI     = GLubyte;
+    R16UI    = GLushort;
+    R32UI    = GLuint;
+
+    //RG
+    RG8      = [GLubyte;  2];
+    RG16     = [GLushort; 2];
+//  RG16F    = [GLhalf;   2];
+    RG32F    = [GLfloat;  2];
+    RG8I     = [GLbyte;   2];
+    RG16I    = [GLshort;  2];
+    RG32I    = [GLint;    2];
+    RG8UI    = [GLubyte;  2];
+    RG16UI   = [GLushort; 2];
+    RG32UI   = [GLuint;   2];
+
+    //RGB
+    RGB32F   = [GLfloat;  3];
+    RGB32I   = [GLint;    3];
+    RGB32UI  = [GLuint;   3];
+
+    //RGBA
+    RGBA8    = [GLubyte;  4];
+    RGBA16   = [GLushort; 4];
+//  RGBA16F  = [GLhalf;   4];
+    RGBA32F  = [GLfloat;  4];
+    RGBA8I   = [GLbyte;   4];
+    RGBA16I  = [GLshort;  4];
+    RGBA32I  = [GLint;    4];
+    RGBA8UI  = [GLubyte;  4];
+    RGBA16UI = [GLushort; 4];
+    RGBA32UI = [GLuint;   4];
+
+}
