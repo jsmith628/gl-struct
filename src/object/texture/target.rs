@@ -127,11 +127,11 @@ pub trait CubeMapTarget<F> = CubeMapped + TextureTarget<F>;
 tex_target! {
     [TEXTURE_1D "Texture 1D"]; GL10; [usize;1],
     [TEXTURE_2D "Texture 2D"]; GL10; [usize;2],
-    [TEXTURE_3D "Texture 3D"]; InternalFormatColor; GL11; [usize;3],
+    [TEXTURE_3D "Texture 3D"]; ColorFormat; GL11; [usize;3],
     [TEXTURE_1D_ARRAY "Texture 1D Array"]; GL30; (<TEXTURE_1D as TextureType>::Dim, usize),
     [TEXTURE_2D_ARRAY "Texture 2D Array"]; GL30; (<TEXTURE_2D as TextureType>::Dim, usize),
     [TEXTURE_RECTANGLE "Texture Rectangle"]; GL31; <TEXTURE_2D as TextureType>::Dim,
-    [TEXTURE_BUFFER "Texture Buffer"]; InternalFormatColor; GL31; usize,
+    [TEXTURE_BUFFER "Texture Buffer"]; ColorFormat; GL31; usize,
     [TEXTURE_CUBE_MAP "Texture Cube Map"]; GL13; <TEXTURE_2D as TextureType>::Dim,
     [TEXTURE_CUBE_MAP_ARRAY "Texture Cube Map Array"]; GL40; <TEXTURE_2D_ARRAY as TextureType>::Dim,
     [TEXTURE_2D_MULTISAMPLE "Texture 2D Multisample"]; Renderable; GL32; <TEXTURE_2D as TextureType>::Dim,

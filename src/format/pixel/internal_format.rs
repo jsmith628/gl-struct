@@ -8,7 +8,8 @@ pub unsafe trait InternalFormat {
     fn glenum() -> GLenum;
 }
 
-pub unsafe trait SizedInternalFormat: InternalFormat {
+#[marker] pub unsafe trait ColorFormat: InternalFormat {}
+pub unsafe trait SizedPixelFormat: SizedFormat {
     #[inline] fn bits() -> u16 {
         Self::red_bits() as u16 + Self::green_bits() as u16 + Self::blue_bits() as u16 +
         Self::alpha_bits() as u16 + Self::depth_bits() as u16 + Self::stencil_bits() as u16 +
@@ -24,8 +25,8 @@ pub unsafe trait SizedInternalFormat: InternalFormat {
     #[inline] fn shared_bits() -> u8 {0}
 }
 
-pub unsafe trait Compressed: InternalFormat {}
-pub unsafe trait SpecificCompressed: Compressed {
+#[marker] pub unsafe trait CompressedFormat: InternalFormat {}
+pub unsafe trait SpecificCompressed: CompressedFormat + SizedFormat {
     type Block: Copy;
     fn block_width() -> u8;
     fn block_height() -> u8;
@@ -33,53 +34,56 @@ pub unsafe trait SpecificCompressed: Compressed {
     #[inline] fn block_size() -> usize { ::std::mem::size_of::<Self::Block>() }
 }
 
-pub unsafe trait InternalFormatColor: InternalFormat {}
-pub unsafe trait Renderable: InternalFormat {}
-pub unsafe trait ReqRenderBuffer: Renderable {}
+#[marker] pub unsafe trait SizedFormat: InternalFormat {}
+unsafe impl<F:SizedPixelFormat> SizedFormat for F {}
+unsafe impl<F:SpecificCompressed> SizedFormat for F {}
 
-pub unsafe trait InternalFormatFloat: InternalFormat<ClientFormat = ClientFormatFloat> + InternalFormatColor {}
-pub unsafe trait InternalFormatInt: InternalFormat<ClientFormat = ClientFormatInt> + InternalFormatColor {}
-pub unsafe trait InternalFormatUInt: InternalFormat<ClientFormat = ClientFormatInt> + InternalFormatColor {}
-pub unsafe trait InternalFormatDepth: InternalFormat<ClientFormat = ClientFormatDepth> {}
-pub unsafe trait InternalFormatStencil: InternalFormat<ClientFormat = ClientFormatStencil> {}
-pub unsafe trait InternalFormatDepthStencil: InternalFormat<ClientFormat = ClientFormatDepthStencil> {}
+#[marker] pub unsafe trait Renderable: InternalFormat {}
+#[marker] pub unsafe trait ReqRenderBuffer: Renderable {}
 
-pub unsafe trait InternalFormatRed: InternalFormatColor {}
-pub unsafe trait InternalFormatRG: InternalFormatColor {}
-pub unsafe trait InternalFormatRGB: InternalFormatColor {}
-pub unsafe trait InternalFormatRGBA: InternalFormatColor {}
+#[marker] pub unsafe trait FloatFormat: InternalFormat<ClientFormat = ClientFormatFloat> + ColorFormat {}
+#[marker] pub unsafe trait IntFormat: InternalFormat<ClientFormat = ClientFormatInt> + ColorFormat {}
+#[marker] pub unsafe trait UIntFormat: InternalFormat<ClientFormat = ClientFormatInt> + ColorFormat {}
+#[marker] pub unsafe trait DepthFormat: InternalFormat<ClientFormat = ClientFormatDepth> {}
+#[marker] pub unsafe trait StencilFormat: InternalFormat<ClientFormat = ClientFormatStencil> {}
+#[marker] pub unsafe trait DepthStencilFormat: InternalFormat<ClientFormat = ClientFormatDepthStencil> {}
 
-pub unsafe trait ViewCompatible<F:InternalFormat>: InternalFormat {}
-pub unsafe trait ImageCompatible<F:SizedInternalFormat>: SizedInternalFormat {}
+#[marker] pub unsafe trait RedFormat: ColorFormat {}
+#[marker] pub unsafe trait RGFormat: ColorFormat {}
+#[marker] pub unsafe trait RGBFormat: ColorFormat {}
+#[marker] pub unsafe trait RGBAFormat: ColorFormat {}
 
-unsafe impl<F:InternalFormat> ViewCompatible<F> for F {}
-unsafe impl<F:SizedInternalFormat> ImageCompatible<F> for F {}
+#[marker] pub unsafe trait ViewCompatible<F:SizedFormat>: SizedFormat {}
+#[marker] pub unsafe trait ImageCompatible<F:SizedPixelFormat>: SizedPixelFormat {}
+
+unsafe impl<F:SizedFormat> ViewCompatible<F> for F {}
+unsafe impl<F:SizedPixelFormat> ImageCompatible<F> for F {}
 
 macro_rules! internal_format {
 
-    (@fmt_ty InternalFormatFloat) => {ClientFormatFloat};
-    (@fmt_ty InternalFormatInt) => {ClientFormatInt};
-    (@fmt_ty InternalFormatUInt) => {ClientFormatInt};
-    (@fmt_ty InternalFormatDepth) => {ClientFormatDepth};
-    (@fmt_ty InternalFormatStencil) => {ClientFormatStencil};
-    (@fmt_ty InternalFormatDepthStencil) => {ClientFormatDepthStencil};
+    (@fmt_ty FloatFormat) => {ClientFormatFloat};
+    (@fmt_ty IntFormat) => {ClientFormatInt};
+    (@fmt_ty UIntFormat) => {ClientFormatInt};
+    (@fmt_ty DepthFormat) => {ClientFormatDepth};
+    (@fmt_ty StencilFormat) => {ClientFormatStencil};
+    (@fmt_ty DepthStencilFormat) => {ClientFormatDepthStencil};
 
     (@sized $fmt:ident ($D:literal)) => {
-        unsafe impl SizedInternalFormat for $fmt {
+        unsafe impl SizedPixelFormat for $fmt {
             #[inline] fn depth_bits() -> u8 {$D}
         }
     };
 
     (@sized $fmt:ident ($D:literal, $S:literal)) => {
-        unsafe impl SizedInternalFormat for $fmt {
+        unsafe impl SizedPixelFormat for $fmt {
             #[inline] fn depth_bits() -> u8 {$D}
             #[inline] fn stencil_bits() -> u8 {$S}
         }
     };
 
     (@sized $fmt:ident [$block:ty; $w:literal, $h:literal, $d:literal]) => {
-        unsafe impl InternalFormatColor for $fmt {}
-        unsafe impl Compressed for $fmt {}
+        unsafe impl ColorFormat for $fmt {}
+        unsafe impl CompressedFormat for $fmt {}
         unsafe impl SpecificCompressed for $fmt {
             type Block = $block;
             fn block_width() -> u8 {$w}
@@ -89,69 +93,68 @@ macro_rules! internal_format {
     };
 
     (@sized $fmt:ident [$R:literal]) => {
-        unsafe impl SizedInternalFormat for $fmt {
+        unsafe impl SizedPixelFormat for $fmt {
             #[inline] fn red_bits() -> u8 {$R}
         }
-        unsafe impl InternalFormatColor for $fmt {}
-        unsafe impl InternalFormatRed for $fmt {}
+        unsafe impl ColorFormat for $fmt {}
+        unsafe impl RedFormat for $fmt {}
     };
 
     (@sized $fmt:ident [$R:literal, $G:literal]) => {
-        unsafe impl SizedInternalFormat for $fmt {
+        unsafe impl SizedPixelFormat for $fmt {
             #[inline] fn red_bits() -> u8 {$R}
             #[inline] fn green_bits() -> u8 {$G}
         }
-        unsafe impl InternalFormatColor for $fmt {}
-        unsafe impl InternalFormatRG for $fmt {}
+        unsafe impl ColorFormat for $fmt {}
+        unsafe impl RGFormat for $fmt {}
     };
 
     (@sized $fmt:ident [$R:literal, $G:literal, $B:literal]) => {
-        unsafe impl SizedInternalFormat for $fmt {
+        unsafe impl SizedPixelFormat for $fmt {
             #[inline] fn red_bits() -> u8 {$R}
             #[inline] fn green_bits() -> u8 {$G}
             #[inline] fn blue_bits() -> u8 {$B}
         }
-        unsafe impl InternalFormatColor for $fmt {}
-        unsafe impl InternalFormatRGB for $fmt {}
+        unsafe impl ColorFormat for $fmt {}
+        unsafe impl RGBFormat for $fmt {}
     };
 
     (@sized $fmt:ident [$R:literal, $G:literal, $B:literal, $A:literal]) => {
-        unsafe impl SizedInternalFormat for $fmt {
+        unsafe impl SizedPixelFormat for $fmt {
             #[inline] fn red_bits() -> u8 {$R}
             #[inline] fn green_bits() -> u8 {$G}
             #[inline] fn blue_bits() -> u8 {$B}
             #[inline] fn alpha_bits() -> u8 {$A}
         }
-        unsafe impl InternalFormatColor for $fmt {}
-        unsafe impl InternalFormatRGBA for $fmt {}
+        unsafe impl ColorFormat for $fmt {}
+        unsafe impl RGBAFormat for $fmt {}
     };
 
-    (@$kind:ident $fmt:ident: cmpr + $GL:tt, $($tt:tt)*) => {
-        unsafe impl InternalFormatColor for $fmt {}
-        unsafe impl Compressed for $fmt {}
-        internal_format!(@$kind $fmt: $GL, $($tt)*);
+    (@$kind:ident $fmt:ident: cmpr + $($tt:tt)*) => {
+        unsafe impl ColorFormat for $fmt {}
+        unsafe impl CompressedFormat for $fmt {}
+        internal_format!(@$kind $fmt: $($tt)*);
     };
 
-    (@$kind:ident $fmt:ident: req_rend + $GL:tt, $($tt:tt)*) => {
+    (@$kind:ident $fmt:ident: cr + $($tt:tt)*) => {
+        unsafe impl Renderable for $fmt {}
+        internal_format!(@$kind $fmt: $($tt)*);
+    };
+
+    (@$kind:ident $fmt:ident: req_rend + $($tt:tt)*) => {
         unsafe impl Renderable for $fmt {}
         unsafe impl ReqRenderBuffer for $fmt {}
-        internal_format!(@$kind $fmt: $GL, $($tt)*);
+        internal_format!(@$kind $fmt: $($tt)*);
     };
 
-    (@$kind:ident $fmt:ident $sizes:tt: cr + $GL:tt, $($tt:tt)*) => {
-        unsafe impl Renderable for $fmt {}
-        internal_format!(@$kind $fmt $sizes: $GL, $($tt)*);
+    (@$kind:ident $fmt:ident ($($sizes:tt)*): $($tt:tt)*) => {
+        internal_format!(@sized $fmt ($($sizes)*));
+        internal_format!(@$kind $fmt: $($tt)*);
     };
 
-    (@$kind:ident $fmt:ident $sizes:tt: req_rend + $GL:tt, $($tt:tt)*) => {
-        unsafe impl Renderable for $fmt {}
-        unsafe impl ReqRenderBuffer for $fmt {}
-        internal_format!(@$kind $fmt $sizes: $GL, $($tt)*);
-    };
-
-    (@$kind:ident $fmt:ident $sizes:tt: $GL:tt, $($tt:tt)*) => {
-        internal_format!(@$kind $fmt: $GL, $($tt)*);
-        internal_format!(@sized $fmt $sizes);
+    (@$kind:ident $fmt:ident [$($sizes:tt)*]: $($tt:tt)*) => {
+        internal_format!(@sized $fmt [$($sizes)*]);
+        internal_format!(@$kind $fmt: $($tt)*);
     };
 
     (@$kind:ident $fmt:ident: $GL:tt, $($tt:tt)*) => {
@@ -181,7 +184,7 @@ macro_rules! internal_format {
 }
 
 internal_format! {
-    pub enum InternalFormatFloat {
+    pub enum FloatFormat {
         //Base Internal Formats (ie let the implementation decide the specifics)
         RED: req_rend + GL30,
         RG: req_rend + GL30,
@@ -286,7 +289,7 @@ internal_format! {
         COMPRESSED_SIGNED_RG11_EAC[[u64;2]; 4, 4, 1]: GL43,
     }
 
-    pub enum InternalFormatInt {
+    pub enum IntFormat {
         //1-component
         R8I[8]: req_rend + GL30,
         R16I[16]: req_rend + GL30,
@@ -308,7 +311,7 @@ internal_format! {
         RGBA32I[32,32,32,32]: req_rend + GL30,
     }
 
-    pub enum InternalFormatUInt {
+    pub enum UIntFormat {
         //1-component
         R8UI[8]: req_rend + GL30,
         R16UI[16]: req_rend + GL30,
@@ -333,7 +336,7 @@ internal_format! {
         RGB10_A2UI[10,10,10,2]: req_rend + GL33,
     }
 
-    pub enum InternalFormatDepth {
+    pub enum DepthFormat {
         DEPTH_COMPONENT: req_rend + GL14, //base internal format
         DEPTH_COMPONENT16(16): req_rend + GL14,
         DEPTH_COMPONENT24(24): req_rend + GL14,
@@ -341,7 +344,7 @@ internal_format! {
         DEPTH_COMPONENT32F(32): req_rend + GL30,
     }
 
-    pub enum InternalFormatStencil {
+    pub enum StencilFormat {
         STENCIL_INDEX: req_rend + GL44, //base internal format
         STENCIL_INDEX1(0,1): cr + !,
         STENCIL_INDEX4(0,4): cr + !,
@@ -349,7 +352,7 @@ internal_format! {
         STENCIL_INDEX16(0,16): cr + !,
     }
 
-    pub enum InternalFormatDepthStencil {
+    pub enum DepthStencilFormat {
         DEPTH_STENCIL: req_rend + GL30, //base internal format
         DEPTH24_STENCIL8(24,8): req_rend + GL30,
         DEPTH32F_STENCIL8(32,8): req_rend + GL30,
@@ -357,43 +360,43 @@ internal_format! {
 }
 
 
-unsafe impl InternalFormatColor for RGB9_E5 {}
-unsafe impl InternalFormatRGB for RGB9_E5 {}
-unsafe impl SizedInternalFormat for RGB9_E5 {
+unsafe impl ColorFormat for RGB9_E5 {}
+unsafe impl RGBFormat for RGB9_E5 {}
+unsafe impl SizedPixelFormat for RGB9_E5 {
     #[inline] fn red_bits() -> u8 {9}
     #[inline] fn green_bits() -> u8 {9}
     #[inline] fn blue_bits() -> u8 {9}
     #[inline] fn shared_bits() -> u8 {5}
 }
 
-unsafe impl InternalFormatColor for RED {}
-unsafe impl InternalFormatRed for RED {}
-unsafe impl InternalFormatColor for RG {}
-unsafe impl InternalFormatRG for RG {}
-unsafe impl InternalFormatColor for RGB {}
-unsafe impl InternalFormatRGB for RGB {}
-unsafe impl InternalFormatColor for RGBA {}
-unsafe impl InternalFormatRGBA for RGBA {}
+unsafe impl ColorFormat for RED {}
+unsafe impl RedFormat for RED {}
+unsafe impl ColorFormat for RG {}
+unsafe impl RGFormat for RG {}
+unsafe impl ColorFormat for RGB {}
+unsafe impl RGBFormat for RGB {}
+unsafe impl ColorFormat for RGBA {}
+unsafe impl RGBAFormat for RGBA {}
 
-unsafe impl InternalFormatRed for COMPRESSED_RED {}
-unsafe impl InternalFormatRG for COMPRESSED_RG {}
-unsafe impl InternalFormatRGB for COMPRESSED_RGB {}
-unsafe impl InternalFormatRGBA for COMPRESSED_RGBA {}
+unsafe impl RedFormat for COMPRESSED_RED {}
+unsafe impl RGFormat for COMPRESSED_RG {}
+unsafe impl RGBFormat for COMPRESSED_RGB {}
+unsafe impl RGBAFormat for COMPRESSED_RGBA {}
 
-unsafe impl InternalFormatRed for COMPRESSED_RED_RGTC1 {}
-unsafe impl InternalFormatRed for COMPRESSED_SIGNED_RED_RGTC1 {}
-unsafe impl InternalFormatRG for COMPRESSED_RG_RGTC2 {}
-unsafe impl InternalFormatRG for COMPRESSED_SIGNED_RG_RGTC2 {}
-unsafe impl InternalFormatRGBA for COMPRESSED_RGBA_BPTC_UNORM {}
-unsafe impl InternalFormatRGB for COMPRESSED_RGB_BPTC_SIGNED_FLOAT {}
-unsafe impl InternalFormatRGB for COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT {}
-unsafe impl InternalFormatRGB for COMPRESSED_RGB8_ETC2 {}
-unsafe impl InternalFormatRGB for COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2 {}
-unsafe impl InternalFormatRGBA for COMPRESSED_RGBA8_ETC2_EAC {}
-unsafe impl InternalFormatRed for COMPRESSED_R11_EAC {}
-unsafe impl InternalFormatRed for COMPRESSED_SIGNED_R11_EAC {}
-unsafe impl InternalFormatRG for COMPRESSED_RG11_EAC {}
-unsafe impl InternalFormatRG for COMPRESSED_SIGNED_RG11_EAC {}
+unsafe impl RedFormat for COMPRESSED_RED_RGTC1 {}
+unsafe impl RedFormat for COMPRESSED_SIGNED_RED_RGTC1 {}
+unsafe impl RGFormat for COMPRESSED_RG_RGTC2 {}
+unsafe impl RGFormat for COMPRESSED_SIGNED_RG_RGTC2 {}
+unsafe impl RGBAFormat for COMPRESSED_RGBA_BPTC_UNORM {}
+unsafe impl RGBFormat for COMPRESSED_RGB_BPTC_SIGNED_FLOAT {}
+unsafe impl RGBFormat for COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT {}
+unsafe impl RGBFormat for COMPRESSED_RGB8_ETC2 {}
+unsafe impl RGBFormat for COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2 {}
+unsafe impl RGBAFormat for COMPRESSED_RGBA8_ETC2_EAC {}
+unsafe impl RedFormat for COMPRESSED_R11_EAC {}
+unsafe impl RedFormat for COMPRESSED_SIGNED_R11_EAC {}
+unsafe impl RGFormat for COMPRESSED_RG11_EAC {}
+unsafe impl RGFormat for COMPRESSED_SIGNED_RG11_EAC {}
 
 macro_rules! compat_with {
     ($ty0:ident $($ty:ident)*; $trait:ident) => {
