@@ -1,5 +1,6 @@
 use super::*;
 
+#[derive(Clone,Copy)]
 pub struct ClientImage<B:PixelSrc+?Sized> {
     dim: [usize;3],
     pixels: B

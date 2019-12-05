@@ -1,5 +1,6 @@
 use super::*;
 
+#[derive(Clone,Copy)]
 pub struct ClientSubImage<I:ImageSrc> {
     offset: [usize;3],
     dim: [usize;3],
