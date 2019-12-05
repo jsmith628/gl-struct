@@ -2,65 +2,65 @@ use super::*;
 use std::convert::TryInto;
 
 glenum! {
-    pub enum FormatDepth { DEPTH_COMPONENT }
-    pub enum FormatStencil { STENCIL_INDEX }
-    pub enum FormatDepthStencil { DEPTH_COMPONENT, STENCIL_INDEX, DEPTH_STENCIL }
-    pub enum FormatFloat { RED, GREEN, BLUE, RG, RGB, BGR, RGBA, BGRA }
-    pub enum FormatInt {
+    pub enum DepthComponents { DEPTH_COMPONENT }
+    pub enum StencilComponents { STENCIL_INDEX }
+    pub enum DepthStencilComponents { DEPTH_COMPONENT, STENCIL_INDEX, DEPTH_STENCIL }
+    pub enum FloatComponents { RED, GREEN, BLUE, RG, RGB, BGR, RGBA, BGRA }
+    pub enum IntComponents {
         RED_INTEGER, GREEN_INTEGER, BLUE_INTEGER, RG_INTEGER, RGB_INTEGER, BGR_INTEGER, RGBA_INTEGER, BGRA_INTEGER
     }
 }
 
-impl From<FormatInt> for FormatFloat {
+impl From<IntComponents> for FloatComponents {
     #[inline]
-    fn from(fmt: FormatInt) -> Self {
+    fn from(fmt: IntComponents) -> Self {
         match fmt {
-            FormatInt::RED_INTEGER => Self::RED,
-            FormatInt::GREEN_INTEGER => Self::GREEN,
-            FormatInt::BLUE_INTEGER => Self::BLUE,
-            FormatInt::RG_INTEGER => Self::RG,
-            FormatInt::RGB_INTEGER => Self::RGB,
-            FormatInt::BGR_INTEGER => Self::BGR,
-            FormatInt::RGBA_INTEGER => Self::RGBA,
-            FormatInt::BGRA_INTEGER => Self::BGRA
+            IntComponents::RED_INTEGER => Self::RED,
+            IntComponents::GREEN_INTEGER => Self::GREEN,
+            IntComponents::BLUE_INTEGER => Self::BLUE,
+            IntComponents::RG_INTEGER => Self::RG,
+            IntComponents::RGB_INTEGER => Self::RGB,
+            IntComponents::BGR_INTEGER => Self::BGR,
+            IntComponents::RGBA_INTEGER => Self::RGBA,
+            IntComponents::BGRA_INTEGER => Self::BGRA
         }
     }
 }
 
-impl From<FormatFloat> for FormatInt {
+impl From<FloatComponents> for IntComponents {
     #[inline]
-    fn from(fmt: FormatFloat) -> Self {
+    fn from(fmt: FloatComponents) -> Self {
         match fmt {
-            FormatFloat::RED => Self::RED_INTEGER,
-            FormatFloat::GREEN => Self::GREEN_INTEGER,
-            FormatFloat::BLUE => Self::BLUE_INTEGER,
-            FormatFloat::RG => Self::RG_INTEGER,
-            FormatFloat::RGB => Self::RGB_INTEGER,
-            FormatFloat::BGR => Self::BGR_INTEGER,
-            FormatFloat::RGBA => Self::RGBA_INTEGER,
-            FormatFloat::BGRA => Self::BGRA_INTEGER
+            FloatComponents::RED => Self::RED_INTEGER,
+            FloatComponents::GREEN => Self::GREEN_INTEGER,
+            FloatComponents::BLUE => Self::BLUE_INTEGER,
+            FloatComponents::RG => Self::RG_INTEGER,
+            FloatComponents::RGB => Self::RGB_INTEGER,
+            FloatComponents::BGR => Self::BGR_INTEGER,
+            FloatComponents::RGBA => Self::RGBA_INTEGER,
+            FloatComponents::BGRA => Self::BGRA_INTEGER
         }
     }
 }
 
-impl From<FormatDepth> for FormatDepthStencil {
-    #[inline] fn from(_fmt: FormatDepth) -> Self {Self::DEPTH_COMPONENT}
+impl From<DepthComponents> for DepthStencilComponents {
+    #[inline] fn from(_fmt: DepthComponents) -> Self {Self::DEPTH_COMPONENT}
 }
 
-impl From<FormatStencil> for FormatDepthStencil {
-    #[inline] fn from(_fmt: FormatStencil) -> Self {Self::STENCIL_INDEX}
+impl From<StencilComponents> for DepthStencilComponents {
+    #[inline] fn from(_fmt: StencilComponents) -> Self {Self::STENCIL_INDEX}
 }
 
 pub unsafe trait PixelFormat: GLEnum { fn components(self) -> usize; }
 
-unsafe impl PixelFormat for FormatDepth { #[inline] fn components(self) -> usize {1} }
-unsafe impl PixelFormat for FormatStencil { #[inline] fn components(self) -> usize {1} }
-unsafe impl PixelFormat for FormatDepthStencil {
+unsafe impl PixelFormat for DepthComponents { #[inline] fn components(self) -> usize {1} }
+unsafe impl PixelFormat for StencilComponents { #[inline] fn components(self) -> usize {1} }
+unsafe impl PixelFormat for DepthStencilComponents {
     #[inline] fn components(self) -> usize {
-        if self == FormatDepthStencil::DEPTH_STENCIL {2} else {1}
+        if self == DepthStencilComponents::DEPTH_STENCIL {2} else {1}
     }
 }
-unsafe impl PixelFormat for FormatFloat {
+unsafe impl PixelFormat for FloatComponents {
     #[inline]
     fn components(self) -> usize {
         match self {
@@ -71,7 +71,7 @@ unsafe impl PixelFormat for FormatFloat {
         }
     }
 }
-unsafe impl PixelFormat for FormatInt {
+unsafe impl PixelFormat for IntComponents {
     #[inline]
     fn components(self) -> usize {
         match self {
@@ -118,7 +118,7 @@ pub trait ClientFormat: Copy+Clone+PartialEq+Eq+Hash+Debug {
 
 #[derive(Copy,Clone,PartialEq,Eq,Hash,Debug)]
 pub enum ClientFormatInt {
-    Integer(FormatInt, IntType),
+    Integer(IntComponents, IntType),
     UShort4_4_4_4, UShort4_4_4_4Rev,
     UShort5_5_5_1, UShort1_5_5_5Rev,
     UInt8_8_8_8, UInt8_8_8_8Rev,
@@ -128,7 +128,7 @@ pub enum ClientFormatInt {
 display_from_debug!(ClientFormatInt);
 
 impl ClientFormat for ClientFormatInt {
-    type Format = FormatInt;
+    type Format = IntComponents;
 
     #[inline]
     fn size(self) -> usize {
@@ -144,7 +144,7 @@ impl ClientFormat for ClientFormatInt {
         match self {
             Self::Integer(format, ty) => (format, ty.into()),
             _ => (
-                FormatInt::RGBA_INTEGER,
+                IntComponents::RGBA_INTEGER,
                 match self {
                     Self::UShort4_4_4_4 => PixelType::UNSIGNED_SHORT_4_4_4_4,
                     Self::UShort4_4_4_4Rev => PixelType::UNSIGNED_SHORT_4_4_4_4_REV,
@@ -163,7 +163,7 @@ impl ClientFormat for ClientFormatInt {
 
 #[derive(Copy,Clone,PartialEq,Eq,Hash,Debug)]
 pub enum ClientFormatFloat {
-    Float(FormatFloat, FloatType),
+    Float(FloatComponents, FloatType),
     Normalized(ClientFormatInt),
     UByte3_3_2, UByte2_3_3Rev,
     UShort5_6_5, UShort5_6_5Rev
@@ -176,7 +176,7 @@ impl From<ClientFormatInt> for ClientFormatFloat {
 }
 
 impl ClientFormat for ClientFormatFloat {
-    type Format = FormatFloat;
+    type Format = FloatComponents;
 
     #[inline]
     fn size(self) -> usize {
@@ -193,10 +193,10 @@ impl ClientFormat for ClientFormatFloat {
         match self {
             Self::Float(format, ty) => (format, ty.into()),
             Self::Normalized(int) => {let ft = int.format_type(); (ft.0.into(), ft.1)},
-            Self::UByte3_3_2 => (FormatFloat::RGB, PixelType::UNSIGNED_BYTE_3_3_2),
-            Self::UByte2_3_3Rev => (FormatFloat::RGB, PixelType::UNSIGNED_BYTE_2_3_3_REV),
-            Self::UShort5_6_5 => (FormatFloat::RGB, PixelType::UNSIGNED_SHORT_5_6_5),
-            Self::UShort5_6_5Rev => (FormatFloat::RGB, PixelType::UNSIGNED_SHORT_5_6_5_REV)
+            Self::UByte3_3_2 => (FloatComponents::RGB, PixelType::UNSIGNED_BYTE_3_3_2),
+            Self::UByte2_3_3Rev => (FloatComponents::RGB, PixelType::UNSIGNED_BYTE_2_3_3_REV),
+            Self::UShort5_6_5 => (FloatComponents::RGB, PixelType::UNSIGNED_SHORT_5_6_5),
+            Self::UShort5_6_5Rev => (FloatComponents::RGB, PixelType::UNSIGNED_SHORT_5_6_5_REV)
         }
     }
 }
@@ -218,7 +218,7 @@ impl From<IntType> for ClientFormatDepth {
 display_from_debug!(ClientFormatDepth);
 
 impl ClientFormat for ClientFormatDepth {
-    type Format = FormatDepth;
+    type Format = DepthComponents;
 
     #[inline]
     fn size(self) -> usize {
@@ -231,8 +231,8 @@ impl ClientFormat for ClientFormatDepth {
     #[inline]
     unsafe fn format_type(self) -> (Self::Format, PixelType) {
         match self {
-            Self::Float(ty) => (FormatDepth::DEPTH_COMPONENT, ty.into()),
-            Self::Normalized(ty) => (FormatDepth::DEPTH_COMPONENT, ty.into())
+            Self::Float(ty) => (DepthComponents::DEPTH_COMPONENT, ty.into()),
+            Self::Normalized(ty) => (DepthComponents::DEPTH_COMPONENT, ty.into())
         }
     }
 }
@@ -247,9 +247,9 @@ impl From<IntType> for ClientFormatStencil {
 }
 
 impl ClientFormat for ClientFormatStencil {
-    type Format = FormatStencil;
+    type Format = StencilComponents;
     #[inline] fn size(self) -> usize { self.0.size_of() }
-    #[inline] unsafe fn format_type(self) -> (FormatStencil, PixelType) { (FormatStencil::STENCIL_INDEX, self.0.into()) }
+    #[inline] unsafe fn format_type(self) -> (StencilComponents, PixelType) { (StencilComponents::STENCIL_INDEX, self.0.into()) }
 }
 
 #[derive(Copy,Clone,PartialEq,Eq,Hash,Debug)]
@@ -272,7 +272,7 @@ impl From<ClientFormatStencil> for ClientFormatDepthStencil {
 }
 
 impl ClientFormat for ClientFormatDepthStencil {
-    type Format = FormatDepthStencil;
+    type Format = DepthStencilComponents;
 
     #[inline]
     fn size(self) -> usize {
@@ -286,9 +286,9 @@ impl ClientFormat for ClientFormatDepthStencil {
     #[inline]
     unsafe fn format_type(self) -> (Self::Format, PixelType) {
         match self {
-            Self::DepthComponent(ty) => (FormatDepthStencil::DEPTH_COMPONENT, ty.format_type().1),
-            Self::StencilIndex(ty) => (FormatDepthStencil::STENCIL_INDEX, ty.format_type().1),
-            Self::UInt24_8 => (FormatDepthStencil::DEPTH_STENCIL, PixelType::UNSIGNED_INT_24_8),
+            Self::DepthComponent(ty) => (DepthStencilComponents::DEPTH_COMPONENT, ty.format_type().1),
+            Self::StencilIndex(ty) => (DepthStencilComponents::STENCIL_INDEX, ty.format_type().1),
+            Self::UInt24_8 => (DepthStencilComponents::DEPTH_STENCIL, PixelType::UNSIGNED_INT_24_8),
         }
     }
 }
