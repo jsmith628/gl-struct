@@ -27,6 +27,18 @@ impl<F:SpecificCompressed> CompressedPixels<F> {
 
 impl<F:SpecificCompressed> GPUCopy for CompressedPixels<F> {}
 
+impl<F:SpecificCompressed> ToOwned for CompressedPixels<F> {
+    type Owned = Box<Self>;
+    fn to_owned(&self) -> Box<Self> {
+        let mut uninit = Box::<[MaybeUninit<F::Block>]>::new_uninit_slice(self.blocks());
+        unsafe {
+            uninit.copy_from_slice(transmute::<&[F::Block],_>(&self.data));
+            transmute(uninit.assume_init())
+        }
+    }
+}
+
+
 //Red-Green Texture Compression
 pub type RedRgtc1 = CompressedPixels<COMPRESSED_RED_RGTC1>;
 pub type SignedRedRgtc1 = CompressedPixels<COMPRESSED_SIGNED_RED_RGTC1>;

@@ -74,9 +74,11 @@ impl<'a,F:SpecificCompressed,T:CompressedTransferTarget<F>> TexImage<'a,F,T> {
     pub fn into_compressed_image<I:OwnedCompressedImage<Format=F>>(
         &self, hint:I::Hint
     ) -> I where T::GL: Supports<I::GL> {
+        let dim = self.dim();
+        compressed_block_check::<_,F>(dim);
         unsafe {
             I::from_gl(
-                &assume_supported(), hint, self.dim().into_array(), |s, ptr| self.pack_compressed_pixels(s, ptr)
+                &assume_supported(), hint, dim.into_array(), |s, ptr| self.pack_compressed_pixels(s, ptr)
             )
         }
     }
@@ -84,9 +86,11 @@ impl<'a,F:SpecificCompressed,T:CompressedTransferTarget<F>> TexImage<'a,F,T> {
     pub fn try_into_compressed_image<I:OwnedCompressedImage<Format=F>>(
         &self, hint:I::Hint
     ) -> Result<I,GLError> {
+        let dim = self.dim();
+        compressed_block_check::<_,F>(dim);
         unsafe {
             Ok(I::from_gl(
-                &upgrade_to(&self.gl())?, hint, self.dim().into_array(), |s, ptr| self.pack_compressed_pixels(s, ptr)
+                &upgrade_to(&self.gl())?, hint, dim.into_array(), |s, ptr| self.pack_compressed_pixels(s, ptr)
             ))
         }
     }

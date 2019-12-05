@@ -92,3 +92,9 @@ pub(super) fn source_size_check<D:TexDim,I:ImageSrc>(offset:D, dim:D, p:&I) {
     if D::dim()>=2 && p.height()+offset.height() > dim.height() {panic!("Image source height out of bounds");}
     if D::dim()>=3 && p.depth()+offset.depth()   > dim.depth()  {panic!("Image source depth out of bounds");}
 }
+
+pub(super) fn compressed_block_check<D:TexDim,F:SpecificCompressed>(dim:D) {
+    if dim.width() % F::block_width() as usize   != 0 {panic!("Image destination width not block aligned");}
+    if dim.height() % F::block_height() as usize != 0 {panic!("Image destination height not block aligned");}
+    if dim.depth() % F::block_depth() as usize   != 0 {panic!("Image destination depth not block aligned");}
+}
