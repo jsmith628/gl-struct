@@ -183,6 +183,11 @@ impl<T> BufPtr<[T]> {
 
 }
 
+impl<F:SpecificCompressed> BufPtr<CompressedPixels<F>> {
+    #[inline] pub fn blocks(self) -> usize { unsafe {(&*self.ptr).blocks()} }
+    #[inline] pub fn pixel_count(self) -> usize { unsafe {(&*self.ptr).pixel_count()} }
+}
+
 ///
 ///Any type that can be cloned within a [buffer](super::Buffer) by simple byte-wise copies of its data.
 ///

@@ -2,6 +2,7 @@
 use super::*;
 
 use crate::gl;
+use crate::format::pixel::*;
 
 use std::alloc::{Global, Alloc, Layout};
 use std::marker::{PhantomData, Unsize};
@@ -214,6 +215,11 @@ impl<T:Sized, A:Initialized> Buffer<[T],A> {
         }
     }
 
+}
+
+impl<F:SpecificCompressed, A:Initialized> Buffer<CompressedPixels<F>,A> {
+    #[inline] pub fn blocks(&self) -> usize { self.ptr.blocks() }
+    #[inline] pub fn pixel_count(&self) -> usize { self.ptr.pixel_count() }
 }
 
 impl<T, A:Initialized> Buffer<MaybeUninit<T>, A> {

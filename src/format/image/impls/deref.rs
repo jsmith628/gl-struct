@@ -1,8 +1,8 @@
 use super::*;
 
 macro_rules! impl_img_src_deref {
-    (for<$($a:lifetime,)* $P:ident> $ty:ty) => {
-        unsafe impl<$($a,)* $P:ImageSrc+?Sized> ImageSrc for $ty {
+    (for<$($a:lifetime,)* $P:ident> $ty:ty $(where $($where:tt)*)?) => {
+        unsafe impl<$($a,)* $P:ImageSrc+?Sized> ImageSrc for $ty $(where $($where)*)? {
 
             type Pixels = $P::Pixels;
 
@@ -28,9 +28,9 @@ macro_rules! impl_img_src_deref {
 }
 
 macro_rules! impl_img_dst_deref {
-    (for<$($a:lifetime,)* $P:ident> $ty:ty) => {
-        impl_img_src_deref!(for<$($a,)* $P> $ty);
-        unsafe impl<$($a,)* $P:ImageDst+?Sized> ImageDst for $ty {
+    (for<$($a:lifetime,)* $P:ident> $ty:ty $(where $($where:tt)*)?) => {
+        impl_img_src_deref!(for<$($a,)* $P> $ty $(where $($where)*)? );
+        unsafe impl<$($a,)* $P:ImageDst+?Sized> ImageDst for $ty $(where $($where)*)? {
             fn pixels_mut(&mut self) -> PixelPtrMut<Self::Pixels> { (&mut **self).pixels_mut() }
         }
     }
@@ -43,3 +43,5 @@ impl_img_dst_deref!(for<P> Box<P>);
 
 impl_img_src_deref!(for<P> Rc<P>);
 impl_img_src_deref!(for<P> Arc<P>);
+
+impl_img_src_deref!(for<'a,P> Cow<'a,P> where P:ToOwned);

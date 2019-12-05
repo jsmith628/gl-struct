@@ -203,6 +203,10 @@ impl<'a,T:Sized,A:Initialized> Slice<'a,[T],A> {
 
 }
 
+impl<'a,F:SpecificCompressed, A:Initialized> Slice<'a,CompressedPixels<F>,A> {
+    #[inline] pub fn blocks(&self) -> usize { self.ptr.blocks() }
+    #[inline] pub fn pixel_count(&self) -> usize { self.ptr.pixel_count() }
+}
 
 impl<'a,T:?Sized,A:Initialized> SliceMut<'a,T,A> {
 
@@ -295,6 +299,11 @@ impl<'a,T:Sized,A:Initialized> SliceMut<'a,[T],A> {
         self.as_immut().get_subdata_slice(data)
     }
 
+}
+
+impl<'a,F:SpecificCompressed, A:Initialized> SliceMut<'a,CompressedPixels<F>,A> {
+    #[inline] pub fn blocks(&self) -> usize { self.ptr.blocks() }
+    #[inline] pub fn pixel_count(&self) -> usize { self.ptr.pixel_count() }
 }
 
 //
