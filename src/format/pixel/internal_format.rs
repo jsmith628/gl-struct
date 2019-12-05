@@ -46,6 +46,8 @@ unsafe impl<F:SpecificCompressed> SizedFormat for F {}
 #[marker] pub unsafe trait RGBFormat: ColorFormat {}
 #[marker] pub unsafe trait RGBAFormat: ColorFormat {}
 
+#[marker] pub unsafe trait SRGBFormat: ColorFormat {}
+
 #[marker] pub unsafe trait SignedFormat: InternalFormat {}
 #[marker] pub unsafe trait UnsignedFormat: InternalFormat {}
 
@@ -143,6 +145,11 @@ macro_rules! internal_format {
         internal_format!(@$kind $fmt: $($tt)*);
     };
 
+    (@$kind:ident $fmt:ident: srgb + $($tt:tt)*) => {
+        unsafe impl SRGBFormat for $fmt {}
+        internal_format!(@$kind $fmt: $($tt)*);
+    };
+
     (@$kind:ident $fmt:ident: cmpr + $($tt:tt)*) => {
         unsafe impl ColorFormat for $fmt {}
         unsafe impl CompressedFormat for $fmt {}
@@ -204,8 +211,8 @@ internal_format! {
         COMPRESSED_RG: cmpr + usign + GL30,
         COMPRESSED_RGB: cmpr + usign + GL13,
         COMPRESSED_RGBA: cmpr + usign + GL13,
-        COMPRESSED_SRGB: cmpr + usign + GL21,
-        COMPRESSED_SRGB_ALPHA: cmpr + usign + GL21,
+        COMPRESSED_SRGB: srgb + cmpr + usign + GL21,
+        COMPRESSED_SRGB_ALPHA: srgb + cmpr + usign + GL21,
 
         //
         //fixed-point (normalized integer)
@@ -248,8 +255,8 @@ internal_format! {
         RGB9_E5: usign + GL30,
 
         //sRGB
-        SRGB8[8,8,8]: cr + usign + GL21,
-        SRGB8_ALPHA8[8,8,8,8]: req_rend + usign + GL21,
+        SRGB8[8,8,8]: srgb + cr + usign + GL21,
+        SRGB8_ALPHA8[8,8,8,8]: srgb + req_rend + usign + GL21,
 
         //
         //floating point
@@ -282,17 +289,17 @@ internal_format! {
 
         //BPTC
         COMPRESSED_RGBA_BPTC_UNORM[u128; 4, 4, 1]: usign + GL42,
-        COMPRESSED_SRGB_ALPHA_BPTC_UNORM[u128; 4, 4, 1]: usign + GL42,
+        COMPRESSED_SRGB_ALPHA_BPTC_UNORM[u128; 4, 4, 1]: srgb + usign + GL42,
         COMPRESSED_RGB_BPTC_SIGNED_FLOAT[u128; 4, 4, 1]: sign + GL42,
         COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT[u128; 4, 4, 1]: usign + GL42,
 
         //Ericsson Texture Compression
         COMPRESSED_RGB8_ETC2[u64; 4, 4, 1]: usign + GL43,
-        COMPRESSED_SRGB8_ETC2[u64; 4, 4, 1]: usign + GL43,
+        COMPRESSED_SRGB8_ETC2[u64; 4, 4, 1]: srgb + usign + GL43,
         COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2[u64; 4, 4, 1]: usign + GL43,
-        COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2[u64; 4, 4, 1]: usign + GL43,
+        COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2[u64; 4, 4, 1]: srgb + usign + GL43,
         COMPRESSED_RGBA8_ETC2_EAC[u128; 4, 4, 1]: usign + GL43,
-        COMPRESSED_SRGB8_ALPHA8_ETC2_EAC[u128; 4, 4, 1]: usign + GL43,
+        COMPRESSED_SRGB8_ALPHA8_ETC2_EAC[u128; 4, 4, 1]: srgb + usign + GL43,
         COMPRESSED_R11_EAC[u64; 4, 4, 1]: usign + GL43,
         COMPRESSED_SIGNED_R11_EAC[u64; 4, 4, 1]: sign + GL43,
         COMPRESSED_RG11_EAC[[u64;2]; 4, 4, 1]: usign + GL43,
