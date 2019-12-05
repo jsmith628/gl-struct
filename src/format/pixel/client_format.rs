@@ -5,40 +5,40 @@ glenum! {
     pub enum DepthComponents { DEPTH_COMPONENT }
     pub enum StencilComponents { STENCIL_INDEX }
     pub enum DepthStencilComponents { DEPTH_COMPONENT, STENCIL_INDEX, DEPTH_STENCIL }
-    pub enum FloatComponents { RED, GREEN, BLUE, RG, RGB, BGR, RGBA, BGRA }
-    pub enum IntComponents {
+    pub enum ColorComponents { RED, GREEN, BLUE, RG, RGB, BGR, RGBA, BGRA }
+    pub enum IntColorComponents {
         RED_INTEGER, GREEN_INTEGER, BLUE_INTEGER, RG_INTEGER, RGB_INTEGER, BGR_INTEGER, RGBA_INTEGER, BGRA_INTEGER
     }
 }
 
-impl From<IntComponents> for FloatComponents {
+impl From<IntColorComponents> for ColorComponents {
     #[inline]
-    fn from(fmt: IntComponents) -> Self {
+    fn from(fmt: IntColorComponents) -> Self {
         match fmt {
-            IntComponents::RED_INTEGER => Self::RED,
-            IntComponents::GREEN_INTEGER => Self::GREEN,
-            IntComponents::BLUE_INTEGER => Self::BLUE,
-            IntComponents::RG_INTEGER => Self::RG,
-            IntComponents::RGB_INTEGER => Self::RGB,
-            IntComponents::BGR_INTEGER => Self::BGR,
-            IntComponents::RGBA_INTEGER => Self::RGBA,
-            IntComponents::BGRA_INTEGER => Self::BGRA
+            IntColorComponents::RED_INTEGER => Self::RED,
+            IntColorComponents::GREEN_INTEGER => Self::GREEN,
+            IntColorComponents::BLUE_INTEGER => Self::BLUE,
+            IntColorComponents::RG_INTEGER => Self::RG,
+            IntColorComponents::RGB_INTEGER => Self::RGB,
+            IntColorComponents::BGR_INTEGER => Self::BGR,
+            IntColorComponents::RGBA_INTEGER => Self::RGBA,
+            IntColorComponents::BGRA_INTEGER => Self::BGRA
         }
     }
 }
 
-impl From<FloatComponents> for IntComponents {
+impl From<ColorComponents> for IntColorComponents {
     #[inline]
-    fn from(fmt: FloatComponents) -> Self {
+    fn from(fmt: ColorComponents) -> Self {
         match fmt {
-            FloatComponents::RED => Self::RED_INTEGER,
-            FloatComponents::GREEN => Self::GREEN_INTEGER,
-            FloatComponents::BLUE => Self::BLUE_INTEGER,
-            FloatComponents::RG => Self::RG_INTEGER,
-            FloatComponents::RGB => Self::RGB_INTEGER,
-            FloatComponents::BGR => Self::BGR_INTEGER,
-            FloatComponents::RGBA => Self::RGBA_INTEGER,
-            FloatComponents::BGRA => Self::BGRA_INTEGER
+            ColorComponents::RED => Self::RED_INTEGER,
+            ColorComponents::GREEN => Self::GREEN_INTEGER,
+            ColorComponents::BLUE => Self::BLUE_INTEGER,
+            ColorComponents::RG => Self::RG_INTEGER,
+            ColorComponents::RGB => Self::RGB_INTEGER,
+            ColorComponents::BGR => Self::BGR_INTEGER,
+            ColorComponents::RGBA => Self::RGBA_INTEGER,
+            ColorComponents::BGRA => Self::BGRA_INTEGER
         }
     }
 }
@@ -60,7 +60,7 @@ unsafe impl PixelFormat for DepthStencilComponents {
         if self == DepthStencilComponents::DEPTH_STENCIL {2} else {1}
     }
 }
-unsafe impl PixelFormat for FloatComponents {
+unsafe impl PixelFormat for ColorComponents {
     #[inline]
     fn components(self) -> usize {
         match self {
@@ -71,7 +71,7 @@ unsafe impl PixelFormat for FloatComponents {
         }
     }
 }
-unsafe impl PixelFormat for IntComponents {
+unsafe impl PixelFormat for IntColorComponents {
     #[inline]
     fn components(self) -> usize {
         match self {
@@ -118,7 +118,7 @@ pub trait ClientFormat: Copy+Clone+PartialEq+Eq+Hash+Debug {
 
 #[derive(Copy,Clone,PartialEq,Eq,Hash,Debug)]
 pub enum ClientFormatInt {
-    Integer(IntComponents, IntType),
+    Integer(IntColorComponents, IntType),
     UShort4_4_4_4, UShort4_4_4_4Rev,
     UShort5_5_5_1, UShort1_5_5_5Rev,
     UInt8_8_8_8, UInt8_8_8_8Rev,
@@ -128,7 +128,7 @@ pub enum ClientFormatInt {
 display_from_debug!(ClientFormatInt);
 
 impl ClientFormat for ClientFormatInt {
-    type Format = IntComponents;
+    type Format = IntColorComponents;
 
     #[inline]
     fn size(self) -> usize {
@@ -144,7 +144,7 @@ impl ClientFormat for ClientFormatInt {
         match self {
             Self::Integer(format, ty) => (format, ty.into()),
             _ => (
-                IntComponents::RGBA_INTEGER,
+                IntColorComponents::RGBA_INTEGER,
                 match self {
                     Self::UShort4_4_4_4 => PixelType::UNSIGNED_SHORT_4_4_4_4,
                     Self::UShort4_4_4_4Rev => PixelType::UNSIGNED_SHORT_4_4_4_4_REV,
@@ -163,7 +163,7 @@ impl ClientFormat for ClientFormatInt {
 
 #[derive(Copy,Clone,PartialEq,Eq,Hash,Debug)]
 pub enum ClientFormatFloat {
-    Float(FloatComponents, FloatType),
+    Float(ColorComponents, FloatType),
     Normalized(ClientFormatInt),
     UByte3_3_2, UByte2_3_3Rev,
     UShort5_6_5, UShort5_6_5Rev
@@ -176,7 +176,7 @@ impl From<ClientFormatInt> for ClientFormatFloat {
 }
 
 impl ClientFormat for ClientFormatFloat {
-    type Format = FloatComponents;
+    type Format = ColorComponents;
 
     #[inline]
     fn size(self) -> usize {
@@ -193,10 +193,10 @@ impl ClientFormat for ClientFormatFloat {
         match self {
             Self::Float(format, ty) => (format, ty.into()),
             Self::Normalized(int) => {let ft = int.format_type(); (ft.0.into(), ft.1)},
-            Self::UByte3_3_2 => (FloatComponents::RGB, PixelType::UNSIGNED_BYTE_3_3_2),
-            Self::UByte2_3_3Rev => (FloatComponents::RGB, PixelType::UNSIGNED_BYTE_2_3_3_REV),
-            Self::UShort5_6_5 => (FloatComponents::RGB, PixelType::UNSIGNED_SHORT_5_6_5),
-            Self::UShort5_6_5Rev => (FloatComponents::RGB, PixelType::UNSIGNED_SHORT_5_6_5_REV)
+            Self::UByte3_3_2 => (ColorComponents::RGB, PixelType::UNSIGNED_BYTE_3_3_2),
+            Self::UByte2_3_3Rev => (ColorComponents::RGB, PixelType::UNSIGNED_BYTE_2_3_3_REV),
+            Self::UShort5_6_5 => (ColorComponents::RGB, PixelType::UNSIGNED_SHORT_5_6_5),
+            Self::UShort5_6_5Rev => (ColorComponents::RGB, PixelType::UNSIGNED_SHORT_5_6_5_REV)
         }
     }
 }

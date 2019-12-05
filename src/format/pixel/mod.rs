@@ -90,7 +90,7 @@ macro_rules! impl_int {
 
     (@impl $prim:ty; $fmt:ident $ty:ident) => {
         unsafe impl Pixel<ClientFormatInt> for $prim {
-            fn format() -> ClientFormatInt { ClientFormatInt::Integer(IntComponents::$fmt, IntType::$ty) }
+            fn format() -> ClientFormatInt { ClientFormatInt::Integer(IntColorComponents::$fmt, IntType::$ty) }
         }
         unsafe impl Pixel<ClientFormatFloat> for $prim {
             fn format() -> ClientFormatFloat { <Self as Pixel<ClientFormatInt>>::format().into() }
@@ -136,7 +136,7 @@ macro_rules! impl_float {
 
     (@impl $prim:ty; $fmt:ident $ty:ident) => {
         unsafe impl Pixel<ClientFormatFloat> for $prim {
-            fn format() -> ClientFormatFloat { ClientFormatFloat::Float(FloatComponents::$fmt, FloatType::$ty) }
+            fn format() -> ClientFormatFloat { ClientFormatFloat::Float(ColorComponents::$fmt, FloatType::$ty) }
         }
     };
 
