@@ -38,8 +38,7 @@ macro_rules! access {
     ($( $(#[$attr:meta])* $ty:ident = [$($flag:ident = $bit:ident),*];)*) => {
         $(
             $(#[$attr])*
-            #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
-            pub struct $ty;
+            pub struct $ty(!);
 
             unsafe impl Initialized for $ty {}
             unsafe impl BufferStorage for $ty { $(type $flag = $bit;)* }
