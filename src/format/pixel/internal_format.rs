@@ -173,8 +173,7 @@ macro_rules! internal_format {
     (@$kind:ident $fmt:ident: $GL:tt, $($tt:tt)*) => {
 
         #[allow(non_camel_case_types)]
-        #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-        pub struct $fmt;
+        pub struct $fmt(!);
 
         unsafe impl InternalFormat for $fmt {
             type ClientFormat = internal_format!(@fmt_ty $kind);
