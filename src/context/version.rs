@@ -30,7 +30,17 @@ pub unsafe fn assume_supported<GL:GLVersion>() -> GL {
     MaybeUninit::zeroed().assume_init()
 }
 
-#[inline] pub fn supports<Test:GLVersion+?Sized, Version:GLVersion+Sized>(gl: &Test) -> bool {
+pub fn supported<GL:GLVersion>() -> Result<GL,GLError> {
+    let target: GL = unsafe { ::std::mem::zeroed() };
+    if gl::GetIntegerv::is_loaded() {
+        upgrade_to(unsafe { &GL10::assume_loaded() })
+    } else {
+        Err(GLError::Version(target.major_version(), target.minor_version()))
+    }
+}
+
+#[inline]
+pub fn supports<Test:GLVersion+?Sized, Version:GLVersion+Sized>(gl: &Test) -> bool {
     let target: Version = unsafe { ::std::mem::zeroed() };
     let version = (target.major_version(), target.minor_version());
     (gl.major_version(), gl.minor_version()) <= version ||
@@ -157,7 +167,9 @@ macro_rules! version_struct {
 
         #[doc = "A [GLVersion] object for OpenGL version "]
         #[doc = $str]
-        #[derive(Clone, PartialEq, Eq, Hash, Debug)] pub struct $gl { _private: () }
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+        pub struct $gl { _private: () }
+
         unsafe impl GLVersion for $gl {
             #[inline(always)] fn major_version(&self) -> GLuint {$maj}
             #[inline(always)] fn minor_version(&self) -> GLuint {$min}

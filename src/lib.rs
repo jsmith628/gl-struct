@@ -16,6 +16,7 @@
 #![feature(new_uninit)]
 #![feature(slice_from_raw_parts)]
 #![feature(get_mut_unchecked)]
+#![feature(arbitrary_enum_discriminant)]
 #![recursion_limit="32768"]
 
 pub extern crate gl;

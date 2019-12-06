@@ -61,7 +61,7 @@ macro_rules! sampler_params {
         #[inline]
         pub fn $set(&mut self, param: $enum) {
             unsafe {
-                gl::SamplerParameteri(self.id(), gl::$gl, param as GLint)
+                gl::SamplerParameteri(self.id(), gl::$gl, GLenum::from(param) as GLint)
             }
         }
 
