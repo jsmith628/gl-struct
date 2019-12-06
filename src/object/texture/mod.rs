@@ -12,6 +12,7 @@ pub use self::uninit::*;
 pub use self::image::*;
 pub use self::pack::*;
 pub use self::mipmap::*;
+pub use self::swizzle::*;
 
 pub mod target;
 mod dim;
@@ -20,6 +21,7 @@ mod mipmap;
 mod image;
 mod pack;
 mod unpack;
+mod swizzle;
 
 pub struct Texture<F, T:TextureTarget<F>> {
     id: GLuint,
@@ -48,6 +50,15 @@ impl<F, T:TextureTarget<F>> Texture<F,T> {
             gl::TextureParameteriv(self.id(), pname, params);
         } else {
             T::bind_loc().map_bind(self, |b| gl::TexParameteriv(b.target_id(), pname, params));
+        }
+    }
+
+    #[inline]
+    unsafe fn parameter_fv(&mut self, pname:GLenum, params: *const GLfloat) {
+        if gl::TextureParameterfv::is_loaded() {
+            gl::TextureParameterfv(self.id(), pname, params);
+        } else {
+            T::bind_loc().map_bind(self, |b| gl::TexParameterfv(b.target_id(), pname, params));
         }
     }
 
