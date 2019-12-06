@@ -65,7 +65,7 @@ impl<F:ColorFormat, T:TextureTarget<F>> Texture<F,T> {
                 );
             }
 
-            let rgba: [GLint; 4] = param.assume_init();=
+            let rgba: [GLint; 4] = param.assume_init();
             [
                 (rgba[0] as GLenum).try_into().unwrap(),
                 (rgba[1] as GLenum).try_into().unwrap(),
