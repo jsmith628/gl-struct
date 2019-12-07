@@ -135,7 +135,15 @@ impl<F:InternalFormat, T:SampledTarget<F>> Texture<F,T> {
         }
     }
 
-    pub fn get_border_color_stencil(&self) -> GLuint where F: UIntFormat {
+    pub fn get_border_color_uint(&self) -> [GLuint;4] where F: UIntFormat {
+        let mut param = MaybeUninit::<[_;4]>::uninit();
+        unsafe {
+            self.get_parameter_i_uiv(gl::TEXTURE_BORDER_COLOR, param.as_mut_ptr() as *mut _);
+            param.assume_init()
+        }
+    }
+
+    pub fn get_border_color_stencil(&self) -> GLuint where F: StencilFormat {
         let mut param = MaybeUninit::<[_;4]>::uninit();
         unsafe {
             self.get_parameter_i_uiv(gl::TEXTURE_BORDER_COLOR, param.as_mut_ptr() as *mut _);
@@ -143,7 +151,7 @@ impl<F:InternalFormat, T:SampledTarget<F>> Texture<F,T> {
         }
     }
 
-    pub fn get_border_color_depth(&self) -> GLfloat where F: UIntFormat {
+    pub fn get_border_color_depth(&self) -> GLfloat where F: DepthFormat {
         let mut param = MaybeUninit::<[_;4]>::uninit();
         unsafe {
             self.get_parameter_fv(gl::TEXTURE_BORDER_COLOR, param.as_mut_ptr() as *mut _);
@@ -151,7 +159,7 @@ impl<F:InternalFormat, T:SampledTarget<F>> Texture<F,T> {
         }
     }
 
-    pub fn get_border_color_depth_normalized(&self) -> GLint where F: UIntFormat {
+    pub fn get_border_color_depth_normalized(&self) -> GLint where F: DepthFormat {
         let mut param = MaybeUninit::<[_;4]>::uninit();
         unsafe {
             self.get_parameter_iv(gl::TEXTURE_BORDER_COLOR, param.as_mut_ptr() as *mut _);
