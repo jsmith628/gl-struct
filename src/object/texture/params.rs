@@ -33,6 +33,16 @@ impl<F:InternalFormat, T:SampledTarget<F>> Texture<F,T> {
         unsafe { self.parameter_iv(gl::TEXTURE_MIN_FILTER, &(GLenum::from(filter) as GLint)) }
     }
 
+    #[allow(unused_variables)]
+    pub fn min_lod(&mut self, gl:&GL12, value:GLfloat) {
+        unsafe { self.parameter_fv(gl::TEXTURE_MIN_LOD, &value) }
+    }
+
+    #[allow(unused_variables)]
+    pub fn max_lod(&mut self, gl:&GL12, value:GLfloat) {
+        unsafe { self.parameter_fv(gl::TEXTURE_MAX_LOD, &value) }
+    }
+
     pub fn border_color(&mut self, color: [GLfloat; 4]) where F: FloatFormat {
         unsafe { self.parameter_fv(gl::TEXTURE_BORDER_COLOR, &color[0]) }
     }
@@ -92,6 +102,16 @@ impl<F:InternalFormat, T:SampledTarget<F>> Texture<F,T> {
 
     pub fn get_min_filter(&self) -> MinFilter {
         unsafe { (self.get_parameter_i(gl::TEXTURE_MIN_FILTER) as GLenum).try_into().unwrap() }
+    }
+
+    #[allow(unused_variables)]
+    pub fn get_min_lod(&self, gl:&GL12) -> GLfloat {
+        unsafe { self.get_parameter_f(gl::TEXTURE_MIN_LOD) }
+    }
+
+    #[allow(unused_variables)]
+    pub fn get_max_lod(&self, gl:&GL12) -> GLfloat {
+        unsafe { self.get_parameter_f(gl::TEXTURE_MAX_LOD) }
     }
 
     pub fn get_border_color(&self) -> [GLfloat;4] where F: FloatFormat {

@@ -90,6 +90,13 @@ impl<F, T:TextureTarget<F>> Texture<F,T> {
     }
 
     #[inline]
+    unsafe fn get_parameter_f(&self, pname:GLenum) -> GLfloat {
+        let mut param = MaybeUninit::uninit();
+        self.get_parameter_fv(pname, param.as_mut_ptr());
+        param.assume_init()
+    }
+
+    #[inline]
     unsafe fn get_parameter_iv(&self, pname:GLenum, param: *mut GLint) {
         if gl::GetTextureParameteriv::is_loaded() {
             gl::GetTextureParameteriv(self.id(), pname, param);
