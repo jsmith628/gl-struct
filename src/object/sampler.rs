@@ -24,14 +24,14 @@ glenum! {
     }
 
     pub enum CompareFunc {
-        [Never NEVER "Never"],
-        [Always ALWAYS "Always"],
-        [Less LESS "Less"],
+        [Never(GL15; _gl) NEVER "Never"],
+        [Always(GL15; _gl) ALWAYS "Always"],
+        [Less(GL15; _gl) LESS "Less"],
         [LEqual LEQUAL "Less or Equal"],
-        [Equal EQUAL "Equal"],
-        [NotEqual NOTEQUAL "Not Equal"],
+        [Equal(GL15; _gl) EQUAL "Equal"],
+        [NotEqual(GL15; _gl) NOTEQUAL "Not Equal"],
         [GEqual GEQUAL "Greater or Equal"],
-        [Greater GREATER "Greater"]
+        [Greater(GL15; _gl) GREATER "Greater"]
     }
 
     pub enum Wrapping {

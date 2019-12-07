@@ -74,6 +74,14 @@ impl<F:InternalFormat, T:SampledTarget<F>> Texture<F,T> {
         unsafe { self.parameter_iv(gl::TEXTURE_BORDER_COLOR, &color[0]) }
     }
 
+    pub fn compare_mode(&mut self, mode: CompareMode) where F: DepthFormat {
+        unsafe { self.parameter_iv(gl::TEXTURE_COMPARE_MODE, &(GLenum::from(mode) as GLint)) }
+    }
+
+    pub fn compare_func(&mut self, func: CompareFunc) where F: DepthFormat {
+        unsafe { self.parameter_iv(gl::TEXTURE_COMPARE_FUNC, &(GLenum::from(func) as GLint)) }
+    }
+
     pub fn get_wrap_s(&self) -> Wrapping {
         unsafe { (self.get_parameter_i(gl::TEXTURE_WRAP_S) as GLenum).try_into().unwrap() }
     }
@@ -162,5 +170,13 @@ impl<F:InternalFormat, T:SampledTarget<F>> Texture<F,T> {
         }
     }
 
+
+    pub fn get_compare_mode(&self) -> CompareMode where F: DepthFormat {
+        unsafe { (self.get_parameter_i(gl::TEXTURE_COMPARE_MODE) as GLenum).try_into().unwrap() }
+    }
+
+    pub fn get_compare_func(&self) -> CompareMode where F: DepthFormat {
+        unsafe { (self.get_parameter_i(gl::TEXTURE_COMPARE_MODE) as GLenum).try_into().unwrap() }
+    }
 
 }
