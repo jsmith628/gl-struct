@@ -12,7 +12,7 @@ glenum! {
 }
 
 #[allow(unused_variables)]
-impl<F:ColorFormat, T:SampledTarget<F>> Texture<F,T> {
+impl<F:ColorFormat, T:OwnedTarget<F>> Texture<F,T> {
 
     pub fn swizzle_r(&mut self, gl:&GL33, swizzle: SwizzleParameter) {
         unsafe { self.parameter_iv(gl::TEXTURE_SWIZZLE_R, &(swizzle as GLint)) }
