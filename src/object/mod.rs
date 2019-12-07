@@ -2,6 +2,7 @@ use super::*;
 use context::*;
 
 use std::marker::PhantomData;
+use std::convert::TryInto;
 
 macro_rules! gl_resource{
 

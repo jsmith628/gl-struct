@@ -11,11 +11,11 @@ impl<T:TextureType> UninitTex<T> {
         }
     }
 
-    pub fn gen_textures(#[allow(unused_variables)] gl: &T::GL, count: GLuint) -> Box<[Self]> {
-        if count==0 { return Box::new([]); }
-        let mut tex:Box<[MaybeUninit<Self>]> = Box::new_uninit_slice(count as usize);
+    pub fn gen_textures(#[allow(unused_variables)] gl: &T::GL, n: GLuint) -> Box<[Self]> {
+        if n==0 { return Box::new([]); }
+        let mut tex:Box<[MaybeUninit<Self>]> = Box::new_uninit_slice(n as usize);
         unsafe {
-            gl::GenTextures(tex.len() as GLsizei, tex[0].as_mut_ptr() as *mut GLuint);
+            gl::GenTextures(tex.len().try_into().unwrap(), tex[0].as_mut_ptr() as *mut GLuint);
             tex.assume_init()
         }
     }
@@ -34,14 +34,14 @@ impl<T:TextureType> UninitTex<T> {
         }
     }
 
-    pub fn create_textures(#[allow(unused_variables)] gl: &T::GL, count: GLuint) -> Box<[Self]> {
-        if count==0 { return Box::new([]); }
-        let mut tex:Box<[MaybeUninit<Self>]> = Box::new_uninit_slice(count as usize);
+    pub fn create_textures(#[allow(unused_variables)] gl: &T::GL, n: GLuint) -> Box<[Self]> {
+        if n==0 { return Box::new([]); }
+        let mut tex:Box<[MaybeUninit<Self>]> = Box::new_uninit_slice(n as usize);
         unsafe {
             if gl::CreateTextures::is_loaded() {
-                gl::CreateTextures(T::glenum(), tex.len() as GLsizei, tex[0].as_mut_ptr() as *mut GLuint);
+                gl::CreateTextures(T::glenum(), tex.len().try_into().unwrap(), tex[0].as_mut_ptr() as *mut GLuint);
             } else {
-                gl::GenTextures(tex.len() as GLsizei, tex[0].as_mut_ptr() as *mut GLuint);
+                gl::GenTextures(tex.len().try_into().unwrap(), tex[0].as_mut_ptr() as *mut GLuint);
                 for t in tex.iter_mut() { gl::BindTexture(T::glenum(), t.get_mut().id()) }
                 gl::BindTexture(T::glenum(), 0);
             }

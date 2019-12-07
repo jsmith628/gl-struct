@@ -19,7 +19,7 @@ impl UninitBuf {
         if n==0 { return Box::new([]); }
         let mut ids = Box::new_uninit_slice(n as usize);
         unsafe {
-            gl::GenBuffers(n as GLsizei, ids[0].as_mut_ptr());
+            gl::GenBuffers(n.try_into().unwrap(), ids[0].as_mut_ptr());
             ids.into_iter().map(|id| Self::from_id(id.assume_init())).collect()
         }
     }
@@ -43,7 +43,7 @@ impl UninitBuf {
         let mut ids = Box::new_uninit_slice(n as usize);
         unsafe {
             if gl::CreateBuffers::is_loaded() {
-                gl::CreateBuffers(n as GLsizei, ids[0].as_mut_ptr());
+                gl::CreateBuffers(n.try_into().unwrap(), ids[0].as_mut_ptr());
                 ids.into_iter().map(|id| Self::from_id(id.assume_init())).collect()
             } else {
                 let mut bufs = Self::gen_buffers(gl, n);
