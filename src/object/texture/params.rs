@@ -173,7 +173,7 @@ impl<F:InternalFormat, T:SampledTarget<F>> Texture<F,T> {
     }
 
     pub fn get_compare_func(&self) -> CompareMode where F: DepthFormat {
-        unsafe { self.get_parameter(gl::TEXTURE_COMPARE_MODE) }
+        unsafe { self.get_parameter(gl::TEXTURE_COMPARE_FUNC) }
     }
 
 }
