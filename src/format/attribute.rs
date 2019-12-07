@@ -180,8 +180,8 @@ unsafe impl AttribFormat for ! {
     fn normalized(self, _: usize) -> bool { self }
 
     fn packed(self, _: usize) -> bool { self }
-    fn long(self, _: usize) -> bool { false }
-    fn integer(self, _: usize) -> bool { false }
+    fn long(self, _: usize) -> bool { self }
+    fn integer(self, _: usize) -> bool { self }
 }
 
 unsafe impl AttribFormat for void {
