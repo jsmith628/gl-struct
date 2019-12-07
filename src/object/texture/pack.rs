@@ -33,20 +33,12 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImage<'a,F,T> {
         unsafe { self.pack_pixels(PixelStore::from(data), data.pixels_mut()); }
     }
 
-    pub fn into_image<I:OwnedTexImage<F>>(&self, hint:I::Hint) -> I where T::GL: Supports<I::GL> {
-        unsafe {
-            I::from_gl(
-                &assume_supported(), hint, self.dim().into_array(), |s, ptr| self.pack_pixels(s, ptr)
-            )
-        }
+    pub fn into_image<I:OwnedTexImage<F>>(&self, gl:&I::GL, hint:I::Hint) -> I {
+        unsafe { I::from_gl(gl, hint, self.dim().into_array(), |s, ptr| self.pack_pixels(s, ptr)) }
     }
 
     pub fn try_into_image<I:OwnedTexImage<F>>(&self, hint:I::Hint) -> Result<I,GLError> {
-        unsafe {
-            Ok(I::from_gl(
-                &upgrade_to(&self.gl())?, hint, self.dim().into_array(), |s, ptr| self.pack_pixels(s, ptr)
-            ))
-        }
+        Ok(self.into_image(&upgrade_to(&self.gl())?, hint))
     }
 
 }
@@ -71,28 +63,16 @@ impl<'a,F:SpecificCompressed,T:CompressedTransferTarget<F>> TexImage<'a,F,T> {
         unsafe { self.pack_compressed_pixels(PixelStore::from(data), data.pixels_mut()); }
     }
 
-    pub fn into_compressed_image<I:OwnedCompressedImage<Format=F>>(
-        &self, hint:I::Hint
-    ) -> I where T::GL: Supports<I::GL> {
+    pub fn into_compressed_image<I:OwnedCompressedImage<Format=F>>(&self, gl:&I::GL, hint:I::Hint) -> I {
         let dim = self.dim();
         compressed_block_check::<_,F>(dim);
         unsafe {
-            I::from_gl(
-                &assume_supported(), hint, dim.into_array(), |s, ptr| self.pack_compressed_pixels(s, ptr)
-            )
+            I::from_gl(gl, hint, dim.into_array(), |s, ptr| self.pack_compressed_pixels(s, ptr))
         }
     }
 
-    pub fn try_into_compressed_image<I:OwnedCompressedImage<Format=F>>(
-        &self, hint:I::Hint
-    ) -> Result<I,GLError> {
-        let dim = self.dim();
-        compressed_block_check::<_,F>(dim);
-        unsafe {
-            Ok(I::from_gl(
-                &upgrade_to(&self.gl())?, hint, dim.into_array(), |s, ptr| self.pack_compressed_pixels(s, ptr)
-            ))
-        }
+    pub fn try_into_compressed_image<I:OwnedCompressedImage<Format=F>>(&self, hint:I::Hint) -> Result<I,GLError> {
+        Ok(self.into_compressed_image(&upgrade_to(&self.gl())?, hint))
     }
 
 

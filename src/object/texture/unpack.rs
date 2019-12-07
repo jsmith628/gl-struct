@@ -106,11 +106,11 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImageMut<'a,F,T> {
         self.as_immut().get_image(data);
     }
 
-    pub fn into_image<I:OwnedTexImage<F>>(&self, hint:I::Hint) -> I where T::GL: Supports<I::GL> {
-        self.as_immut().into_image(hint)
+    pub fn into_image<I:OwnedTexImage<F>>(&self, gl:&I::GL, hint:I::Hint) -> I {
+        self.as_immut().into_image(gl, hint)
     }
 
-    pub fn try_into_image<I:OwnedTexImage<F>>(&self, hint:I::Hint) -> Result<I,GLError> where {
+    pub fn try_into_image<I:OwnedTexImage<F>>(&self, hint:I::Hint) -> Result<I,GLError> {
         self.as_immut().try_into_image(hint)
     }
 
@@ -192,15 +192,11 @@ impl<'a,F:SpecificCompressed,T:CompressedTransferTarget<F>> TexImageMut<'a,F,T> 
         self.as_immut().get_compressed_image(data);
     }
 
-    pub fn into_compressed_image<I:OwnedCompressedImage<Format=F>>(
-        &self, hint:I::Hint
-    ) -> I where T::GL: Supports<I::GL> {
-        self.as_immut().into_compressed_image(hint)
+    pub fn into_compressed_image<I:OwnedCompressedImage<Format=F>>(&self, gl:&I::GL, hint:I::Hint) -> I {
+        self.as_immut().into_compressed_image(gl, hint)
     }
 
-    pub fn try_into_compressed_image<I:OwnedCompressedImage<Format=F>>(
-        &self, hint:I::Hint
-    ) -> Result<I,GLError> where {
+    pub fn try_into_compressed_image<I:OwnedCompressedImage<Format=F>>(&self, hint:I::Hint) -> Result<I,GLError> {
         self.as_immut().try_into_compressed_image(hint)
     }
 
