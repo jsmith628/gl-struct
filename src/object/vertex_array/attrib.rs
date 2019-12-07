@@ -1,12 +1,12 @@
 use super::*;
 
-pub struct VertexAttrib<'a, 'b, T:GLSLType+Vertex> {
+pub struct VertexAttrib<'a, 'b, T:GLSLType> {
     pub(super) vaobj: GLuint,
     pub(super) index: GLuint,
     pub(super) reference: PhantomData<&'b mut VertexArray<'a,T>>
 }
 
-impl<'a,'b,T:GLSLType+Vertex> VertexAttrib<'a,'b,T> {
+impl<'a,'b,T:GLSLType> VertexAttrib<'a,'b,T> {
     #[inline] pub fn index(&self) -> GLuint { self.index }
 
     unsafe fn get(&self, pname:GLenum) -> GLint {
