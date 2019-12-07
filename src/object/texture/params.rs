@@ -1,36 +1,31 @@
 use super::*;
-use object::sampler::*;
 
 impl<F:InternalFormat, T:SampledTarget<F>> Texture<F,T> {
 
     //TODO: exclude rectangle textures
 
     pub fn wrap_s(&mut self, wrapping: Wrapping) {
-        unsafe { self.parameter_iv(gl::TEXTURE_WRAP_S, &(GLenum::from(wrapping) as GLint)) }
+        unsafe { self.parameter(gl::TEXTURE_WRAP_S, wrapping) }
     }
 
     pub fn wrap_t(&mut self, wrapping: Wrapping) {
-        if T::Dim::dim()>=2 {
-            unsafe { self.parameter_iv(gl::TEXTURE_WRAP_T, &(GLenum::from(wrapping) as GLint)) }
-        }
+        if T::Dim::dim()>=2 { unsafe { self.parameter(gl::TEXTURE_WRAP_T, wrapping) } }
     }
 
     pub fn wrap_r(&mut self, wrapping: Wrapping) {
-        if T::Dim::dim()>=3 {
-            unsafe { self.parameter_iv(gl::TEXTURE_WRAP_R, &(GLenum::from(wrapping) as GLint)) }
-        }
+        if T::Dim::dim()>=3 { unsafe { self.parameter(gl::TEXTURE_WRAP_R, wrapping) } }
     }
 
     pub fn mag_filter(&mut self, filter: MagFilter) {
-        unsafe { self.parameter_iv(gl::TEXTURE_MAG_FILTER, &(GLenum::from(filter) as GLint)) }
+        unsafe { self.parameter(gl::TEXTURE_MAG_FILTER, filter) }
     }
 
     pub fn min_filter_non_mipmap(&mut self, filter: MagFilter) {
-        unsafe { self.parameter_iv(gl::TEXTURE_MIN_FILTER, &(GLenum::from(filter) as GLint)) }
+        unsafe { self.parameter(gl::TEXTURE_MIN_FILTER, filter) }
     }
 
     pub fn min_filter(&mut self, filter: MinFilter) where T: MipmappedTarget<F> {
-        unsafe { self.parameter_iv(gl::TEXTURE_MIN_FILTER, &(GLenum::from(filter) as GLint)) }
+        unsafe { self.parameter(gl::TEXTURE_MIN_FILTER, filter) }
     }
 
     #[allow(unused_variables)]
@@ -75,20 +70,18 @@ impl<F:InternalFormat, T:SampledTarget<F>> Texture<F,T> {
     }
 
     pub fn compare_mode(&mut self, mode: CompareMode) where F: DepthFormat {
-        unsafe { self.parameter_iv(gl::TEXTURE_COMPARE_MODE, &(GLenum::from(mode) as GLint)) }
+        unsafe { self.parameter(gl::TEXTURE_COMPARE_MODE, mode) }
     }
 
     pub fn compare_func(&mut self, func: CompareFunc) where F: DepthFormat {
-        unsafe { self.parameter_iv(gl::TEXTURE_COMPARE_FUNC, &(GLenum::from(func) as GLint)) }
+        unsafe { self.parameter(gl::TEXTURE_COMPARE_FUNC, func) }
     }
 
-    pub fn get_wrap_s(&self) -> Wrapping {
-        unsafe { (self.get_parameter_i(gl::TEXTURE_WRAP_S) as GLenum).try_into().unwrap() }
-    }
+    pub fn get_wrap_s(&self) -> Wrapping { unsafe { self.get_parameter(gl::TEXTURE_WRAP_S) } }
 
     pub fn get_wrap_t(&self) -> Wrapping {
         if T::Dim::dim()>=2 {
-            unsafe { (self.get_parameter_i(gl::TEXTURE_WRAP_T) as GLenum).try_into().unwrap() }
+            unsafe { self.get_parameter(gl::TEXTURE_WRAP_T) }
         } else {
             Default::default()
         }
@@ -96,7 +89,7 @@ impl<F:InternalFormat, T:SampledTarget<F>> Texture<F,T> {
 
     pub fn get_wrap_r(&self) -> Wrapping {
         if T::Dim::dim()>=3 {
-            unsafe { (self.get_parameter_i(gl::TEXTURE_WRAP_R) as GLenum).try_into().unwrap() }
+            unsafe { self.get_parameter(gl::TEXTURE_WRAP_R) }
         } else if T::glenum()==gl::TEXTURE_RECTANGLE {
             Wrapping::ClampToEdge(unsafe {assume_supported()})
         } else {
@@ -104,13 +97,9 @@ impl<F:InternalFormat, T:SampledTarget<F>> Texture<F,T> {
         }
     }
 
-    pub fn get_mag_filter(&self) -> MagFilter {
-        unsafe { (self.get_parameter_i(gl::TEXTURE_MAG_FILTER) as GLenum).try_into().unwrap() }
-    }
+    pub fn get_mag_filter(&self) -> MagFilter { unsafe { self.get_parameter(gl::TEXTURE_MAG_FILTER) } }
 
-    pub fn get_min_filter(&self) -> MinFilter {
-        unsafe { (self.get_parameter_i(gl::TEXTURE_MIN_FILTER) as GLenum).try_into().unwrap() }
-    }
+    pub fn get_min_filter(&self) -> MinFilter { unsafe { self.get_parameter(gl::TEXTURE_MIN_FILTER) } }
 
     #[allow(unused_variables)]
     pub fn get_min_lod(&self, gl:&GL12) -> GLfloat {
@@ -172,11 +161,11 @@ impl<F:InternalFormat, T:SampledTarget<F>> Texture<F,T> {
 
 
     pub fn get_compare_mode(&self) -> CompareMode where F: DepthFormat {
-        unsafe { (self.get_parameter_i(gl::TEXTURE_COMPARE_MODE) as GLenum).try_into().unwrap() }
+        unsafe { self.get_parameter(gl::TEXTURE_COMPARE_MODE) }
     }
 
     pub fn get_compare_func(&self) -> CompareMode where F: DepthFormat {
-        unsafe { (self.get_parameter_i(gl::TEXTURE_COMPARE_MODE) as GLenum).try_into().unwrap() }
+        unsafe { self.get_parameter(gl::TEXTURE_COMPARE_MODE) }
     }
 
 }

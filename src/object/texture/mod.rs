@@ -47,6 +47,17 @@ impl<F, T:TextureTarget<F>> Texture<F,T> {
     }
 
     #[inline]
+    unsafe fn parameter<E:GLEnum>(&mut self, pname:GLenum, param: E) {
+        if gl::TextureParameteri::is_loaded() {
+            gl::TextureParameteri(self.id(), pname, Into::<GLenum>::into(param) as GLint);
+        } else {
+            T::bind_loc().map_bind(self,
+                |b| gl::TexParameteri(b.target_id(), pname, Into::<GLenum>::into(param) as GLint)
+            );
+        }
+    }
+
+    #[inline]
     unsafe fn parameter_iv(&mut self, pname:GLenum, params: *const GLint) {
         if gl::TextureParameteriv::is_loaded() {
             gl::TextureParameteriv(self.id(), pname, params);
@@ -94,6 +105,11 @@ impl<F, T:TextureTarget<F>> Texture<F,T> {
         let mut param = MaybeUninit::uninit();
         self.get_parameter_fv(pname, param.as_mut_ptr());
         param.assume_init()
+    }
+
+    #[inline]
+    unsafe fn get_parameter<E:GLEnum>(&self, pname:GLenum) -> E {
+        (self.get_parameter_i(pname) as GLenum).try_into().unwrap()
     }
 
     #[inline]
