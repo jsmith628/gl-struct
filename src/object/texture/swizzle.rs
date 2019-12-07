@@ -38,32 +38,25 @@ impl<F:ColorFormat, T:SampledTarget<F>> Texture<F,T> {
     }
 
     pub fn get_swizzle_r(&self, gl:&GL33) -> SwizzleParameter {
-        unsafe { (self.get_parameter_iv(gl::TEXTURE_SWIZZLE_R) as GLenum).try_into().unwrap() }
+        unsafe { (self.get_parameter_i(gl::TEXTURE_SWIZZLE_R) as GLenum).try_into().unwrap() }
     }
 
     pub fn get_swizzle_g(&self, gl:&GL33) -> SwizzleParameter {
-        unsafe { (self.get_parameter_iv(gl::TEXTURE_SWIZZLE_G) as GLenum).try_into().unwrap() }
+        unsafe { (self.get_parameter_i(gl::TEXTURE_SWIZZLE_G) as GLenum).try_into().unwrap() }
     }
 
     pub fn get_swizzle_b(&self, gl:&GL33) -> SwizzleParameter {
-        unsafe { (self.get_parameter_iv(gl::TEXTURE_SWIZZLE_B) as GLenum).try_into().unwrap() }
+        unsafe { (self.get_parameter_i(gl::TEXTURE_SWIZZLE_B) as GLenum).try_into().unwrap() }
     }
 
     pub fn get_swizzle_a(&self, gl:&GL33) -> SwizzleParameter {
-        unsafe { (self.get_parameter_iv(gl::TEXTURE_SWIZZLE_A) as GLenum).try_into().unwrap() }
+        unsafe { (self.get_parameter_i(gl::TEXTURE_SWIZZLE_A) as GLenum).try_into().unwrap() }
     }
 
-    pub fn get_swizzle_rgba(&mut self, gl:&GL33) -> [SwizzleParameter; 4] {
+    pub fn get_swizzle_rgba(&self, gl:&GL33) -> [SwizzleParameter; 4] {
         unsafe {
             let mut param = MaybeUninit::<[GLint;4]>::uninit();
-
-            if gl::GetTextureParameteriv::is_loaded() {
-                gl::GetTextureParameteriv(self.id(), gl::TEXTURE_SWIZZLE_RGBA, &mut param.get_mut()[0]);
-            } else {
-                T::bind_loc().map_bind(self,
-                    |b| gl::GetTexParameteriv(b.target_id(), gl::TEXTURE_SWIZZLE_RGBA, &mut param.get_mut()[0])
-                );
-            }
+            self.get_parameter_iv(gl::TEXTURE_SWIZZLE_RGBA, param.as_mut_ptr() as *mut _);
 
             let rgba: [GLint; 4] = param.assume_init();
             [

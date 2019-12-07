@@ -13,6 +13,7 @@ pub use self::image::*;
 pub use self::pack::*;
 pub use self::mipmap::*;
 pub use self::swizzle::*;
+pub use self::params::*;
 
 pub mod target;
 mod dim;
@@ -22,6 +23,7 @@ mod image;
 mod pack;
 mod unpack;
 mod swizzle;
+mod params;
 
 pub struct Texture<F, T:TextureTarget<F>> {
     id: GLuint,
@@ -63,14 +65,64 @@ impl<F, T:TextureTarget<F>> Texture<F,T> {
     }
 
     #[inline]
-    unsafe fn get_parameter_iv(&self, pname:GLenum) -> GLint {
-        let mut param = MaybeUninit::uninit();
-        if gl::GetTextureParameteriv::is_loaded() {
-            gl::GetTextureParameteriv(self.id(), pname, param.as_mut_ptr());
+    unsafe fn parameter_i_iv(&mut self, pname:GLenum, params: *const GLint) {
+        if gl::TextureParameterIuiv::is_loaded() {
+            gl::TextureParameterIiv(self.id(), pname, params);
         } else {
-            T::bind_loc().map_bind(self, |b| gl::GetTexParameteriv(b.target_id(), pname, param.as_mut_ptr()));
+            T::bind_loc().map_bind(self, |b| gl::TexParameterIiv(b.target_id(), pname, params));
         }
+    }
+
+    #[inline]
+    unsafe fn parameter_i_uiv(&mut self, pname:GLenum, params: *const GLuint) {
+        if gl::TextureParameterIuiv::is_loaded() {
+            gl::TextureParameterIuiv(self.id(), pname, params);
+        } else {
+            T::bind_loc().map_bind(self, |b| gl::TexParameterIuiv(b.target_id(), pname, params));
+        }
+    }
+
+    #[inline]
+    unsafe fn get_parameter_i(&self, pname:GLenum) -> GLint {
+        let mut param = MaybeUninit::uninit();
+        self.get_parameter_iv(pname, param.as_mut_ptr());
         param.assume_init()
+    }
+
+    #[inline]
+    unsafe fn get_parameter_iv(&self, pname:GLenum, param: *mut GLint) {
+        if gl::GetTextureParameteriv::is_loaded() {
+            gl::GetTextureParameteriv(self.id(), pname, param);
+        } else {
+            T::bind_loc().map_bind(self, |b| gl::GetTexParameteriv(b.target_id(), pname, param));
+        }
+    }
+
+    #[inline]
+    unsafe fn get_parameter_fv(&self, pname:GLenum, param: *mut GLfloat) {
+        if gl::GetTextureParameterfv::is_loaded() {
+            gl::GetTextureParameterfv(self.id(), pname, param);
+        } else {
+            T::bind_loc().map_bind(self, |b| gl::GetTexParameterfv(b.target_id(), pname, param));
+        }
+    }
+
+    #[inline]
+    unsafe fn get_parameter_i_iv(&self, pname:GLenum, param: *mut GLint) {
+        if gl::GetTextureParameterIiv::is_loaded() {
+            gl::GetTextureParameterIiv(self.id(), pname, param);
+        } else {
+            T::bind_loc().map_bind(self, |b| gl::GetTexParameterIiv(b.target_id(), pname, param));
+        }
+    }
+
+    #[inline]
+    unsafe fn get_parameter_i_uiv(&self, pname:GLenum, param: *mut GLuint) {
+        if gl::GetTextureParameterIuiv::is_loaded() {
+            gl::GetTextureParameterIuiv(self.id(), pname, param);
+        } else {
+            T::bind_loc().map_bind(self, |b| gl::GetTexParameterIuiv(b.target_id(), pname, param));
+        }
     }
 
 }
@@ -78,11 +130,11 @@ impl<F, T:TextureTarget<F>> Texture<F,T> {
 impl<F:InternalFormat, T:TextureTarget<F>> Texture<F,T> {
 
     pub fn immutable_format(&self) -> bool {
-        unsafe { self.get_parameter_iv(gl::TEXTURE_IMMUTABLE_FORMAT)!=0 }
+        unsafe { self.get_parameter_i(gl::TEXTURE_IMMUTABLE_FORMAT)!=0 }
     }
 
     pub fn immutable_levels(&self) -> GLuint {
-        unsafe { self.get_parameter_iv(gl::TEXTURE_IMMUTABLE_LEVELS) as GLuint }
+        unsafe { self.get_parameter_i(gl::TEXTURE_IMMUTABLE_LEVELS) as GLuint }
     }
 
     fn _base_image(&self) -> TexImage<F,T> { self._level(0, <T as ImageSelector>::Selection::default()) }

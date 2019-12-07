@@ -118,13 +118,13 @@ pub trait LayeredTarget<F> = Layered + TextureTarget<F>;
 pub trait CubeMapTarget<F> = CubeMapped + TextureTarget<F>;
 
 #[marker] pub unsafe trait Sampled: TextureType {}
+#[marker] pub unsafe trait Multisampled: TextureType {}
 #[marker] pub unsafe trait Mipmapped: Sampled {}
-#[marker] pub unsafe trait Multisampled: Sampled {}
 #[marker] pub unsafe trait PixelTransfer: Sampled {}
 #[marker] pub unsafe trait CompressedTransfer: Sampled + PixelTransfer {}
-#[marker] pub unsafe trait BaseImage: Sampled {}
+#[marker] pub unsafe trait BaseImage: TextureType {}
 #[marker] pub unsafe trait CubeMapped: Sampled {}
-#[marker] pub unsafe trait Layered: Sampled {}
+#[marker] pub unsafe trait Layered: TextureType {}
 
 tex_target! {
     [TEXTURE_1D "Texture 1D"]; GL10; [usize;1],
@@ -140,7 +140,7 @@ tex_target! {
     [TEXTURE_2D_MULTISAMPLE_ARRAY "Texture 2D Multisample Array"]; Renderable; GL32; <TEXTURE_2D_ARRAY as TextureType>::Dim,
 }
 
-//All but TEXTURE_BUFFER
+//All but TEXTURE_BUFFER and the multisample textures
 
 unsafe impl Sampled for TEXTURE_1D { }
 unsafe impl Sampled for TEXTURE_2D { }
@@ -150,8 +150,6 @@ unsafe impl Sampled for TEXTURE_2D_ARRAY { }
 unsafe impl Sampled for TEXTURE_RECTANGLE { }
 unsafe impl Sampled for TEXTURE_CUBE_MAP {}
 unsafe impl Sampled for TEXTURE_CUBE_MAP_ARRAY {}
-unsafe impl Sampled for TEXTURE_2D_MULTISAMPLE {}
-unsafe impl Sampled for TEXTURE_2D_MULTISAMPLE_ARRAY {}
 
 //All but TEXTURE_BUFFER and TEXTURE_CUBE_MAP
 

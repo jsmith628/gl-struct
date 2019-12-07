@@ -36,10 +36,14 @@ glenum! {
 
     pub enum Wrapping {
         [Repeat REPEAT "Repeat"],
-        [MirroredRepeat MIRRORED_REPEAT "Mirrored Repeat"],
-        [ClampToEdge CLAMP_TO_EDGE "Clamp To Edge"],
-        [ClampToBorder CLAMP_TO_BORDER "Clamp To Border"],
-        [MirrorClampToEdge MIRROR_CLAMP_TO_EDGE "Mirror Clamp To Edge"]
+        [ClampToEdge(GL12; _gl) CLAMP_TO_EDGE "Clamp To Edge"],
+        [ClampToBorder(GL13; _gl) CLAMP_TO_BORDER "Clamp To Border"],
+        [MirroredRepeat(GL14; _gl) MIRRORED_REPEAT "Mirrored Repeat"],
+        [MirrorClampToEdge(GL44; _gl) MIRROR_CLAMP_TO_EDGE "Mirror Clamp To Edge"]
+    }
+
+    impl Default for Wrapping {
+        fn default() -> Self { Wrapping::Repeat }
     }
 
 }

@@ -19,8 +19,8 @@ impl<F:InternalFormat> Texture<F,TEXTURE_CUBE_MAP> where TEXTURE_CUBE_MAP:Textur
 
 impl<F:InternalFormat, T:MipmappedTarget<F>> Texture<F,T> {
 
-    pub fn base_level(&self) -> GLuint {unsafe{self.get_parameter_iv(gl::TEXTURE_BASE_LEVEL) as GLuint}}
-    pub fn max_level(&self) -> GLuint {unsafe{self.get_parameter_iv(gl::TEXTURE_MAX_LEVEL) as GLuint}}
+    pub fn base_level(&self) -> GLuint {unsafe{self.get_parameter_i(gl::TEXTURE_BASE_LEVEL) as GLuint}}
+    pub fn max_level(&self) -> GLuint {unsafe{self.get_parameter_i(gl::TEXTURE_MAX_LEVEL) as GLuint}}
     pub fn level_range(&self) -> RangeInclusive<GLuint> {
         self.base_level()..=self.max_level()
     }
