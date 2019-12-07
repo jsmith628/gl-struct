@@ -28,9 +28,9 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImage<'a,F,T> {
         self.pack(settings, pixels, |f, lvl, ptr| gl::GetTexImage(f, lvl, fmt.into(), ty.into(), ptr));
     }
 
-    pub fn get_image<I:TexImageDst<F>>(&self, data: &mut I) {
-        dest_size_check(self.dim(), data);
-        unsafe { self.pack_pixels(PixelStore::from(data), data.pixels_mut()); }
+    pub fn get_image<I:TexImageDst<F>>(&self, mut data: I) {
+        dest_size_check(self.dim(), &data);
+        unsafe { self.pack_pixels(PixelStore::from(&data), data.pixels_mut()); }
     }
 
     pub fn into_image<I:OwnedTexImage<F>>(&self, gl:&I::GL, hint:I::Hint) -> I {
@@ -58,9 +58,9 @@ impl<'a,F:SpecificCompressed,T:CompressedTransferTarget<F>> TexImage<'a,F,T> {
         self.pack(settings, pixels, |f, lvl, ptr| gl::GetCompressedTexImage(f, lvl, ptr));
     }
 
-    pub fn get_compressed_image<I:CompressedImageDst<Format=F>>(&self, data: &mut I) {
-        dest_size_check(self.dim(), data);
-        unsafe { self.pack_compressed_pixels(PixelStore::from(data), data.pixels_mut()); }
+    pub fn get_compressed_image<I:CompressedImageDst<Format=F>>(&self, mut data: I) {
+        dest_size_check(self.dim(), &data);
+        unsafe { self.pack_compressed_pixels(PixelStore::from(&data), data.pixels_mut()); }
     }
 
     pub fn into_compressed_image<I:OwnedCompressedImage<Format=F>>(&self, gl:&I::GL, hint:I::Hint) -> I {

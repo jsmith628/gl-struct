@@ -50,7 +50,7 @@ impl<T:TextureType> UninitTex<T> {
     }
 
     #[allow(unused_variables)]
-    pub fn image<F,I>(self, gl: &F::GL, data: &I) -> Texture<F,T> where
+    pub fn image<F,I>(self, gl: &F::GL, data: I) -> Texture<F,T> where
         F: InternalFormat,
         I: TexImageSrc<F>,
         T: PixelTransferTarget<F> + BaseImage
@@ -62,7 +62,7 @@ impl<T:TextureType> UninitTex<T> {
     }
 
     #[allow(unused_variables)]
-    pub fn compressed_image<F,I>(self, gl: &F::GL, data: &I) -> Texture<F,T> where
+    pub fn compressed_image<F,I>(self, gl: &F::GL, data: I) -> Texture<F,T> where
         F: SpecificCompressed,
         I: CompressedImageSrc<Format=F>,
         T: CompressedTransferTarget<F> + BaseImage

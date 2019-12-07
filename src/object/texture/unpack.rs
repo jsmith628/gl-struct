@@ -4,7 +4,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImageMut<'a,F,T> {
 
     unsafe fn unpack<
         GL:FnOnce(GLenum, GLint, [GLsizei;3], *const GLvoid), I:ImageSrc
-    >(&mut self, settings:PixelStore, data: &I, gl:GL) {
+    >(&mut self, settings:PixelStore, data: I, gl:GL) {
 
         settings.apply_unpacking();
 
@@ -23,9 +23,9 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImageMut<'a,F,T> {
 
     unsafe fn unpack_pixels<
         GL:FnOnce(GLenum, GLint, [GLsizei;3], GLenum, GLenum, *const GLvoid), I:TexImageSrc<F>
-    >(&mut self, data: &I, gl:GL) {
+    >(&mut self, data: I, gl:GL) {
 
-        let mut settings = PixelStore::from(data);
+        let mut settings = PixelStore::from(&data);
         settings.swap_bytes ^= I::Pixel::swap_bytes();
         settings.lsb_first ^= I::Pixel::lsb_first();
 
@@ -46,8 +46,8 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImageMut<'a,F,T> {
         if T::Dim::dim()==2 && data.depth()!=1  { panic!("Attempted to create a 2D texture from a 3D image"); }
     }
 
-    pub(super) unsafe fn image_unchecked<I:TexImageSrc<F>>(&mut self, data: &I) {
-        self.image_dim_check(data);
+    pub(super) unsafe fn image_unchecked<I:TexImageSrc<F>>(&mut self, data: I) {
+        self.image_dim_check(&data);
         self.unpack_pixels(
             data,
             |face, lvl, [w,h,d], fmt, ty, ptr| {
@@ -61,7 +61,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImageMut<'a,F,T> {
         )
     }
 
-    unsafe fn sub_image_unchecked<I:TexImageSrc<F>>(&mut self, offset:T::Dim, data: &I) {
+    unsafe fn sub_image_unchecked<I:TexImageSrc<F>>(&mut self, offset:T::Dim, data: I) {
 
         if data.width()==0 || data.height()==0 || data.depth()==0 { return; }
         let (x, y, z) = (offset.width() as GLsizei, offset.height() as GLsizei, offset.depth() as GLsizei);
@@ -80,7 +80,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImageMut<'a,F,T> {
 
     }
 
-    pub fn image<I:TexImageSrc<F>>(&mut self, data: &I) {
+    pub fn image<I:TexImageSrc<F>>(&mut self, data: I) {
         //get the current dimensions
         let current_dim = self.dim();
 
@@ -88,21 +88,21 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImageMut<'a,F,T> {
         if current_dim.pixels()==0 {
             //if so, run glTexImage*D
             let dim = self.base_dim().minimized(self.level());
-            size_check(dim, data);
+            size_check(dim, &data);
             unsafe { self.image_unchecked(data) }
         } else {
             //else, run glTexSubImage*D
-            size_check(current_dim, data);
+            size_check(current_dim, &data);
             unsafe { self.sub_image_unchecked(T::Dim::new(0,0,0), data) }
         }
     }
 
-    pub fn sub_image<I:TexImageSrc<F>>(&mut self, offset:T::Dim, data: &I) {
-        source_size_check(offset, self.dim(), data);
+    pub fn sub_image<I:TexImageSrc<F>>(&mut self, offset:T::Dim, data: I) {
+        source_size_check(offset, self.dim(), &data);
         unsafe { self.sub_image_unchecked(offset, data) }
     }
 
-    pub fn get_image<I:TexImageDst<F>>(&self, data: &mut I) {
+    pub fn get_image<I:TexImageDst<F>>(&self, data: I) {
         self.as_immut().get_image(data);
     }
 
@@ -120,7 +120,7 @@ impl<'a,F:SpecificCompressed,T:CompressedTransferTarget<F>> TexImageMut<'a,F,T> 
 
     unsafe fn unpack_compressed_pixels<
         GL:FnOnce(GLenum, GLint, [GLsizei;3], GLsizei, *const GLvoid), I:CompressedImageSrc<Format=F>
-    >(&mut self, data: &I, gl:GL) {
+    >(&mut self, data: I, gl:GL) {
 
         gl::PixelStorei(gl::UNPACK_COMPRESSED_BLOCK_SIZE, F::block_size().try_into().unwrap());
         gl::PixelStorei(gl::UNPACK_COMPRESSED_BLOCK_WIDTH, F::block_width().into());
@@ -129,12 +129,12 @@ impl<'a,F:SpecificCompressed,T:CompressedTransferTarget<F>> TexImageMut<'a,F,T> 
 
         let size = data.pixels().size();
 
-        self.unpack(PixelStore::from(data), data, |f,l,d,p| gl(f,l,d,size.try_into().unwrap(),p))
+        self.unpack(PixelStore::from(&data), data, |f,l,d,p| gl(f,l,d,size.try_into().unwrap(),p))
 
     }
 
-    pub(super) unsafe fn compressed_image_unchecked<I:CompressedImageSrc<Format=F>>(&mut self, data:&I) {
-        self.image_dim_check(data);
+    pub(super) unsafe fn compressed_image_unchecked<I:CompressedImageSrc<Format=F>>(&mut self, data:I) {
+        self.image_dim_check(&data);
         self.unpack_compressed_pixels(data,
             |face, lvl, [w,h,d], size, ptr| {
                 match T::Dim::dim() {
@@ -148,7 +148,7 @@ impl<'a,F:SpecificCompressed,T:CompressedTransferTarget<F>> TexImageMut<'a,F,T> 
     }
 
     pub(super) unsafe fn compressed_sub_image_unchecked<I:CompressedImageSrc<Format=F>>(
-        &mut self, offset:T::Dim, data:&I
+        &mut self, offset:T::Dim, data:I
     ) {
 
         if data.width()==0 || data.height()==0 || data.depth()==0 { return; }
@@ -166,7 +166,7 @@ impl<'a,F:SpecificCompressed,T:CompressedTransferTarget<F>> TexImageMut<'a,F,T> 
         )
     }
 
-    pub fn compressed_image<I:CompressedImageSrc<Format=F>>(&mut self, data: &I) {
+    pub fn compressed_image<I:CompressedImageSrc<Format=F>>(&mut self, data: I) {
         //get the current dimensions
         let current_dim = self.dim();
 
@@ -174,21 +174,21 @@ impl<'a,F:SpecificCompressed,T:CompressedTransferTarget<F>> TexImageMut<'a,F,T> 
         if current_dim.pixels()==0 {
             //if so, run glCompressedTexImage*D
             let dim = self.base_dim().minimized(self.level());
-            size_check(dim, data);
+            size_check(dim, &data);
             unsafe { self.compressed_image_unchecked(data) }
         } else {
             //else, run glCompressedTexSubImage*D
-            size_check(current_dim, data);
+            size_check(current_dim, &data);
             unsafe { self.compressed_sub_image_unchecked(T::Dim::new(0,0,0), data) }
         }
     }
 
-    pub fn compressed_sub_image<I:CompressedImageSrc<Format=F>>(&mut self, offset:T::Dim, data: &I) {
-        source_size_check(offset, self.dim(), data);
+    pub fn compressed_sub_image<I:CompressedImageSrc<Format=F>>(&mut self, offset:T::Dim, data: I) {
+        source_size_check(offset, self.dim(), &data);
         unsafe { self.compressed_sub_image_unchecked(offset, data) }
     }
 
-    pub fn get_compressed_image<I:CompressedImageDst<Format=F>>(&self, data: &mut I) {
+    pub fn get_compressed_image<I:CompressedImageDst<Format=F>>(&self, data: I) {
         self.as_immut().get_compressed_image(data);
     }
 
