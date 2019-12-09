@@ -38,6 +38,22 @@ impl From<IntType> for AttribType {
     fn from(f:IntType) -> AttribType { (f as GLenum).try_into().unwrap() }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct AttribLayout {
+    pub(crate) offset: usize,
+    pub(crate) size: GLenum,
+    pub(crate) ty: AttribType,
+    pub(crate) normalized: bool
+}
+
+impl AttribLayout {
+    pub fn offset(self) -> usize { self.offset }
+    pub fn size(self) -> GLenum { self.size }
+    pub fn ty(self) -> AttribType { self.ty }
+    pub fn normalized(self) -> bool { self.normalized }
+}
+
+
 pub unsafe trait AttribFormat: Sized + Clone + Copy + PartialEq + Eq + Hash + Debug {
     fn attrib_count() -> usize;
     fn offset(self, index: usize) -> usize;
@@ -49,6 +65,9 @@ pub unsafe trait AttribFormat: Sized + Clone + Copy + PartialEq + Eq + Hash + De
     fn packed(self, index: usize) -> bool;
     fn long(self, index: usize) -> bool;
     fn integer(self, index: usize) -> bool;
+
+    fn from_layouts(layouts: &[AttribLayout]) -> Result<Self,GLError>;
+
 }
 
 pub unsafe trait AttribData<A:AttribFormat>: Sized + Copy {
@@ -77,6 +96,36 @@ pub enum VecFormat {
 }
 
 unsafe impl AttribFormat for VecFormat {
+
+    fn from_layouts(layouts: &[AttribLayout]) -> Result<Self,GLError> {
+        use self::AttribType::*;
+
+        let layout = layouts[0];
+        Ok(
+            match layout.ty {
+
+                ty @ Half | ty @ Float => Self::Float((ty as GLenum).try_into()?, layout.size),
+                Fixed => Self::Fixed(layout.size),
+                Double => Self::Double(layout.size),
+
+                ty @ Byte | ty @ UByte | ty @ Short | ty @ UShort | ty @ Int | ty @ UInt => {
+                    let ty = (ty as GLenum).try_into()?;
+                    match layout.normalized {
+                        true => Self::Normalized(ty, layout.size),
+                        false => Self::Int(ty, layout.size),
+                    }
+                },
+
+
+                Int_2_10_10_10_Rev => Self::Int_2_10_10_10_Rev(layout.normalized, layout.size==gl::BGRA),
+                UInt_2_10_10_10_Rev => Self::UInt_2_10_10_10_Rev(layout.normalized, layout.size==gl::BGRA),
+                UInt_10F_11F_11F_Rev => Self::UInt_10F_11F_11F_Rev,
+
+            }
+        )
+    }
+
+
     fn attrib_count() -> usize { 1 }
     fn offset(self, _: usize) -> usize { 0 }
 
@@ -135,6 +184,11 @@ unsafe impl AttribFormat for VecFormat {
 pub struct IVecFormat(pub IntType, pub u32);
 
 unsafe impl AttribFormat for IVecFormat {
+
+    fn from_layouts(layouts: &[AttribLayout]) -> Result<Self,GLError> {
+        Ok(IVecFormat((layouts[0].ty as GLenum).try_into()?, layouts[0].size))
+    }
+
     fn attrib_count() -> usize {1}
     fn offset(self, _: usize) -> usize { 0 }
 
@@ -157,6 +211,11 @@ unsafe impl AttribFormat for IVecFormat {
 pub struct DVecFormat(pub u32);
 
 unsafe impl AttribFormat for DVecFormat {
+
+    fn from_layouts(layouts: &[AttribLayout]) -> Result<Self,GLError> {
+        Ok(DVecFormat(layouts[0].size))
+    }
+
     fn attrib_count() -> usize {1}
     fn offset(self, _: usize) -> usize { 0 }
 
@@ -176,6 +235,11 @@ unsafe impl AttribFormat for DVecFormat {
 }
 
 unsafe impl AttribFormat for ! {
+
+    fn from_layouts(_: &[AttribLayout]) -> Result<Self,GLError> {
+        Err(GLError::InvalidValue("Uninstantiable attribute format".to_string()))
+    }
+
     fn attrib_count() -> usize {0}
     fn offset(self, _: usize) -> usize {self}
 
@@ -189,6 +253,9 @@ unsafe impl AttribFormat for ! {
 }
 
 unsafe impl AttribFormat for void {
+
+    fn from_layouts(_: &[AttribLayout]) -> Result<void,GLError> { Ok(()) }
+
     fn attrib_count() -> usize {1}
     fn offset(self, _: usize) -> usize { 0 }
 
@@ -208,6 +275,11 @@ pub struct OffsetFormat<A:AttribFormat> {
 }
 
 unsafe impl<A:AttribFormat> AttribFormat for OffsetFormat<A> {
+
+    fn from_layouts(layouts: &[AttribLayout]) -> Result<Self,GLError> {
+        Ok(OffsetFormat { offset: layouts[0].offset, fmt: A::from_layouts(layouts)? } )
+    }
+
     fn attrib_count() -> usize { A::attrib_count() }
     fn offset(self, i: usize) -> usize { self.offset + self.fmt.offset(i) }
 
@@ -247,6 +319,20 @@ macro_rules! array_format {
                 array_format!(fn packed<A>() -> bool);
                 array_format!(fn long<A>() -> bool);
                 array_format!(fn integer<A>() -> bool);
+
+
+                fn from_layouts(layouts: &[AttribLayout]) -> Result<Self,GLError> {
+                    let mut fmt = MaybeUninit::<Self>::uninit();
+
+                    for i in 0..$num {
+                        unsafe {
+                            fmt.get_mut()[i] = OffsetFormat::from_layouts(&layouts[i..])?;
+                        }
+                    }
+
+                    Ok(unsafe {fmt.assume_init()})
+                }
+
             }
 
             unsafe impl<A:AttribFormat,T:AttribData<A>> AttribData<[OffsetFormat<A>; $num]> for [T;$num] {
