@@ -4,9 +4,11 @@ use super::*;
 pub trait VertexRef<'a,'b:'a>: GLSLType {
     type AttribArrays: Copy;
     type VertexAttribs;
+    type VertexAttribsMut;
 
     fn num_indices() -> usize;
-    fn vertex_attribs(vaobj: &'a VertexArray<'b,Self>) -> <Self as VertexRef<'a,'b>>::VertexAttribs;
+    fn attribs(vaobj: &'a VertexArray<'b,Self>) -> <Self as VertexRef<'a,'b>>::VertexAttribs;
+    fn attribs_mut(vaobj: &'a mut VertexArray<'b,Self>) -> <Self as VertexRef<'a,'b>>::VertexAttribsMut;
 
 }
 
@@ -18,19 +20,36 @@ macro_rules! impl_vertex_ref {
         impl<'a,'b:'a,$($T:GLSLType+'b),*> VertexRef<'a,'b> for ($($T,)*) {
             type AttribArrays = ($(AttribArray<'b,$T>,)*);
             type VertexAttribs = ($(VertexAttrib<'a,'b,$T>,)*);
+            type VertexAttribsMut = ($(VertexAttribMut<'a,'b,$T>,)*);
 
             #[inline] fn num_indices() -> usize { 0 $( + $T::AttribFormat::attrib_count())* }
 
             #[allow(unused_variables, unused_assignments)]
-            fn vertex_attribs(vaobj: &'a VertexArray<'b,Self>) -> <Self as VertexRef<'a,'b>>::VertexAttribs {
+            fn attribs(vaobj: &'a VertexArray<'b,Self>) -> <Self as VertexRef<'a,'b>>::VertexAttribs {
                 let mut i = 0;
-
                 ($(
                     VertexAttrib {
                         vaobj: vaobj.id(),
                         index: {
                             let j=i;
-                            i+= <$T::AttribFormat as AttribFormat>::attrib_count();
+                            i += <$T::AttribFormat as AttribFormat>::attrib_count();
+                            j as GLuint
+                        },
+                        reference: PhantomData
+                    }
+                ,)*)
+
+            }
+
+            #[allow(unused_variables, unused_assignments)]
+            fn attribs_mut(vaobj: &'a mut VertexArray<'b,Self>) -> <Self as VertexRef<'a,'b>>::VertexAttribsMut {
+                let mut i = 0;
+                ($(
+                    VertexAttribMut {
+                        vaobj: vaobj.id(),
+                        index: {
+                            let j=i;
+                            i += <$T::AttribFormat as AttribFormat>::attrib_count();
                             j as GLuint
                         },
                         reference: PhantomData
@@ -49,7 +68,9 @@ impl_tuple!(impl_vertex_ref);
 impl<'a,'b:'a> VertexRef<'a,'b> for () {
     type AttribArrays = ();
     type VertexAttribs = ();
+    type VertexAttribsMut = ();
 
     fn num_indices() -> usize { 0 }
-    fn vertex_attribs(_: &'a VertexArray<'b,Self>) -> () { () }
+    fn attribs(_: &'a VertexArray<'b,Self>) -> () { () }
+    fn attribs_mut(_: &'a mut VertexArray<'b,Self>) -> () { () }
 }
