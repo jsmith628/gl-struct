@@ -41,27 +41,23 @@ impl<'a,'b,T:GLSLType> VertexAttrib<'a,'b,T> {
     pub fn array_divisor(&self) -> usize { unsafe { self.get(gl::VERTEX_ATTRIB_ARRAY_DIVISOR) as usize } }
     pub fn relative_offset(&self) -> usize { unsafe { self.get_64(gl::VERTEX_ATTRIB_RELATIVE_OFFSET) as usize } }
 
-    pub fn enable_array(&mut self) {
-        unsafe {
-            if gl::EnableVertexArrayAttrib::is_loaded() {
-                gl::EnableVertexArrayAttrib(self.vaobj, self.index);
-            } else {
-                gl::BindVertexArray(self.vaobj);
-                gl::EnableVertexAttribArray(self.index);
-                gl::BindVertexArray(0);
-            }
+    pub unsafe fn enable_array(&mut self) {
+        if gl::EnableVertexArrayAttrib::is_loaded() {
+            gl::EnableVertexArrayAttrib(self.vaobj, self.index);
+        } else {
+            gl::BindVertexArray(self.vaobj);
+            gl::EnableVertexAttribArray(self.index);
+            gl::BindVertexArray(0);
         }
     }
 
-    pub fn disable_array(&mut self) {
-        unsafe {
-            if gl::DisableVertexArrayAttrib::is_loaded() {
-                gl::DisableVertexArrayAttrib(self.vaobj, self.index);
-            } else {
-                gl::BindVertexArray(self.vaobj);
-                gl::DisableVertexAttribArray(self.index);
-                gl::BindVertexArray(0);
-            }
+    pub unsafe fn disable_array(&mut self) {
+        if gl::DisableVertexArrayAttrib::is_loaded() {
+            gl::DisableVertexArrayAttrib(self.vaobj, self.index);
+        } else {
+            gl::BindVertexArray(self.vaobj);
+            gl::DisableVertexAttribArray(self.index);
+            gl::BindVertexArray(0);
         }
     }
 
