@@ -7,8 +7,12 @@ pub trait VertexRef<'a,'b:'a>: GLSLType {
     type VertexAttribsMut;
 
     fn num_indices() -> usize;
+
     fn attribs(vaobj: &'a VertexArray<'b,Self>) -> <Self as VertexRef<'a,'b>>::VertexAttribs;
     fn attribs_mut(vaobj: &'a mut VertexArray<'b,Self>) -> <Self as VertexRef<'a,'b>>::VertexAttribsMut;
+
+    fn attrib_arrays(vaobj: &'a VertexArray<'b,Self>) -> <Self as VertexRef<'a,'b>>::AttribArrays;
+    fn attrib_array_pointers(vaobj: &'a mut VertexArray<'b,Self>, pointers: <Self as VertexRef<'a,'b>>::AttribArrays);
 
 }
 
@@ -25,7 +29,7 @@ macro_rules! impl_vertex_ref {
             #[inline] fn num_indices() -> usize { 0 $( + $T::AttribFormat::attrib_count())* }
 
             #[allow(unused_variables, unused_assignments)]
-            fn attribs(vaobj: &'a VertexArray<'b,Self>) -> <Self as VertexRef<'a,'b>>::VertexAttribs {
+            fn attribs(vaobj: &'a VertexArray<'b,Self>) -> Self::VertexAttribs {
                 let mut i = 0;
                 ($(
                     VertexAttrib {
@@ -42,7 +46,7 @@ macro_rules! impl_vertex_ref {
             }
 
             #[allow(unused_variables, unused_assignments)]
-            fn attribs_mut(vaobj: &'a mut VertexArray<'b,Self>) -> <Self as VertexRef<'a,'b>>::VertexAttribsMut {
+            fn attribs_mut(vaobj: &'a mut VertexArray<'b,Self>) -> Self::VertexAttribsMut {
                 let mut i = 0;
                 ($(
                     VertexAttribMut {
@@ -56,6 +60,18 @@ macro_rules! impl_vertex_ref {
                     }
                 ,)*)
 
+            }
+
+            fn attrib_arrays(vaobj: &'a VertexArray<'b,Self>) -> Self::AttribArrays {
+                let ($($t,)*) = Self::attribs(vaobj);
+                ($($t.get_array(),)*)
+            }
+
+            #[allow(non_snake_case)]
+            fn attrib_array_pointers(vaobj: &'a mut VertexArray<'b,Self>, pointers: Self::AttribArrays) {
+                let ($(mut $t,)*) = Self::attribs_mut(vaobj);
+                let ($($T,)*) = pointers;
+                $($t.pointer($T);)*
             }
 
         }
@@ -73,4 +89,6 @@ impl<'a,'b:'a> VertexRef<'a,'b> for () {
     fn num_indices() -> usize { 0 }
     fn attribs(_: &'a VertexArray<'b,Self>) -> () { () }
     fn attribs_mut(_: &'a mut VertexArray<'b,Self>) -> () { () }
+    fn attrib_arrays(_: &'a VertexArray<'b,Self>) -> () { () }
+    fn attrib_array_pointers(_: &'a mut VertexArray<'b,Self>, _: ()) {}
 }
