@@ -262,6 +262,11 @@ impl<'a,T:Copy+Sized,A:Initialized> SliceMut<'a,T,A> {
 impl<'a,T:Sized,A:Initialized> SliceMut<'a,[T],A> {
     #[inline] pub fn len(&self) -> usize {self.as_immut().len()}
 
+    #[inline]
+    pub unsafe fn from_raw_parts(id:GLuint, len:usize, offset:usize) -> Self {
+        SliceMut{ptr: BufPtr::from_raw_parts(id, len), offset: offset, buf:PhantomData}
+    }
+
     #[inline] pub fn split_at(self, mid:usize) -> (Slice<'a,[T],A>, Slice<'a,[T],A>) {
         Slice::from(self).split_at(mid)
     }

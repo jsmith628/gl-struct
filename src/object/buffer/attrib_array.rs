@@ -6,15 +6,26 @@ use format::attribute::*;
 #[derive(Derivative)]
 #[derivative(Clone(bound=""), Copy(bound=""))]
 pub struct AttribArray<'a,A:GLSLType> {
-    buf: Slice<'a,[u8],ReadOnly>,
-    stride: usize,
+    id: GLuint,
     format: A::AttribFormat,
+    stride: usize,
+    pointer: usize,
+    buf: PhantomData<Slice<'a,[u8],ReadOnly>>
 }
 
 impl<'a,A:GLSLType> AttribArray<'a,A> {
-    #[inline] pub fn id(&self) -> GLuint { self.buf.id() }
-    #[inline] pub fn stride(&self) -> usize { self.stride }
+
+    #[inline] pub fn id(&self) -> GLuint { self.id }
     #[inline] pub fn format(&self) -> A::AttribFormat { self.format }
+    #[inline] pub fn stride(&self) -> usize { self.stride }
+    #[inline] pub fn offset(&self) -> usize { self.pointer }
+    #[inline] pub fn pointer(&self) -> *const GLvoid { self.pointer as *const _ }
+
+    #[inline]
+    pub unsafe fn from_raw_parts(fmt:A::AttribFormat, id:GLuint, stride:usize, ptr:usize) -> Self {
+        AttribArray { id:id, format:fmt, stride:stride, pointer:ptr, buf:PhantomData }
+    }
+
 }
 
 pub unsafe trait SplitAttribs<'a, A:Copy>: Copy {
@@ -38,19 +49,15 @@ macro_rules! impl_split_tuple {
 
             #[allow(unused_variables, unused_mut, unused_assignments)]
             fn split<B:Initialized>(buf:Slice<'a,[Self],B>) -> ($(AttribArray<'a,$A>,)*) {
-                let (id, size, offset, stride) = (buf.id(), buf.size(), buf.offset(), size_of::<Self>());
-                let mut pos = 0;
+                let (id, offset, stride) = (buf.id(), buf.offset(), size_of::<Self>());
+                let mut pointer = 0;
                 (
                     $(
-                        AttribArray {
-                            buf: unsafe {
-                                let buf = Slice::from_raw_parts(id, size-pos, offset+pos);
-                                pos += size_of::<$T>();
-                                pos += (pos as *const u8).align_offset(align_of::<$T>());
-                                buf
-                            },
-                            stride: stride,
-                            format: $T::format()
+                        unsafe {
+                            let arr = AttribArray::from_raw_parts($T::format(), id, stride, pointer);
+                            pointer += size_of::<$T>();
+                            pointer += (pointer as *const u8).align_offset(align_of::<$T>());
+                            arr
                         },
                     )*
                 )
