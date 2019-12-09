@@ -5,6 +5,7 @@ pub trait VertexRef<'a:'b,'b>: GLSLType {
     type AttribArrays: Copy;
     type VertexAttribs;
 
+    fn num_indices() -> usize;
     fn vertex_attribs(vaobj: &'b VertexArray<'a,Self>) -> <Self as VertexRef<'a,'b>>::VertexAttribs;
 
 }
@@ -17,6 +18,8 @@ macro_rules! impl_vertex_ref {
         impl<'a:'b,'b,$($T:GLSLType+'a),*> VertexRef<'a,'b> for ($($T,)*) {
             type AttribArrays = ($(AttribArray<'a,$T>,)*);
             type VertexAttribs = ($(VertexAttrib<'a,'b,$T>,)*);
+
+            #[inline] fn num_indices() -> usize { 0 $( + $T::AttribFormat::attrib_count())* }
 
             #[allow(unused_variables, unused_assignments)]
             fn vertex_attribs(vaobj: &'b VertexArray<'a,Self>) -> <Self as VertexRef<'a,'b>>::VertexAttribs {
@@ -46,5 +49,7 @@ impl_tuple!(impl_vertex_ref);
 impl<'a:'b,'b> VertexRef<'a,'b> for () {
     type AttribArrays = ();
     type VertexAttribs = ();
+
+    fn num_indices() -> usize { 0 }
     fn vertex_attribs(_: &'b VertexArray<'a,Self>) -> () { () }
 }
