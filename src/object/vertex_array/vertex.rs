@@ -27,7 +27,7 @@ macro_rules! impl_vertex_ref {
                         vaobj: vaobj.id(),
                         index: {
                             let j=i;
-                            i+= <$T::AttributeFormat as AttribFormat>::attrib_count();
+                            i+= <$T::AttribFormat as AttribFormat>::attrib_count();
                             j as GLuint
                         },
                         reference: PhantomData

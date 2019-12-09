@@ -50,7 +50,7 @@ pub unsafe trait AttribFormat: Sized + Clone + Copy + PartialEq + Eq + Hash + De
     fn integer(self, index: usize) -> bool;
 }
 
-pub unsafe trait AttributeData<A:AttribFormat>: Sized + Copy {
+pub unsafe trait AttribData<A:AttribFormat>: Sized + Copy {
     fn format() -> A;
     fn offset(index: usize) -> usize;
 }
@@ -219,7 +219,7 @@ macro_rules! array_format {
                 fn integer(self, i: usize) -> bool { self[i / A::attrib_count()].integer(i % A::attrib_count()) }
             }
 
-            unsafe impl<A:AttribFormat,T:AttributeData<A>> AttributeData<[A; $num]> for [T;$num] {
+            unsafe impl<A:AttribFormat,T:AttribData<A>> AttribData<[A; $num]> for [T;$num] {
                 fn format() -> [A; $num] { [T::format(); $num] }
                 fn offset(i:usize) -> usize {
                     let (q, r) = (i / A::attrib_count(), i % A::attrib_count());
@@ -248,30 +248,30 @@ macro_rules! prim_attr {
     };
 
     (@int $value:ident $num:literal $ty:ty) => {
-        unsafe impl AttributeData<IVecFormat> for $ty {
+        unsafe impl AttribData<IVecFormat> for $ty {
             fn format() -> IVecFormat { IVecFormat(IntType::$value, $num) }
             fn offset(_:usize) -> usize { 0 }
         }
 
-        unsafe impl AttributeData<VecFormat> for $ty {
+        unsafe impl AttribData<VecFormat> for $ty {
             fn format() -> VecFormat { VecFormat::Int(IntType::$value, $num) }
             fn offset(_:usize) -> usize { 0 }
         }
     };
 
     (@float $value:ident $num:literal $ty:ty) => {
-        unsafe impl AttributeData<VecFormat> for $ty {
+        unsafe impl AttribData<VecFormat> for $ty {
             fn format() -> VecFormat { VecFormat::Float(FloatType::$value, $num) }
             fn offset(_:usize) -> usize { 0 }
         }
     };
 
     (@double $value:ident $num:literal $ty:ty) => {
-        unsafe impl AttributeData<VecFormat> for $ty {
+        unsafe impl AttribData<VecFormat> for $ty {
             fn format() -> VecFormat { VecFormat::Double($num) }
             fn offset(_:usize) -> usize { 0 }
         }
-        unsafe impl AttributeData<DVecFormat> for $ty {
+        unsafe impl AttribData<DVecFormat> for $ty {
             fn format() -> DVecFormat { DVecFormat($num) }
             fn offset(_:usize) -> usize { 0 }
         }

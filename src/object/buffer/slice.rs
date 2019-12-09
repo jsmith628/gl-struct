@@ -144,7 +144,7 @@ impl<'a,T:Sized,A:Initialized> Slice<'a,[T],A> {
     #[inline] pub fn len(&self) -> usize {self.ptr.len()}
 
     #[inline]
-    unsafe fn from_raw_parts(id:GLuint, len:usize, offset:usize) -> Self {
+    pub unsafe fn from_raw_parts(id:GLuint, len:usize, offset:usize) -> Self {
         Slice{ptr: BufPtr::from_raw_parts(id, len), offset: offset, buf:PhantomData}
     }
 
@@ -191,6 +191,11 @@ impl<'a,T:Sized,A:Initialized> Slice<'a,[T],A> {
                 buf: PhantomData
             }
         }
+    }
+
+    #[inline]
+    pub fn attrib_arrays<Attrib:Copy>(self) -> Attrib where T:SplitAttribs<'a,Attrib> {
+        T::split(self)
     }
 
     #[inline]
@@ -292,6 +297,11 @@ impl<'a,T:Sized,A:Initialized> SliceMut<'a,[T],A> {
     #[inline]
     pub fn index_mut<U:?Sized,I:SliceIndex<[T],Output=U>>(self,i:I) -> SliceMut<'a,U,A> {
         unsafe { Slice::from(self).index(i).into_mut() }
+    }
+
+    #[inline]
+    pub fn attrib_arrays<Attrib:Copy>(self) -> Attrib where T:SplitAttribs<'a,Attrib> {
+        T::split(self.into())
     }
 
     #[inline]

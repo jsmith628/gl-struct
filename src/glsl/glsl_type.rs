@@ -1,7 +1,7 @@
 use super::*;
 
 unsafe impl GLSLType for void {
-    type AttributeFormat = ();
+    type AttribFormat = ();
     unsafe fn load_uniforms(_: GLint, _: &[Self]){}
     unsafe fn get_uniform(_: GLuint, _:GLint) -> Self {()}
     fn uniform_locations() -> GLuint { 1 }
@@ -14,7 +14,7 @@ macro_rules! impl_glsl_type {
     ($ty:ident $set:ident $get:ident [$attr:ident; $num:tt] $($rest:tt)*) => {
 
         unsafe impl GLSLType for $ty {
-            type AttributeFormat = [$attr; $num];
+            type AttribFormat = [$attr; $num];
 
             unsafe fn load_uniforms(id: GLint, data: &[Self]){
                 $set(id, data.len() as GLint, false as GLboolean, transmute(&data[0][0][0]))
@@ -33,7 +33,7 @@ macro_rules! impl_glsl_type {
 
     ($ty:ident $set:ident $get:ident $attr:ident $($rest:tt)*) => {
         unsafe impl GLSLType for $ty {
-            type AttributeFormat = $attr;
+            type AttribFormat = $attr;
 
             unsafe fn load_uniforms(id: GLint, data: &[Self]){
                 $set(id, data.len() as GLint, transmute(&data[0]))
@@ -101,7 +101,7 @@ impl_glsl_type! {
 macro_rules! impl_tuple_type {
     ($($A:ident:$a:ident)*) => {
         unsafe impl<$($A:GLSLType),*> GLSLType for ($($A,)*) {
-            type AttributeFormat = !;
+            type AttribFormat = !;
 
             #[allow(unused_assignments)]
             unsafe fn load_uniforms(id: GLint, data: &[Self]){
@@ -141,7 +141,7 @@ macro_rules! impl_array_type {
     ($attrib_support:tt $($num:tt)*) => {
         $(
             unsafe impl<T:GLSLType> GLSLType for [T; $num] {
-                type AttributeFormat = impl_array_type!(@attrib $attrib_support [T::AttributeFormat; $num]);
+                type AttribFormat = impl_array_type!(@attrib $attrib_support [T::AttribFormat; $num]);
 
                 unsafe fn load_uniforms(id: GLint, data: &[Self]){
                     let flattened = from_raw_parts(&data[0][0] as *const T, data.len() * $num);

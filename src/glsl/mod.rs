@@ -28,7 +28,7 @@ mod glsl_type;
 mod functions;
 
 pub unsafe trait GLSLType: Sized + Copy {
-    type AttributeFormat: AttribFormat;
+    type AttribFormat: AttribFormat;
 
     #[inline] fn uniform_locations() -> GLuint {1}
     // #[inline] fn first_element_name(var: String) -> String { var }
@@ -88,9 +88,9 @@ macro_rules! glsl_type {
         // impl From<$prim> for $name { #[inline] fn from(v: $prim) -> Self { $name{value: v} } }
         // impl From<$name> for $prim { #[inline] fn from(v: $name) -> Self { v.value } }
 
-        unsafe impl<A:AttribFormat> AttributeData<A> for $name where $prim: AttributeData<A> {
-            #[inline] fn format() -> A { <$prim as AttributeData<A>>::format() }
-            #[inline] fn offset(i: usize) -> usize { <$prim as AttributeData<A>>::offset(i) }
+        unsafe impl<A:AttribFormat> AttribData<A> for $name where $prim: AttribData<A> {
+            #[inline] fn format() -> A { <$prim as AttribData<A>>::format() }
+            #[inline] fn offset(i: usize) -> usize { <$prim as AttribData<A>>::offset(i) }
         }
 
         glsl_type!($($rest)*);

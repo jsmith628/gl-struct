@@ -198,6 +198,15 @@ impl<T:Sized, A:Initialized> Buffer<[T],A> {
     }
 
     //
+    //Vertex Attributes
+    //
+
+    #[inline]
+    pub fn attrib_arrays<'a, Attrib:Copy>(&'a self) -> Attrib where T:SplitAttribs<'a,Attrib> {
+        T::split(self.as_slice())
+    }
+
+    //
     //Buffer invalidation
     //
 
