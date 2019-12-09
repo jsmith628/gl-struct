@@ -46,20 +46,28 @@ impl<'a,'b,T:GLSLType> VertexAttrib<'a,'b,T> {
 
     pub unsafe fn enable_array(&mut self) {
         if gl::EnableVertexArrayAttrib::is_loaded() {
-            gl::EnableVertexArrayAttrib(self.vaobj, self.index);
+            for i in self.index .. T::AttribFormat::attrib_count() {
+                gl::EnableVertexArrayAttrib(self.vaobj, i);
+            }
         } else {
             gl::BindVertexArray(self.vaobj);
-            gl::EnableVertexAttribArray(self.index);
+            for i in self.index .. T::AttribFormat::attrib_count() {
+                gl::EnableVertexAttribArray(i);
+            }
             gl::BindVertexArray(0);
         }
     }
 
     pub unsafe fn disable_array(&mut self) {
         if gl::DisableVertexArrayAttrib::is_loaded() {
-            gl::DisableVertexArrayAttrib(self.vaobj, self.index);
+            for i in self.index .. T::AttribFormat::attrib_count() {
+                gl::DisableVertexArrayAttrib(self.vaobj, i);
+            }
         } else {
             gl::BindVertexArray(self.vaobj);
-            gl::DisableVertexAttribArray(self.index);
+            for i in self.index .. T::AttribFormat::attrib_count() {
+                gl::DisableVertexAttribArray(i);
+            }
             gl::BindVertexArray(0);
         }
     }
@@ -93,7 +101,9 @@ impl<'a,'b,T:GLSLType> VertexAttrib<'a,'b,T> {
     pub fn divisor(&mut self, divisor: GLuint) {
         unsafe {
             gl::BindVertexArray(self.vaobj);
-            gl::VertexAttribDivisor(self.index, divisor);
+            for i in self.index .. T::AttribFormat::attrib_count() {
+                gl::VertexAttribDivisor(i, divisor);
+            }
             gl::BindVertexArray(0);
         }
     }
