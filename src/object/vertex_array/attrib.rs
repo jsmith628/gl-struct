@@ -38,6 +38,74 @@ impl<'a,'b,T:GLSLType> VertexAttrib<'a,'b,T> {
         }
     }
 
+    pub unsafe fn enable_array(&mut self) {
+        if gl::EnableVertexArrayAttrib::is_loaded() {
+            for i in self.index .. T::AttribFormat::attrib_count() as GLuint {
+                gl::EnableVertexArrayAttrib(self.vaobj, i);
+            }
+        } else {
+            gl::BindVertexArray(self.vaobj);
+            for i in self.index .. T::AttribFormat::attrib_count() as GLuint {
+                gl::EnableVertexAttribArray(i);
+            }
+            gl::BindVertexArray(0);
+        }
+    }
+
+    pub unsafe fn disable_array(&mut self) {
+        if gl::DisableVertexArrayAttrib::is_loaded() {
+            for i in self.index .. T::AttribFormat::attrib_count() as GLuint {
+                gl::DisableVertexArrayAttrib(self.vaobj, i);
+            }
+        } else {
+            gl::BindVertexArray(self.vaobj);
+            for i in self.index .. T::AttribFormat::attrib_count() as GLuint {
+                gl::DisableVertexAttribArray(i);
+            }
+            gl::BindVertexArray(0);
+        }
+    }
+
+    pub fn array_enabled(&self) -> bool {
+        unsafe { self.get(gl::VERTEX_ATTRIB_ARRAY_ENABLED, 0) != 0 }
+    }
+
+    pub fn pointer(&mut self, pointer: AttribArray<'a,T>) {
+        unsafe {
+            gl::BindBuffer(gl::ARRAY_BUFFER, pointer.id());
+            gl::BindVertexArray(self.vaobj);
+
+            let fmt = pointer.format();
+            let (stride, pointer) = (pointer.stride() as GLsizei, pointer.pointer());
+
+            for i in 0..T::AttribFormat::attrib_count() {
+                let index = self.index + i as GLuint;
+                let (size, ty, norm) = (fmt.size(i) as GLint, fmt.ty(i) as GLenum, fmt.normalized(i) as GLboolean);
+                let ptr = pointer.offset(fmt.offset(i) as isize);
+
+                match (fmt.integer(i), fmt.long(i)) {
+                    (false, false) => gl::VertexAttribPointer(index, size, ty, norm, stride, ptr),
+                    (true,  false) => gl::VertexAttribIPointer(index, size, ty, stride, ptr),
+                    (false, true)  => gl::VertexAttribLPointer(index, size, ty, stride, ptr),
+                    (true,  true)  => panic!("Long-integer attribute arrays not currently supported by the GL"),
+                }
+            }
+
+            gl::BindVertexArray(0);
+            gl::BindBuffer(gl::ARRAY_BUFFER, 0);
+        }
+    }
+
+    pub fn divisor(&mut self, divisor: GLuint) {
+        unsafe {
+            gl::BindVertexArray(self.vaobj);
+            for i in self.index .. T::AttribFormat::attrib_count() as GLuint {
+                gl::VertexAttribDivisor(i, divisor);
+            }
+            gl::BindVertexArray(0);
+        }
+    }
+
     pub fn get_format(&self) -> T::AttribFormat {
 
         let ptr = unsafe { self.get_pointer(0) };
@@ -68,77 +136,8 @@ impl<'a,'b,T:GLSLType> VertexAttrib<'a,'b,T> {
         }
     }
 
-
-    pub fn array_enabled(&self) -> bool {
-        unsafe { self.get(gl::VERTEX_ATTRIB_ARRAY_ENABLED, 0) != 0 }
-    }
-
-    pub unsafe fn enable_array(&mut self) {
-        if gl::EnableVertexArrayAttrib::is_loaded() {
-            for i in self.index .. T::AttribFormat::attrib_count() as GLuint {
-                gl::EnableVertexArrayAttrib(self.vaobj, i);
-            }
-        } else {
-            gl::BindVertexArray(self.vaobj);
-            for i in self.index .. T::AttribFormat::attrib_count() as GLuint {
-                gl::EnableVertexAttribArray(i);
-            }
-            gl::BindVertexArray(0);
-        }
-    }
-
-    pub unsafe fn disable_array(&mut self) {
-        if gl::DisableVertexArrayAttrib::is_loaded() {
-            for i in self.index .. T::AttribFormat::attrib_count() as GLuint {
-                gl::DisableVertexArrayAttrib(self.vaobj, i);
-            }
-        } else {
-            gl::BindVertexArray(self.vaobj);
-            for i in self.index .. T::AttribFormat::attrib_count() as GLuint {
-                gl::DisableVertexAttribArray(i);
-            }
-            gl::BindVertexArray(0);
-        }
-    }
-
-    pub fn pointer(&mut self, pointer: AttribArray<'a,T>) {
-        unsafe {
-            gl::BindBuffer(gl::ARRAY_BUFFER, pointer.id());
-            gl::BindVertexArray(self.vaobj);
-
-            let fmt = pointer.format();
-            let (stride, pointer) = (pointer.stride() as GLsizei, pointer.pointer());
-
-            for i in 0..T::AttribFormat::attrib_count() {
-                let index = self.index + i as GLuint;
-                let (size, ty, norm) = (fmt.size(i) as GLint, fmt.ty(i) as GLenum, fmt.normalized(i) as GLboolean);
-                let ptr = pointer.offset(fmt.offset(i) as isize);
-
-                match (fmt.integer(i), fmt.long(i)) {
-                    (false, false) => gl::VertexAttribPointer(index, size, ty, norm, stride, ptr),
-                    (true,  false) => gl::VertexAttribIPointer(index, size, ty, stride, ptr),
-                    (false, true)  => gl::VertexAttribLPointer(index, size, ty, stride, ptr),
-                    (true,  true)  => panic!("Long-integer attribute arrays not currently supported by the GL"),
-                }
-            }
-
-            gl::BindVertexArray(0);
-            gl::BindBuffer(gl::ARRAY_BUFFER, 0);
-        }
-    }
-
     pub fn get_divisor(&self) -> GLuint {
         unsafe { self.get(gl::VERTEX_ATTRIB_ARRAY_DIVISOR, 0) as GLuint }
-    }
-
-    pub fn divisor(&mut self, divisor: GLuint) {
-        unsafe {
-            gl::BindVertexArray(self.vaobj);
-            for i in self.index .. T::AttribFormat::attrib_count() as GLuint {
-                gl::VertexAttribDivisor(i, divisor);
-            }
-            gl::BindVertexArray(0);
-        }
     }
 
 }
