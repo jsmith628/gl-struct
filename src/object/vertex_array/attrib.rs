@@ -1,10 +1,42 @@
 use super::*;
 
+#[derive(Derivative)]
+#[derivative(Clone(bound=""), Copy(bound=""))]
 pub struct VertexAttrib<'a, 'b, T:GLSLType> {
     pub(super) vaobj: GLuint,
     pub(super) index: GLuint,
-    pub(super) reference: PhantomData<&'b mut VertexArray<'a,T>>
+    pub(super) reference: PhantomData<&'a VertexArray<'b,T>>
 }
+
+pub struct VertexAttribMut<'a, 'b, T:GLSLType> {
+    pub(super) vaobj: GLuint,
+    pub(super) index: GLuint,
+    pub(super) reference: PhantomData<&'a mut VertexArray<'b,T>>
+}
+
+
+impl<'a,'b:'a,'arr,T:GLSLType> From<&'a VertexAttrib<'b,'arr,T>> for VertexAttrib<'a,'arr,T> {
+    #[inline] fn from(attr: &'a VertexAttrib<'b,'arr,T>) -> Self { *attr }
+}
+
+impl<'a,'b,T:GLSLType> From<VertexAttribMut<'a,'b,T>> for VertexAttrib<'a,'b,T> {
+    #[inline] fn from(attr: VertexAttribMut<'a,'b,T>) -> Self {
+        VertexAttrib{vaobj:attr.vaobj, index:attr.index, reference:PhantomData}
+    }
+}
+
+impl<'a,'b:'a,'arr,T:GLSLType> From<&'a VertexAttribMut<'b,'arr,T>> for VertexAttrib<'a,'arr,T> {
+    #[inline] fn from(attr: &'a VertexAttribMut<'b,'arr,T>) -> Self {
+        VertexAttrib{vaobj:attr.vaobj, index:attr.index, reference:PhantomData}
+    }
+}
+
+impl<'a,'b:'a,'arr,T:GLSLType> From<&'a mut VertexAttribMut<'b,'arr,T>> for VertexAttribMut<'a,'arr,T> {
+    #[inline] fn from(attr: &'a mut VertexAttribMut<'b,'arr,T>) -> Self {
+        VertexAttribMut{vaobj:attr.vaobj, index:attr.index, reference:PhantomData}
+    }
+}
+
 
 impl<'a,'b,T:GLSLType> VertexAttrib<'a,'b,T> {
     #[inline] pub fn index(&self) -> GLuint { self.index }
@@ -38,6 +70,69 @@ impl<'a,'b,T:GLSLType> VertexAttrib<'a,'b,T> {
         }
     }
 
+    pub fn array_enabled(&self) -> bool {
+        unsafe { self.get(gl::VERTEX_ATTRIB_ARRAY_ENABLED, 0) != 0 }
+    }
+
+    pub fn divisor(&mut self, divisor: GLuint) {
+        unsafe {
+            gl::BindVertexArray(self.vaobj);
+            for i in self.index .. T::AttribFormat::attrib_count() as GLuint {
+                gl::VertexAttribDivisor(i, divisor);
+            }
+            gl::BindVertexArray(0);
+        }
+    }
+
+    pub fn get_format(&self) -> T::AttribFormat {
+
+        let ptr = unsafe { self.get_pointer(0) };
+
+        let layouts = (0 .. self.num_indices() as GLuint).into_iter().map(
+            |i| unsafe {
+                AttribLayout {
+                    offset: self.get_pointer(i).offset_from(ptr) as usize,
+                    size: self.get(gl::VERTEX_ATTRIB_ARRAY_SIZE, i) as GLenum,
+                    ty: (self.get(gl::VERTEX_ATTRIB_ARRAY_TYPE, i) as GLenum).try_into().unwrap(),
+                    normalized: self.get(gl::VERTEX_ATTRIB_ARRAY_NORMALIZED,i) != 0
+                }
+            }
+        ).collect::<Vec<_>>();
+
+        T::AttribFormat::from_layouts(&*layouts).unwrap()
+
+    }
+
+    pub fn get_array(&self) -> AttribArray<'b,T> {
+        unsafe {
+            AttribArray::from_raw_parts(
+                self.get_format(),
+                self.get(gl::VERTEX_ATTRIB_ARRAY_BUFFER_BINDING, 0) as GLuint,
+                self.get(gl::VERTEX_ATTRIB_ARRAY_STRIDE, 0) as usize,
+                self.get_pointer(0) as usize
+            )
+        }
+    }
+
+    pub fn get_divisor(&self) -> GLuint {
+        unsafe { self.get(gl::VERTEX_ATTRIB_ARRAY_DIVISOR, 0) as GLuint }
+    }
+
+}
+
+
+impl<'a,'b,T:GLSLType> VertexAttribMut<'a,'b,T> {
+    #[inline] pub fn index(&self) -> GLuint { self.index }
+    #[inline] pub fn num_indices(&self) -> usize { T::AttribFormat::attrib_count() }
+
+    #[inline] pub fn as_immut<'c>(&'c self) -> VertexAttrib<'c,'b,T> {VertexAttrib::from(self)}
+    #[inline] pub fn as_mut<'c>(&'c mut self) -> VertexAttribMut<'c,'b,T> {VertexAttribMut::from(self)}
+
+    #[inline] pub fn array_enabled(&self) -> bool { self.as_immut().array_enabled() }
+    #[inline] pub fn get_format(&self) -> T::AttribFormat { self.as_immut().get_format() }
+    #[inline] pub fn get_array(&self) -> AttribArray<'b,T> { self.as_immut().get_array() }
+    #[inline] pub fn get_divisor(&self) -> GLuint { self.as_immut().get_divisor() }
+
     pub unsafe fn enable_array(&mut self) {
         if gl::EnableVertexArrayAttrib::is_loaded() {
             for i in self.index .. T::AttribFormat::attrib_count() as GLuint {
@@ -66,11 +161,7 @@ impl<'a,'b,T:GLSLType> VertexAttrib<'a,'b,T> {
         }
     }
 
-    pub fn array_enabled(&self) -> bool {
-        unsafe { self.get(gl::VERTEX_ATTRIB_ARRAY_ENABLED, 0) != 0 }
-    }
-
-    pub fn pointer(&mut self, pointer: AttribArray<'a,T>) {
+    pub fn pointer(&mut self, pointer: AttribArray<'b,T>) {
         unsafe {
             gl::BindBuffer(gl::ARRAY_BUFFER, pointer.id());
             gl::BindVertexArray(self.vaobj);
@@ -104,40 +195,6 @@ impl<'a,'b,T:GLSLType> VertexAttrib<'a,'b,T> {
             }
             gl::BindVertexArray(0);
         }
-    }
-
-    pub fn get_format(&self) -> T::AttribFormat {
-
-        let ptr = unsafe { self.get_pointer(0) };
-
-        let layouts = (0 .. self.num_indices() as GLuint).into_iter().map(
-            |i| unsafe {
-                AttribLayout {
-                    offset: self.get_pointer(i).offset_from(ptr) as usize,
-                    size: self.get(gl::VERTEX_ATTRIB_ARRAY_SIZE, i) as GLenum,
-                    ty: (self.get(gl::VERTEX_ATTRIB_ARRAY_TYPE, i) as GLenum).try_into().unwrap(),
-                    normalized: self.get(gl::VERTEX_ATTRIB_ARRAY_NORMALIZED,i) != 0
-                }
-            }
-        ).collect::<Vec<_>>();
-
-        T::AttribFormat::from_layouts(&*layouts).unwrap()
-
-    }
-
-    pub fn get_array(&self) -> AttribArray<'a,T> {
-        unsafe {
-            AttribArray::from_raw_parts(
-                self.get_format(),
-                self.get(gl::VERTEX_ATTRIB_ARRAY_BUFFER_BINDING, 0) as GLuint,
-                self.get(gl::VERTEX_ATTRIB_ARRAY_STRIDE, 0) as usize,
-                self.get_pointer(0) as usize
-            )
-        }
-    }
-
-    pub fn get_divisor(&self) -> GLuint {
-        unsafe { self.get(gl::VERTEX_ATTRIB_ARRAY_DIVISOR, 0) as GLuint }
     }
 
 }
