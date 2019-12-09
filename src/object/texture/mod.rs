@@ -25,6 +25,7 @@ mod unpack;
 mod swizzle;
 mod params;
 
+#[repr(transparent)]
 pub struct Texture<F, T:TextureTarget<F>> {
     id: GLuint,
     phantom: PhantomData<(F,T)>

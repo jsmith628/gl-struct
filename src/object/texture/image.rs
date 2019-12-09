@@ -26,6 +26,7 @@ impl<T: BaseImage> ImageSelector for T { type Selection = Self; }
 impl ImageSelector for TEXTURE_CUBE_MAP { type Selection = CubeMapFace; }
 
 
+#[repr(C)]
 #[derive(Derivative)]
 #[derivative(Clone(bound=""), Copy(bound=""))]
 pub struct TexImage<'a,F,T:TextureTarget<F>> {
@@ -35,6 +36,7 @@ pub struct TexImage<'a,F,T:TextureTarget<F>> {
     pub(super) tex: PhantomData<&'a Texture<F,T>>
 }
 
+#[repr(C)]
 pub struct TexImageMut<'a,F,T:TextureTarget<F>> {
     pub(super) id: GLuint,
     pub(super) level: GLuint,

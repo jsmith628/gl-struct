@@ -13,6 +13,7 @@ pub use self::vertex::*;
 mod attrib;
 mod vertex;
 
+#[repr(transparent)]
 pub struct VertexArray<'a,V:GLSLType> {
     id: GLuint,
     buffers: PhantomData<(&'a Buffer<GLuint, ReadOnly>, AttribArray<'a,V>)>
