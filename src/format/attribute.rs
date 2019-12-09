@@ -40,6 +40,7 @@ impl From<IntType> for AttribType {
 
 pub unsafe trait AttribFormat: Sized + Clone + Copy + PartialEq + Eq + Hash + Debug {
     fn attrib_count() -> usize;
+    fn offset(self, index: usize) -> usize;
 
     fn size(self, index: usize) -> GLenum;
     fn ty(self, index: usize) -> AttribType;
@@ -52,7 +53,6 @@ pub unsafe trait AttribFormat: Sized + Clone + Copy + PartialEq + Eq + Hash + De
 
 pub unsafe trait AttribData<A:AttribFormat>: Sized + Copy {
     fn format() -> A;
-    fn offset(index: usize) -> usize;
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -78,6 +78,7 @@ pub enum VecFormat {
 
 unsafe impl AttribFormat for VecFormat {
     fn attrib_count() -> usize { 1 }
+    fn offset(self, _: usize) -> usize { 0 }
 
     fn size(self, index: usize) -> GLenum {
         use self::VecFormat::*;
@@ -135,6 +136,7 @@ pub struct IVecFormat(pub IntType, pub u32);
 
 unsafe impl AttribFormat for IVecFormat {
     fn attrib_count() -> usize {1}
+    fn offset(self, _: usize) -> usize { 0 }
 
     fn size(self, index: usize) -> GLenum {
         match index {
@@ -156,6 +158,7 @@ pub struct DVecFormat(pub u32);
 
 unsafe impl AttribFormat for DVecFormat {
     fn attrib_count() -> usize {1}
+    fn offset(self, _: usize) -> usize { 0 }
 
     fn size(self, index: usize) -> GLenum {
         match index {
@@ -174,6 +177,7 @@ unsafe impl AttribFormat for DVecFormat {
 
 unsafe impl AttribFormat for ! {
     fn attrib_count() -> usize {0}
+    fn offset(self, _: usize) -> usize {self}
 
     fn size(self, _: usize) -> GLenum { self }
     fn ty(self, _: usize) -> AttribType { self }
@@ -186,6 +190,7 @@ unsafe impl AttribFormat for ! {
 
 unsafe impl AttribFormat for void {
     fn attrib_count() -> usize {1}
+    fn offset(self, _: usize) -> usize { 0 }
 
     fn size(self, _: usize) -> GLenum { 0 }
     fn ty(self, _: usize) -> AttribType { AttribType::Int }
@@ -196,34 +201,59 @@ unsafe impl AttribFormat for void {
     fn integer(self, _: usize) -> bool { false }
 }
 
-pub type Mat2Format = [VecFormat; 2];
-pub type Mat3Format = [VecFormat; 3];
-pub type Mat4Format = [VecFormat; 4];
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct OffsetFormat<A:AttribFormat> {
+    pub offset: usize,
+    pub fmt: A
+}
 
-pub type DMat2Format = [DVecFormat; 2];
-pub type DMat3Format = [DVecFormat; 3];
-pub type DMat4Format = [DVecFormat; 4];
+unsafe impl<A:AttribFormat> AttribFormat for OffsetFormat<A> {
+    fn attrib_count() -> usize { A::attrib_count() }
+    fn offset(self, i: usize) -> usize { self.offset + self.fmt.offset(i) }
+
+    fn size(self, i: usize) -> GLenum { self.fmt.size(i) }
+    fn ty(self, i: usize) -> AttribType { self.fmt.ty(i) }
+    fn normalized(self, i: usize) -> bool { self.fmt.normalized(i) }
+
+    fn packed(self, i: usize) -> bool { self.fmt.packed(i) }
+    fn long(self, i: usize) -> bool { self.fmt.long(i) }
+    fn integer(self, i: usize) -> bool { self.fmt.integer(i) }
+}
+
+pub type Mat2Format = [OffsetFormat<VecFormat>; 2];
+pub type Mat3Format = [OffsetFormat<VecFormat>; 3];
+pub type Mat4Format = [OffsetFormat<VecFormat>; 4];
+
+pub type DMat2Format = [OffsetFormat<DVecFormat>; 2];
+pub type DMat3Format = [OffsetFormat<DVecFormat>; 3];
+pub type DMat4Format = [OffsetFormat<DVecFormat>; 4];
 
 macro_rules! array_format {
-    ($($num:tt)*) => {
+
+    (fn $fn:ident<$A:ident>() -> $ret:ty) => {
+        fn $fn(self, i: usize) -> $ret { self[i / A::attrib_count()].$fn(i % A::attrib_count()) }
+    };
+
+    ($($num:literal)*) => {
         $(
-            unsafe impl<A:AttribFormat> AttribFormat for [A; $num] {
+            unsafe impl<A:AttribFormat> AttribFormat for [OffsetFormat<A>; $num] {
                 fn attrib_count() -> usize { $num * A::attrib_count() }
+                array_format!(fn offset<A>() -> usize);
 
-                fn size(self, i: usize) -> GLenum { self[i / A::attrib_count()].size(i % A::attrib_count()) }
-                fn ty(self, i: usize) -> AttribType { self[i / A::attrib_count()].ty(i % A::attrib_count()) }
-                fn normalized(self, i: usize) -> bool { self[i / A::attrib_count()].normalized(i % A::attrib_count()) }
+                array_format!(fn size<A>() -> GLenum);
+                array_format!(fn ty<A>() -> AttribType);
+                array_format!(fn normalized<A>() -> bool);
 
-                fn packed(self, i: usize) -> bool { self[i / A::attrib_count()].packed(i % A::attrib_count()) }
-                fn long(self, i: usize) -> bool { self[i / A::attrib_count()].long(i % A::attrib_count()) }
-                fn integer(self, i: usize) -> bool { self[i / A::attrib_count()].integer(i % A::attrib_count()) }
+                array_format!(fn packed<A>() -> bool);
+                array_format!(fn long<A>() -> bool);
+                array_format!(fn integer<A>() -> bool);
             }
 
-            unsafe impl<A:AttribFormat,T:AttribData<A>> AttribData<[A; $num]> for [T;$num] {
-                fn format() -> [A; $num] { [T::format(); $num] }
-                fn offset(i:usize) -> usize {
-                    let (q, r) = (i / A::attrib_count(), i % A::attrib_count());
-                    q * size_of::<T>() + T::offset(r)
+            unsafe impl<A:AttribFormat,T:AttribData<A>> AttribData<[OffsetFormat<A>; $num]> for [T;$num] {
+                fn format() -> [OffsetFormat<A>; $num] {
+                    let mut fmt = [OffsetFormat { offset: 0, fmt: T::format() }; $num];
+                    for i in 0..$num { fmt[i].offset = i*size_of::<T>(); }
+                    fmt
                 }
             }
 
@@ -250,30 +280,25 @@ macro_rules! prim_attr {
     (@int $value:ident $num:literal $ty:ty) => {
         unsafe impl AttribData<IVecFormat> for $ty {
             fn format() -> IVecFormat { IVecFormat(IntType::$value, $num) }
-            fn offset(_:usize) -> usize { 0 }
         }
 
         unsafe impl AttribData<VecFormat> for $ty {
             fn format() -> VecFormat { VecFormat::Int(IntType::$value, $num) }
-            fn offset(_:usize) -> usize { 0 }
         }
     };
 
     (@float $value:ident $num:literal $ty:ty) => {
         unsafe impl AttribData<VecFormat> for $ty {
             fn format() -> VecFormat { VecFormat::Float(FloatType::$value, $num) }
-            fn offset(_:usize) -> usize { 0 }
         }
     };
 
     (@double $value:ident $num:literal $ty:ty) => {
         unsafe impl AttribData<VecFormat> for $ty {
             fn format() -> VecFormat { VecFormat::Double($num) }
-            fn offset(_:usize) -> usize { 0 }
         }
         unsafe impl AttribData<DVecFormat> for $ty {
             fn format() -> DVecFormat { DVecFormat($num) }
-            fn offset(_:usize) -> usize { 0 }
         }
     };
 }

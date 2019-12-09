@@ -14,7 +14,7 @@ macro_rules! impl_glsl_type {
     ($ty:ident $set:ident $get:ident [$attr:ident; $num:tt] $($rest:tt)*) => {
 
         unsafe impl GLSLType for $ty {
-            type AttribFormat = [$attr; $num];
+            type AttribFormat = [OffsetFormat<$attr>; $num];
 
             unsafe fn load_uniforms(id: GLint, data: &[Self]){
                 $set(id, data.len() as GLint, false as GLboolean, transmute(&data[0][0][0]))
@@ -141,7 +141,9 @@ macro_rules! impl_array_type {
     ($attrib_support:tt $($num:tt)*) => {
         $(
             unsafe impl<T:GLSLType> GLSLType for [T; $num] {
-                type AttribFormat = impl_array_type!(@attrib $attrib_support [T::AttribFormat; $num]);
+                type AttribFormat = impl_array_type!(
+                    @attrib $attrib_support [OffsetFormat<T::AttribFormat>; $num]
+                );
 
                 unsafe fn load_uniforms(id: GLint, data: &[Self]){
                     let flattened = from_raw_parts(&data[0][0] as *const T, data.len() * $num);

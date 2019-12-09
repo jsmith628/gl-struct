@@ -90,7 +90,6 @@ macro_rules! glsl_type {
 
         unsafe impl<A:AttribFormat> AttribData<A> for $name where $prim: AttribData<A> {
             #[inline] fn format() -> A { <$prim as AttribData<A>>::format() }
-            #[inline] fn offset(i: usize) -> usize { <$prim as AttribData<A>>::offset(i) }
         }
 
         glsl_type!($($rest)*);
