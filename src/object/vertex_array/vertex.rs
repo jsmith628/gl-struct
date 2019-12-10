@@ -50,7 +50,10 @@ macro_rules! impl_append {
 
                 let ($($t1,)* $(mut $t2,)*) = Self::Output::attribs_mut(&mut dest);
                 let ($($T2,)*) = pointers;
-                $($t2.pointer($T2);)*
+                $(
+                    $t2.enable_array();
+                    $t2.pointer($T2);
+                )*
 
                 dest
             }

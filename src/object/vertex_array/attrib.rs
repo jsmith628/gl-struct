@@ -127,17 +127,19 @@ impl<'a,'b,T:GLSLType> VertexAttribMut<'a,'b,T> {
     #[inline] pub fn get_array(&self) -> AttribArray<'b,T> { self.as_immut().get_array() }
     #[inline] pub fn get_divisor(&self) -> GLuint { self.as_immut().get_divisor() }
 
-    pub unsafe fn enable_array(&mut self) {
-        if gl::EnableVertexArrayAttrib::is_loaded() {
-            for i in self.index .. T::AttribFormat::attrib_count() as GLuint {
-                gl::EnableVertexArrayAttrib(self.vaobj, i);
+    pub fn enable_array(&mut self) {
+        unsafe {
+            if gl::EnableVertexArrayAttrib::is_loaded() {
+                for i in self.index .. T::AttribFormat::attrib_count() as GLuint {
+                    gl::EnableVertexArrayAttrib(self.vaobj, i);
+                }
+            } else {
+                gl::BindVertexArray(self.vaobj);
+                for i in self.index .. T::AttribFormat::attrib_count() as GLuint {
+                    gl::EnableVertexAttribArray(i);
+                }
+                gl::BindVertexArray(0);
             }
-        } else {
-            gl::BindVertexArray(self.vaobj);
-            for i in self.index .. T::AttribFormat::attrib_count() as GLuint {
-                gl::EnableVertexAttribArray(i);
-            }
-            gl::BindVertexArray(0);
         }
     }
 
