@@ -2,16 +2,16 @@ use super::*;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound=""), Copy(bound=""))]
-pub struct VertexAttrib<'a, 'b, T:GLSLType> {
+pub struct VertexAttrib<'a, 'b, T:GLSLType+'b> {
     pub(super) vaobj: GLuint,
     pub(super) index: GLuint,
-    pub(super) reference: PhantomData<&'a VertexArray<'b,T>>
+    pub(super) reference: PhantomData<&'a VertexArray<'b,(T,)>>
 }
 
-pub struct VertexAttribMut<'a, 'b, T:GLSLType> {
+pub struct VertexAttribMut<'a, 'b, T:GLSLType+'b> {
     pub(super) vaobj: GLuint,
     pub(super) index: GLuint,
-    pub(super) reference: PhantomData<&'a mut VertexArray<'b,T>>
+    pub(super) reference: PhantomData<&'a mut VertexArray<'b,(T,)>>
 }
 
 

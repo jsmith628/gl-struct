@@ -14,9 +14,9 @@ mod attrib;
 mod vertex;
 
 #[repr(transparent)]
-pub struct VertexArray<'a,V:GLSLType> {
+pub struct VertexArray<'a,V:Vertex<'a>> {
     id: GLuint,
-    buffers: PhantomData<(&'a Buffer<GLuint, ReadOnly>, AttribArray<'a,V>)>
+    buffers: PhantomData<(&'a Buffer<GLuint, ReadOnly>, V::AttribArrays)>
 }
 
 impl<'a> VertexArray<'a,()> {
@@ -69,7 +69,7 @@ impl<'a> VertexArray<'a,()> {
 
 }
 
-impl<'a,V:GLSLType> VertexArray<'a,V> {
+impl<'a,V:Vertex<'a>> VertexArray<'a,V> {
     #[inline] pub fn id(&self) -> GLuint { self.id }
     #[inline] pub fn gl(&self) -> GL30 { unsafe { assume_supported() } }
 
@@ -85,7 +85,7 @@ impl<'a,V:GLSLType> VertexArray<'a,V> {
     }
 }
 
-impl<'a,V:GLSLType> Drop for VertexArray<'a,V> {
+impl<'a,V:Vertex<'a>> Drop for VertexArray<'a,V> {
     fn drop(&mut self) {
         unsafe { gl::DeleteVertexArrays(1, &self.id()); }
     }
