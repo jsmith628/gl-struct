@@ -48,7 +48,7 @@ macro_rules! display_from_debug {
 macro_rules! impl_tuple {
 
     //the start of the loop
-    ($callback:ident) => {impl_tuple!({A:a B:b C:c D:d E:e F:f G:g H:h I:i K:k J:j} L:l $callback);};
+    ($callback:ident) => {impl_tuple!({A:a B:b C:c D:d E:e F:f G:g H:h I:i J:j K:k} L:l $callback);};
     ($callback:ident @with_last) => {
         impl_tuple!({A:a B:b C:c D:d E:e F:f G:g H:h I:i K:k J:j} L:l $callback @with_last);
     };
