@@ -5,13 +5,13 @@ use super::*;
 pub struct VertexAttrib<'a, 'b, T:GLSLType+'b> {
     pub(super) vaobj: GLuint,
     pub(super) index: GLuint,
-    pub(super) reference: PhantomData<&'a VertexArray<'b,(T,)>>
+    pub(super) reference: PhantomData<&'a VertexArray<'b,GLuint,(T,)>>
 }
 
 pub struct VertexAttribMut<'a, 'b, T:GLSLType+'b> {
     pub(super) vaobj: GLuint,
     pub(super) index: GLuint,
-    pub(super) reference: PhantomData<&'a mut VertexArray<'b,(T,)>>
+    pub(super) reference: PhantomData<&'a mut VertexArray<'b,GLuint,(T,)>>
 }
 
 

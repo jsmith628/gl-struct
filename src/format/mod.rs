@@ -4,6 +4,7 @@ use super::*;
 pub mod image;
 pub mod pixel;
 pub mod attribute;
+pub mod element;
 
 
 glenum! {

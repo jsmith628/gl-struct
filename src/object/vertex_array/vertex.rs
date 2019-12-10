@@ -6,8 +6,8 @@ pub trait Vertex<'a>: GLSLType {
 
     fn num_indices() -> usize;
 
-    fn get_attrib_arrays<'r>(vaobj: &'r VertexArray<'a,Self>) -> Self::Arrays;
-    fn attrib_arrays<'r>(vaobj: &'r mut VertexArray<'a,Self>, pointers: Self::Arrays);
+    fn get_attrib_arrays<'r,El:Copy>(vaobj: &'r VertexArray<'a,El,Self>) -> Self::Arrays;
+    fn attrib_arrays<'r,El:Copy>(vaobj: &'r mut VertexArray<'a,El,Self>, pointers: Self::Arrays);
 
 }
 
@@ -16,14 +16,18 @@ pub trait VertexRef<'a,'b:'a>: Vertex<'b> {
     type Attribs;
     type AttribsMut;
 
-    fn attribs(vaobj: &'a VertexArray<'b,Self>) -> Self::Attribs;
-    fn attribs_mut(vaobj: &'a mut VertexArray<'b,Self>) -> Self::AttribsMut;
+    fn attribs<El:Copy>(vaobj: &'a VertexArray<'b,El,Self>) -> Self::Attribs;
+    fn attribs_mut<El:Copy>(vaobj: &'a mut VertexArray<'b,El,Self>) -> Self::AttribsMut;
 
 }
 
 pub trait VertexAppend<'a, V:Vertex<'a>>: Vertex<'a> {
     type Output: Vertex<'a>;
-    fn append_arrays(vaobj: VertexArray<'a,Self>, pointers: V::Arrays) -> VertexArray<'a,Self::Output>;
+
+    fn append_arrays<El:Copy>(
+        vaobj: VertexArray<'a,El,Self>, pointers: V::Arrays
+    ) -> VertexArray<'a,El,Self::Output>;
+
 }
 
 macro_rules! impl_append {
@@ -38,9 +42,9 @@ macro_rules! impl_append {
             type Output = ($($T1,)* $($T2,)*);
 
             #[allow(unused_variables, non_snake_case)]
-            fn append_arrays(
-                vaobj: VertexArray<'a,Self>, pointers: <($($T2,)*) as Vertex<'a>>::Arrays
-            ) -> VertexArray<'a,Self::Output> {
+            fn append_arrays<El:Copy>(
+                vaobj: VertexArray<'a,El,Self>, pointers: <($($T2,)*) as Vertex<'a>>::Arrays
+            ) -> VertexArray<'a,El,Self::Output> {
                 let mut dest = VertexArray { id: vaobj.id(), buffers: PhantomData };
                 forget(vaobj);
 
@@ -66,13 +70,13 @@ macro_rules! impl_vertex_ref {
 
             #[inline] fn num_indices() -> usize { 0 $( + $T::AttribFormat::attrib_count())* }
 
-            fn get_attrib_arrays<'r>(vaobj: &'r VertexArray<'a,Self>) -> Self::Arrays {
+            fn get_attrib_arrays<'r,El:Copy>(vaobj: &'r VertexArray<'a,El,Self>) -> Self::Arrays {
                 let ($($t,)*) = Self::attribs(vaobj);
                 ($($t.get_array(),)*)
             }
 
             #[allow(non_snake_case)]
-            fn attrib_arrays<'r>(vaobj: &'r mut VertexArray<'a,Self>, pointers: Self::Arrays) {
+            fn attrib_arrays<'r,El:Copy>(vaobj: &'r mut VertexArray<'a,El,Self>, pointers: Self::Arrays) {
                 let ($(mut $t,)*) = Self::attribs_mut(vaobj);
                 let ($($T,)*) = pointers;
                 $($t.pointer($T);)*
@@ -85,7 +89,7 @@ macro_rules! impl_vertex_ref {
             type AttribsMut = ($(VertexAttribMut<'a,'b,$T>,)*);
 
             #[allow(unused_variables, unused_assignments)]
-            fn attribs(vaobj: &'a VertexArray<'b,Self>) -> Self::Attribs {
+            fn attribs<El:Copy>(vaobj: &'a VertexArray<'b,El,Self>) -> Self::Attribs {
                 let mut i = 0;
                 ($(
                     VertexAttrib {
@@ -102,7 +106,7 @@ macro_rules! impl_vertex_ref {
             }
 
             #[allow(unused_variables, unused_assignments)]
-            fn attribs_mut(vaobj: &'a mut VertexArray<'b,Self>) -> Self::AttribsMut {
+            fn attribs_mut<El:Copy>(vaobj: &'a mut VertexArray<'b,El,Self>) -> Self::AttribsMut {
                 let mut i = 0;
                 ($(
                     VertexAttribMut {
@@ -130,20 +134,20 @@ impl_tuple!(impl_vertex_ref);
 impl<'a> Vertex<'a> for () {
     type Arrays = ();
     fn num_indices() -> usize { 0 }
-    fn get_attrib_arrays<'r>(_: &'r VertexArray<'a,Self>) -> () { () }
-    fn attrib_arrays<'r>(_: &'r mut VertexArray<'a,Self>, _: ()) {}
+    fn get_attrib_arrays<'r,El:Copy>(_: &'r VertexArray<'a,El,Self>) -> () { () }
+    fn attrib_arrays<'r,El:Copy>(_: &'r mut VertexArray<'a,El,Self>, _: ()) {}
 }
 
 impl<'a,'b:'a> VertexRef<'a,'b> for () {
     type Attribs = ();
     type AttribsMut = ();
-    fn attribs(_: &'a VertexArray<'b,Self>) -> () { () }
-    fn attribs_mut(_: &'a mut VertexArray<'b,Self>) -> () { () }
+    fn attribs<El:Copy>(_: &'a VertexArray<'b,El,Self>) -> () { () }
+    fn attribs_mut<El:Copy>(_: &'a mut VertexArray<'b,El,Self>) -> () { () }
 }
 
 impl<'a,V:Vertex<'a>> VertexAppend<'a,V> for () {
     type Output = V;
-    fn append_arrays(vaobj: VertexArray<'a,()>, arrays: V::Arrays) -> VertexArray<'a,V> {
+    fn append_arrays<El:Copy>(vaobj: VertexArray<'a,El,()>, arrays: V::Arrays) -> VertexArray<'a,El,V> {
         let mut dest = VertexArray { id: vaobj.id(), buffers: PhantomData };
         forget(vaobj);
         V::attrib_arrays(&mut dest, arrays);

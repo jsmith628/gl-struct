@@ -4,8 +4,9 @@ use std::marker::PhantomData;
 use std::mem::*;
 use std::ptr::*;
 
-use object::buffer::AttribArray;
 use format::attribute::*;
+use format::element::*;
+use object::buffer::AttribArray;
 use glsl::GLSLType;
 
 pub use self::attrib::*;
@@ -15,12 +16,12 @@ mod attrib;
 mod vertex;
 
 #[repr(transparent)]
-pub struct VertexArray<'a,V:Vertex<'a>> {
+pub struct VertexArray<'a,E:Copy,V:Vertex<'a>> {
     id: GLuint,
-    buffers: PhantomData<(&'a Buffer<GLuint, ReadOnly>, V::Arrays)>
+    buffers: PhantomData<(&'a Buffer<[E], ReadOnly>, V::Arrays)>
 }
 
-impl<'a> VertexArray<'a,()> {
+impl<'a> VertexArray<'a,!,()> {
     pub fn gen(#[allow(unused_variables)] gl:&GL30) -> Self {
         let mut dest = MaybeUninit::uninit();
         unsafe {
@@ -70,7 +71,7 @@ impl<'a> VertexArray<'a,()> {
 
 }
 
-impl<'a,V:Vertex<'a>> VertexArray<'a,V> {
+impl<'a,E:Copy,V:Vertex<'a>> VertexArray<'a,E,V> {
     #[inline] pub fn id(&self) -> GLuint { self.id }
     #[inline] pub fn gl(&self) -> GL30 { unsafe { assume_supported() } }
 
@@ -94,14 +95,37 @@ impl<'a,V:Vertex<'a>> VertexArray<'a,V> {
     #[inline] pub fn attrib_arrays(&mut self, arrays: V::Arrays) { V::attrib_arrays(self, arrays) }
 
     #[inline]
-    pub fn append_attrib_arrays<V2:Vertex<'a>>(self, arrays: V2::Arrays) -> VertexArray<'a,V::Output> where
+    pub fn append_attrib_arrays<V2:Vertex<'a>>(self, arrays: V2::Arrays) -> VertexArray<'a,E,V::Output> where
         V:VertexAppend<'a,V2>
     {
         V::append_arrays(self, arrays)
     }
 
+}
+
+impl<'a,V:Vertex<'a>> VertexArray<'a,!,V> {
     #[inline]
-    pub fn bind_element_buffer<A:Initialized>(&mut self, elements: &'a Buffer<[GLuint], A>) {
+    pub fn bind_element_buffer<E:Element,A:Initialized>(
+        self, elements: &'a Buffer<[E], A>
+    ) -> VertexArray<'a,E,V> {
+        let mut dest:VertexArray<'a,E,V> = VertexArray { id: self.id(), buffers: PhantomData };
+        dest.bind_element_buffer(elements);
+        forget(self);
+        dest
+    }
+
+    #[inline]
+    pub fn bind_element_buffer_from<E:Element>(self, elements: &VertexArray<'a,E,V>) -> VertexArray<'a,E,V> {
+        let mut dest:VertexArray<'a,E,V> = VertexArray { id: self.id(), buffers: PhantomData };
+        dest.bind_element_buffer_from(elements);
+        forget(self);
+        dest
+    }
+}
+
+impl<'a,E:Element,V:Vertex<'a>> VertexArray<'a,E,V> {
+    #[inline]
+    pub fn bind_element_buffer<A:Initialized>(&mut self, elements: &'a Buffer<[E], A>) {
         unsafe {
             gl::BindVertexArray(self.id());
             gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, elements.id());
@@ -109,8 +133,7 @@ impl<'a,V:Vertex<'a>> VertexArray<'a,V> {
         }
     }
 
-    pub fn get_element_buffer(&self) -> Option<Slice<'a,[GLuint],ReadOnly>> {
-
+    fn get_element_buffer_id(&self) -> GLuint {
         let mut id = MaybeUninit::uninit();
         unsafe {
             if gl::GetVertexArrayiv::is_loaded() {
@@ -120,34 +143,44 @@ impl<'a,V:Vertex<'a>> VertexArray<'a,V> {
                 gl::GetIntegerv(gl::ELEMENT_ARRAY_BUFFER_BINDING, id.as_mut_ptr());
                 gl::BindVertexArray(0);
             }
+            id.assume_init() as GLuint
         }
-
-        let id = unsafe { id.assume_init() as GLuint };
-        if id != 0 {
-            unsafe {
-                let size = BufPtr::<()>::new(id, null_mut()).buffer_size();
-                Some(Slice::from_raw_parts(id, size / size_of::<GLuint>(), 0))
-            }
-        } else {
-            None
-        }
-
     }
 
+    #[inline]
+    pub fn bind_element_buffer_from(&mut self, elements: &VertexArray<'a,E,V>) {
+        let id = elements.get_element_buffer_id();
+        unsafe {
+            gl::BindVertexArray(self.id());
+            gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, id);
+            gl::BindVertexArray(0);
+        }
+    }
+
+    #[inline]
+    pub fn get_element_buffer(&self) -> Slice<'a,[E],ReadOnly> {
+        let id = self.get_element_buffer_id();
+        unsafe {
+            let size = BufPtr::<()>::new(id, null_mut()).buffer_size();
+            Slice::from_raw_parts(id, size / size_of::<E>(), 0)
+        }
+    }
 
 }
 
-impl<'a,V:Vertex<'a>> Drop for VertexArray<'a,V> {
+
+impl<'a,E:Copy,V:Vertex<'a>> Drop for VertexArray<'a,E,V> {
     fn drop(&mut self) {
         unsafe { gl::DeleteVertexArrays(1, &self.id()); }
     }
 }
 
-impl<'a,V:Vertex<'a>> Clone for VertexArray<'a,V> {
+impl<'a,E:Copy,V:Vertex<'a>> Clone for VertexArray<'a,E,V> {
     fn clone(&self) -> Self {
 
         //copy over all the array settings
-        let mut dest = VertexArray::gen(&self.gl()).append_attrib_arrays(self.get_attrib_arrays());
+        let dest:VertexArray<'a,!,V> = VertexArray::gen(&self.gl()).append_attrib_arrays(self.get_attrib_arrays());
+        let mut dest:Self = unsafe { transmute(dest) };
 
         unsafe { gl::BindVertexArray(self.id()); }
 
