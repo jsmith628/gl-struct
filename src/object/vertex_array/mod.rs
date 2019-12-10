@@ -152,7 +152,8 @@ impl<'a,V:Vertex<'a>> Clone for VertexArray<'a,V> {
         unsafe { gl::BindVertexArray(self.id()); }
 
         //get the divisors
-        let divisors = (0..V::num_indices()).into_iter().map(
+        let num_divisors = if gl::VertexAttribDivisor::is_loaded() { V::num_indices() } else { 0 };
+        let divisors = (0..num_divisors).into_iter().map(
             |i| {
                 let mut div = MaybeUninit::uninit();
                 unsafe {
@@ -173,7 +174,7 @@ impl<'a,V:Vertex<'a>> Clone for VertexArray<'a,V> {
 
         //set the divisors and element array
         unsafe {
-            for i in 0..V::num_indices() { gl::VertexAttribDivisor(i as GLuint, divisors[i] as GLuint); }
+            for i in 0..num_divisors { gl::VertexAttribDivisor(i as GLuint, divisors[i] as GLuint); }
             gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, buf as GLuint);
         }
 

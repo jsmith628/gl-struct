@@ -74,16 +74,6 @@ impl<'a,'b,T:GLSLType> VertexAttrib<'a,'b,T> {
         unsafe { self.get(gl::VERTEX_ATTRIB_ARRAY_ENABLED, 0) != 0 }
     }
 
-    pub fn divisor(&mut self, divisor: GLuint) {
-        unsafe {
-            gl::BindVertexArray(self.vaobj);
-            for i in self.index .. T::AttribFormat::attrib_count() as GLuint {
-                gl::VertexAttribDivisor(i, divisor);
-            }
-            gl::BindVertexArray(0);
-        }
-    }
-
     pub fn get_format(&self) -> T::AttribFormat {
 
         let ptr = unsafe { self.get_pointer(0) };
@@ -115,7 +105,11 @@ impl<'a,'b,T:GLSLType> VertexAttrib<'a,'b,T> {
     }
 
     pub fn get_divisor(&self) -> GLuint {
-        unsafe { self.get(gl::VERTEX_ATTRIB_ARRAY_DIVISOR, 0) as GLuint }
+        if gl::VertexAttribDivisor::is_loaded() {
+            unsafe { self.get(gl::VERTEX_ATTRIB_ARRAY_DIVISOR, 0) as GLuint }
+        } else {
+            0
+        }
     }
 
 }
@@ -187,7 +181,8 @@ impl<'a,'b,T:GLSLType> VertexAttribMut<'a,'b,T> {
         }
     }
 
-    pub fn divisor(&mut self, divisor: GLuint) {
+    #[allow(unused_variables)]
+    pub fn divisor(&mut self, gl:&GL33, divisor: GLuint) {
         unsafe {
             gl::BindVertexArray(self.vaobj);
             for i in self.index .. T::AttribFormat::attrib_count() as GLuint {
