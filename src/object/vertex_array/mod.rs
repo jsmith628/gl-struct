@@ -16,7 +16,7 @@ mod vertex;
 #[repr(transparent)]
 pub struct VertexArray<'a,V:Vertex<'a>> {
     id: GLuint,
-    buffers: PhantomData<(&'a Buffer<GLuint, ReadOnly>, V::AttribArrays)>
+    buffers: PhantomData<(&'a Buffer<GLuint, ReadOnly>, V::Arrays)>
 }
 
 impl<'a> VertexArray<'a,()> {
@@ -83,6 +83,23 @@ impl<'a,V:Vertex<'a>> VertexArray<'a,V> {
             gl::DeleteVertexArrays(ids.len() as GLsizei, &ids[0]);
         }
     }
+
+    #[inline] pub fn attribs<'r>(&'r self) -> V::Attribs where V:VertexRef<'r,'a> { V::attribs(self) }
+    #[inline] pub fn attribs_mut<'r>(&'r mut self) -> V::AttribsMut where V:VertexRef<'r,'a> {
+        V::attribs_mut(self)
+    }
+
+    #[inline] pub fn get_attrib_arrays(&self) -> V::Arrays { V::get_attrib_arrays(self) }
+    #[inline] pub fn attrib_arrays(&mut self, arrays: V::Arrays) { V::attrib_arrays(self, arrays) }
+
+    #[inline]
+    pub fn append_attrib_arrays<V2:Vertex<'a>>(self, arrays: V2::Arrays) -> VertexArray<'a,V::Output> where
+        V:VertexAppend<'a,V2>
+    {
+        V::append_arrays(self, arrays)
+    }
+
+
 }
 
 impl<'a,V:Vertex<'a>> Drop for VertexArray<'a,V> {

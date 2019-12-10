@@ -2,28 +2,28 @@ use super::*;
 
 
 pub trait Vertex<'a>: GLSLType {
-    type AttribArrays: Copy;
+    type Arrays: Copy;
 
     fn num_indices() -> usize;
 
-    fn attrib_arrays<'r>(vaobj: &'r VertexArray<'a,Self>) -> Self::AttribArrays;
-    fn attrib_array_pointers<'r>(vaobj: &'r mut VertexArray<'a,Self>, pointers: Self::AttribArrays);
+    fn get_attrib_arrays<'r>(vaobj: &'r VertexArray<'a,Self>) -> Self::Arrays;
+    fn attrib_arrays<'r>(vaobj: &'r mut VertexArray<'a,Self>, pointers: Self::Arrays);
 
 }
 
 
 pub trait VertexRef<'a,'b:'a>: Vertex<'b> {
-    type VertexAttribs;
-    type VertexAttribsMut;
+    type Attribs;
+    type AttribsMut;
 
-    fn attribs(vaobj: &'a VertexArray<'b,Self>) -> Self::VertexAttribs;
-    fn attribs_mut(vaobj: &'a mut VertexArray<'b,Self>) -> Self::VertexAttribsMut;
+    fn attribs(vaobj: &'a VertexArray<'b,Self>) -> Self::Attribs;
+    fn attribs_mut(vaobj: &'a mut VertexArray<'b,Self>) -> Self::AttribsMut;
 
 }
 
 pub trait VertexAppend<'a, V:Vertex<'a>>: Vertex<'a> {
     type Output: Vertex<'a>;
-    fn append_pointers(vaobj: VertexArray<'a,Self>, pointers: V::AttribArrays) -> VertexArray<'a,Self::Output>;
+    fn append_arrays(vaobj: VertexArray<'a,Self>, pointers: V::Arrays) -> VertexArray<'a,Self::Output>;
 }
 
 macro_rules! impl_append {
@@ -38,8 +38,8 @@ macro_rules! impl_append {
             type Output = ($($T1,)* $($T2,)*);
 
             #[allow(unused_variables, non_snake_case)]
-            fn append_pointers(
-                vaobj: VertexArray<'a,Self>, pointers: <($($T2,)*) as Vertex<'a>>::AttribArrays
+            fn append_arrays(
+                vaobj: VertexArray<'a,Self>, pointers: <($($T2,)*) as Vertex<'a>>::Arrays
             ) -> VertexArray<'a,Self::Output> {
                 let mut dest = VertexArray { id: vaobj.id(), buffers: PhantomData };
                 forget(vaobj);
@@ -62,17 +62,17 @@ macro_rules! impl_vertex_ref {
     ($($T:ident:$t:ident)*) => {
 
         impl<'a,$($T:GLSLType+'a),*> Vertex<'a> for ($($T,)*) {
-            type AttribArrays = ($(AttribArray<'a,$T>,)*);
+            type Arrays = ($(AttribArray<'a,$T>,)*);
 
             #[inline] fn num_indices() -> usize { 0 $( + $T::AttribFormat::attrib_count())* }
 
-            fn attrib_arrays<'r>(vaobj: &'r VertexArray<'a,Self>) -> Self::AttribArrays {
+            fn get_attrib_arrays<'r>(vaobj: &'r VertexArray<'a,Self>) -> Self::Arrays {
                 let ($($t,)*) = Self::attribs(vaobj);
                 ($($t.get_array(),)*)
             }
 
             #[allow(non_snake_case)]
-            fn attrib_array_pointers<'r>(vaobj: &'r mut VertexArray<'a,Self>, pointers: Self::AttribArrays) {
+            fn attrib_arrays<'r>(vaobj: &'r mut VertexArray<'a,Self>, pointers: Self::Arrays) {
                 let ($(mut $t,)*) = Self::attribs_mut(vaobj);
                 let ($($T,)*) = pointers;
                 $($t.pointer($T);)*
@@ -81,11 +81,11 @@ macro_rules! impl_vertex_ref {
         }
 
         impl<'a,'b:'a,$($T:GLSLType+'b),*> VertexRef<'a,'b> for ($($T,)*) {
-            type VertexAttribs = ($(VertexAttrib<'a,'b,$T>,)*);
-            type VertexAttribsMut = ($(VertexAttribMut<'a,'b,$T>,)*);
+            type Attribs = ($(VertexAttrib<'a,'b,$T>,)*);
+            type AttribsMut = ($(VertexAttribMut<'a,'b,$T>,)*);
 
             #[allow(unused_variables, unused_assignments)]
-            fn attribs(vaobj: &'a VertexArray<'b,Self>) -> Self::VertexAttribs {
+            fn attribs(vaobj: &'a VertexArray<'b,Self>) -> Self::Attribs {
                 let mut i = 0;
                 ($(
                     VertexAttrib {
@@ -102,7 +102,7 @@ macro_rules! impl_vertex_ref {
             }
 
             #[allow(unused_variables, unused_assignments)]
-            fn attribs_mut(vaobj: &'a mut VertexArray<'b,Self>) -> Self::VertexAttribsMut {
+            fn attribs_mut(vaobj: &'a mut VertexArray<'b,Self>) -> Self::AttribsMut {
                 let mut i = 0;
                 ($(
                     VertexAttribMut {
@@ -128,20 +128,20 @@ macro_rules! impl_vertex_ref {
 impl_tuple!(impl_vertex_ref);
 
 impl<'a> Vertex<'a> for () {
-    type AttribArrays = ();
+    type Arrays = ();
     fn num_indices() -> usize { 0 }
-    fn attrib_arrays<'r>(_: &'r VertexArray<'a,Self>) -> () { () }
-    fn attrib_array_pointers<'r>(_: &'r mut VertexArray<'a,Self>, _: ()) {}
+    fn get_attrib_arrays<'r>(_: &'r VertexArray<'a,Self>) -> () { () }
+    fn attrib_arrays<'r>(_: &'r mut VertexArray<'a,Self>, _: ()) {}
 }
 
 impl<'a,'b:'a> VertexRef<'a,'b> for () {
-    type VertexAttribs = ();
-    type VertexAttribsMut = ();
+    type Attribs = ();
+    type AttribsMut = ();
     fn attribs(_: &'a VertexArray<'b,Self>) -> () { () }
     fn attribs_mut(_: &'a mut VertexArray<'b,Self>) -> () { () }
 }
 
 impl<'a> VertexAppend<'a,()> for () {
     type Output = ();
-    fn append_pointers(vaobj: VertexArray<'a,()>, _: ()) -> VertexArray<'a,()> {vaobj}
+    fn append_arrays(vaobj: VertexArray<'a,()>, _: ()) -> VertexArray<'a,()> {vaobj}
 }
