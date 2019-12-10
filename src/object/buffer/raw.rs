@@ -152,15 +152,27 @@ impl<T:?Sized> BufPtr<T> {
     }
 
     pub unsafe fn buffer_size(&self) -> usize {
-        self.get_parameter_i64v(gl::BUFFER_SIZE) as usize
+        if gl::GetBufferParameteri64v::is_loaded() {
+            self.get_parameter_i64v(gl::BUFFER_SIZE) as usize
+        } else {
+            self.get_parameter_iv(gl::BUFFER_SIZE) as usize
+        }
     }
 
     pub unsafe fn immutable_storage(&self) -> bool {
-        self.get_parameter_iv(gl::BUFFER_IMMUTABLE_STORAGE) != 0
+        if gl::BufferStorage::is_loaded() {
+            self.get_parameter_iv(gl::BUFFER_IMMUTABLE_STORAGE) != 0
+        } else {
+            false
+        }
     }
 
     pub unsafe fn storage_flags(&self) -> StorageFlags {
-        StorageFlags::from_bits(self.get_parameter_iv(gl::BUFFER_STORAGE_FLAGS) as GLbitfield).unwrap()
+        if gl::BufferStorage::is_loaded() {
+            StorageFlags::from_bits(self.get_parameter_iv(gl::BUFFER_STORAGE_FLAGS) as GLbitfield).unwrap()
+        } else {
+            StorageFlags::MAP_READ_BIT | StorageFlags::MAP_WRITE_BIT | StorageFlags::DYNAMIC_STORAGE_BIT
+        }
     }
 
     pub unsafe fn usage(&self) -> BufferUsage {
