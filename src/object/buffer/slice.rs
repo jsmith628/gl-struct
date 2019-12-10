@@ -27,7 +27,7 @@ impl<'a,T:?Sized,A:Initialized> !Send for SliceMut<'a,T,A> {}
 //Constructing slices
 //
 
-impl<'a, 'b:'a, T:?Sized, A:Initialized> From<&'a Slice<'b,T,A>> for Slice<'a,T,A> {
+impl<'a, 'b:'a, T:?Sized, A:Initialized> From<&'a Slice<'b,T,A>> for Slice<'b,T,A> {
     #[inline] fn from(bmut: &'a Slice<'b,T,A>) -> Self { *bmut }
 }
 

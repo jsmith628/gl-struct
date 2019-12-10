@@ -28,6 +28,12 @@ impl<'a,A:GLSLType> AttribArray<'a,A> {
 
 }
 
+impl<'a,'b,A1:GLSLType,A2:GLSLType<AttribFormat=A1::AttribFormat>> From<&'a AttribArray<'b,A1>> for AttribArray<'b,A2> {
+    fn from(arr:&'a AttribArray<'b,A1>) -> Self {
+        unsafe { Self::from_raw_parts(arr.format(), arr.id(), arr.stride(), arr.offset()) }
+    }
+}
+
 pub unsafe trait SplitAttribs<'a, A:Copy>: Copy {
     fn split<B:Initialized>(buf:Slice<'a,[Self],B>) -> A;
 }
