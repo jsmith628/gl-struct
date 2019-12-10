@@ -120,7 +120,7 @@ macro_rules! impl_vertex_ref {
 
         }
 
-        impl_append!({} $($T:$t)*);
+        impl_append!(@next {} $($T:$t)*);
 
     };
 }
@@ -141,7 +141,12 @@ impl<'a,'b:'a> VertexRef<'a,'b> for () {
     fn attribs_mut(_: &'a mut VertexArray<'b,Self>) -> () { () }
 }
 
-impl<'a> VertexAppend<'a,()> for () {
-    type Output = ();
-    fn append_arrays(vaobj: VertexArray<'a,()>, _: ()) -> VertexArray<'a,()> {vaobj}
+impl<'a,V:Vertex<'a>> VertexAppend<'a,V> for () {
+    type Output = V;
+    fn append_arrays(vaobj: VertexArray<'a,()>, arrays: V::Arrays) -> VertexArray<'a,V> {
+        let mut dest = VertexArray { id: vaobj.id(), buffers: PhantomData };
+        forget(vaobj);
+        V::attrib_arrays(&mut dest, arrays);
+        dest
+    }
 }
