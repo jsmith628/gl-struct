@@ -2,6 +2,7 @@ use super::*;
 
 use std::marker::PhantomData;
 use std::mem::*;
+use std::ptr::*;
 
 use object::buffer::AttribArray;
 use format::attribute::*;
@@ -97,6 +98,40 @@ impl<'a,V:Vertex<'a>> VertexArray<'a,V> {
         V:VertexAppend<'a,V2>
     {
         V::append_arrays(self, arrays)
+    }
+
+    #[inline]
+    pub fn bind_element_buffer<A:Initialized>(&mut self, elements: &'a Buffer<[GLuint], A>) {
+        unsafe {
+            gl::BindVertexArray(self.id());
+            gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, elements.id());
+            gl::BindVertexArray(0);
+        }
+    }
+
+    pub fn get_element_buffer(&self) -> Option<Slice<'a,[GLuint],ReadOnly>> {
+
+        let mut id = MaybeUninit::uninit();
+        unsafe {
+            if gl::GetVertexArrayiv::is_loaded() {
+                gl::GetVertexArrayiv(self.id(), gl::ELEMENT_ARRAY_BUFFER_BINDING, id.as_mut_ptr());
+            } else {
+                gl::BindVertexArray(self.id());
+                gl::GetIntegerv(gl::ELEMENT_ARRAY_BUFFER_BINDING, id.as_mut_ptr());
+                gl::BindVertexArray(0);
+            }
+        }
+
+        let id = unsafe { id.assume_init() as GLuint };
+        if id != 0 {
+            unsafe {
+                let size = BufPtr::<()>::new(id, null_mut()).buffer_size();
+                Some(Slice::from_raw_parts(id, size / size_of::<GLuint>(), 0))
+            }
+        } else {
+            None
+        }
+
     }
 
 

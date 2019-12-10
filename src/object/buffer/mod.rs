@@ -66,10 +66,10 @@ impl<T:?Sized, A:Initialized> Buffer<T,A> {
     //Wrappers for glGetBufferParameter*
     //
 
-    #[inline] pub fn immutable_storage(&self) -> bool { self.ptr.immutable_storage() }
-    #[inline] pub fn storage_flags(&self) -> StorageFlags { self.ptr.storage_flags() }
-    #[inline] pub fn usage(&self) -> BufferUsage { self.ptr.usage() }
-    #[inline] pub fn creation_flags(&self) -> BufferCreationFlags { self.ptr.creation_flags() }
+    #[inline] pub fn immutable_storage(&self) -> bool { unsafe {self.ptr.immutable_storage()} }
+    #[inline] pub fn storage_flags(&self) -> StorageFlags { unsafe {self.ptr.storage_flags()} }
+    #[inline] pub fn usage(&self) -> BufferUsage { unsafe {self.ptr.usage()} }
+    #[inline] pub fn creation_flags(&self) -> BufferCreationFlags { unsafe {self.ptr.creation_flags()} }
 
     //
     //Conversion between access types

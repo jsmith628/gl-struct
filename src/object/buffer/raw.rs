@@ -66,7 +66,7 @@ union BufUnion<T:?Sized> {
 
 #[derive(Derivative)]
 #[derivative(Clone(bound=""), Copy(bound=""), PartialEq(bound=""), Eq(bound=""))]
-pub(super) struct BufPtr<T:?Sized>{
+pub(crate) struct BufPtr<T:?Sized>{
     ptr: *mut T
 }
 
@@ -151,23 +151,23 @@ impl<T:?Sized> BufPtr<T> {
         dest.assume_init()
     }
 
-    pub fn buffer_size(&self) -> usize {
-        unsafe {self.get_parameter_i64v(gl::BUFFER_SIZE) as usize}
+    pub unsafe fn buffer_size(&self) -> usize {
+        self.get_parameter_i64v(gl::BUFFER_SIZE) as usize
     }
 
-    pub fn immutable_storage(&self) -> bool {
-        unsafe {self.get_parameter_iv(gl::BUFFER_IMMUTABLE_STORAGE) != 0}
+    pub unsafe fn immutable_storage(&self) -> bool {
+        self.get_parameter_iv(gl::BUFFER_IMMUTABLE_STORAGE) != 0
     }
 
-    pub fn storage_flags(&self) -> StorageFlags {
-        unsafe {StorageFlags::from_bits(self.get_parameter_iv(gl::BUFFER_STORAGE_FLAGS) as GLbitfield).unwrap()}
+    pub unsafe fn storage_flags(&self) -> StorageFlags {
+        StorageFlags::from_bits(self.get_parameter_iv(gl::BUFFER_STORAGE_FLAGS) as GLbitfield).unwrap()
     }
 
-    pub fn usage(&self) -> BufferUsage {
-        unsafe {(self.get_parameter_iv(gl::BUFFER_USAGE) as GLenum).try_into().unwrap()}
+    pub unsafe fn usage(&self) -> BufferUsage {
+        (self.get_parameter_iv(gl::BUFFER_USAGE) as GLenum).try_into().unwrap()
     }
 
-    pub fn creation_flags(&self) -> BufferCreationFlags {
+    pub unsafe fn creation_flags(&self) -> BufferCreationFlags {
         BufferCreationFlags(self.usage(), self.storage_flags())
     }
 
