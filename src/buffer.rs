@@ -104,7 +104,7 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut, RangeBounds, Bound};
 use std::slice::from_raw_parts;
 use std::rc::Rc;
-use std::alloc::{Alloc, Global};
+use std::alloc::{AllocRef, Global};
 use std::ptr::{drop_in_place, NonNull};
 use std::mem::*;
 
