@@ -28,11 +28,8 @@ mod params;
 #[repr(transparent)]
 pub struct Texture<F, T:TextureTarget<F>> {
     id: GLuint,
-    phantom: PhantomData<(F,T)>
+    phantom: PhantomData<(F, T, *const ())>
 }
-
-impl<F,T:TextureTarget<F>> !Sync for Texture<F,T> {}
-impl<F,T:TextureTarget<F>> !Send for Texture<F,T> {}
 
 impl<F, T:TextureTarget<F>> Texture<F,T> {
     pub fn id(&self) -> GLuint { self.id }

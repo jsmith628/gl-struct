@@ -100,6 +100,3 @@ impl<T:InternalFormat> Renderbuffer<T> {
     #[inline] pub fn stencil_size(&self) -> GLuint { self.parameter(RenderbufferParameter::StencilSize) as GLuint }
 
 }
-
-impl<T:InternalFormat> !Send for Renderbuffer<T> {}
-impl<T:InternalFormat> !Sync for Renderbuffer<T> {}

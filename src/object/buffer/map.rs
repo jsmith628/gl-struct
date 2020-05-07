@@ -14,9 +14,6 @@ pub struct Map<'a, T:?Sized, A:Initialized> {
 
 impl<'a,U:?Sized,T:?Sized+Unsize<U>,A:Initialized> CoerceUnsized<Map<'a,U,A>> for Map<'a,T,A> {}
 
-impl<'a,T:?Sized,A:Initialized> !Sync for Map<'a,T,A> {}
-impl<'a,T:?Sized,A:Initialized> !Send for Map<'a,T,A> {}
-
 impl<'a,T:?Sized,A:Initialized> Drop for Map<'a,T,A> {
     fn drop(&mut self) {
         if Self::size(self)==0 { return; }

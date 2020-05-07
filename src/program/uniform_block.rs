@@ -64,5 +64,5 @@ impl UniformBlock<dyn Any> {
 
 }
 
-impl<T:?Sized> !Send for UniformBlock<T> {}
-impl<T:?Sized> !Sync for UniformBlock<T> {}
+// impl<T:?Sized> !Send for UniformBlock<T> {}
+// impl<T:?Sized> !Sync for UniformBlock<T> {}

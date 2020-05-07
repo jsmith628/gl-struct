@@ -1,5 +1,6 @@
 
 use super::*;
+use std::marker::PhantomData;
 
 pub use self::version::*;
 pub use self::state::*;
@@ -15,13 +16,13 @@ mod state;
 pub struct GLContext<V:GLVersion> {
     pub version: V,
     // pub state: GLState<V>,
-    _private: ()
+    _private: ::std::marker::PhantomData<*const ()>
 }
 
 impl GLContext<GL10> {
     pub unsafe fn load_with<F:FnMut(&str) -> *const GLvoid>(api_addr: F) -> Self {
         gl::load_with(api_addr);
-        GLContext {version: GL10::assume_loaded(), _private: ()}
+        GLContext {version: GL10::assume_loaded(), _private: PhantomData}
     }
 }
 
@@ -29,15 +30,12 @@ impl<V:GLVersion> GLContext<V> {
     pub fn upgrade_to<V2:Supports<V>>(self) -> Result<GLContext<V2>, (Self, GLError)> {
         let v2 = unsafe { ::std::mem::zeroed::<V2>() };
         if supports::<V,V2>(&self.version) {
-            return Ok(GLContext {version: v2, _private: ()} );
+            return Ok(GLContext {version: v2, _private: PhantomData} );
         } else {
             return Err((self, GLError::Version(v2.major_version(), v2.minor_version())));
         }
     }
 }
-
-impl<V:GLVersion> !Send for GLContext<V> {}
-impl<V:GLVersion> !Sync for GLContext<V> {}
 
 pub trait ContextProvider {
     type ContextError: Debug;

@@ -18,11 +18,6 @@ pub struct SliceMut<'a, T:?Sized, A:Initialized> {
 impl<'a,U:?Sized,T:?Sized+Unsize<U>,A:Initialized> CoerceUnsized<Slice<'a,U,A>> for Slice<'a,T,A> {}
 impl<'a,U:?Sized,T:?Sized+Unsize<U>,A:Initialized> CoerceUnsized<SliceMut<'a,U,A>> for SliceMut<'a,T,A> {}
 
-impl<'a,T:?Sized,A:Initialized> !Sync for Slice<'a,T,A> {}
-impl<'a,T:?Sized,A:Initialized> !Send for Slice<'a,T,A> {}
-impl<'a,T:?Sized,A:Initialized> !Sync for SliceMut<'a,T,A> {}
-impl<'a,T:?Sized,A:Initialized> !Send for SliceMut<'a,T,A> {}
-
 //
 //Constructing slices
 //

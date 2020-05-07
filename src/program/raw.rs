@@ -155,5 +155,5 @@ impl Drop for RawProgram {
     fn drop(&mut self) { unsafe { gl::DeleteProgram(self.id()); } }
 }
 
-impl !Send for RawProgram {}
-impl !Sync for RawProgram {}
+// impl !Send for RawProgram {}
+// impl !Sync for RawProgram {}

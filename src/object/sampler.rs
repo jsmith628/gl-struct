@@ -138,7 +138,3 @@ impl Sampler {
 
 
 }
-
-
-impl !Send for Sampler {}
-impl !Sync for Sampler {}

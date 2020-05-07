@@ -88,7 +88,7 @@ macro_rules! gl_resource{
 
         gl_resource!(@bind $name {} $($fun=$gl)*);
 
-        #[repr(C)] $($mod)* struct $name(GLuint);
+        #[repr(C)] $($mod)* struct $name(GLuint, ::std::marker::PhantomData<*const ()>);
 
         unsafe impl $crate::object::Object for $name {
 
@@ -98,7 +98,7 @@ macro_rules! gl_resource{
 
             #[inline]
             unsafe fn from_raw(id: gl::types::GLuint) -> Option<Self> {
-                if Self::is(id) { Some($name(id)) } else {None}
+                if Self::is(id) { Some($name(id, ::std::marker::PhantomData)) } else {None}
             }
 
             #[inline]
@@ -123,7 +123,9 @@ macro_rules! gl_resource{
         }
 
         impl Drop for $name {
-            #[inline] fn drop(&mut self) { $crate::object::Object::delete($name(self.0)); }
+            #[inline] fn drop(&mut self) {
+                $crate::object::Object::delete($name(self.0, ::std::marker::PhantomData));
+            }
         }
 
 
@@ -347,7 +349,7 @@ pub trait Target<R>: Copy + Eq + Hash + Debug + Display {
 
 ///An object that owns a [Target] to a glBind* function for a resource `R`
 #[derive(PartialEq, Eq, Hash)]
-pub struct BindingLocation<R,T:Target<R>>(pub(crate) T, PhantomData<R>);
+pub struct BindingLocation<R,T:Target<R>>(pub(crate) T, PhantomData<*const R>);
 
 ///An object that owns a binding of a [Resource] to a particular [BindingLocation] and unbinds it when leaving scope
 pub struct Binding<'a,R,T:Target<R>>(pub(crate) &'a BindingLocation<R,T>, pub(crate) &'a R);
@@ -358,14 +360,9 @@ impl<'a,R,T:Target<R>> Binding<'a,R,T> {
     #[inline] pub fn target_id(&self) -> GLenum { self.0.target_id() }
 }
 
-impl<'a,R,T:Target<R>> !Sync for Binding<'a,R,T> {}
-impl<'a,R,T:Target<R>> !Send for Binding<'a,R,T> {}
 impl<'a,R,T:Target<R>> Drop for Binding<'a,R,T> {
     #[inline] fn drop(&mut self) { unsafe { self.target().unbind() } }
 }
-
-impl<R,T:Target<R>> !Sync for BindingLocation<R,T> {}
-impl<R,T:Target<R>> !Send for BindingLocation<R,T> {}
 
 impl<R,T:Target<R>> BindingLocation<R,T> {
 

@@ -346,5 +346,5 @@ impl Program {
 
 }
 
-impl !Send for Program {}
-impl !Sync for Program {}
+// impl !Send for Program {}
+// impl !Sync for Program {}

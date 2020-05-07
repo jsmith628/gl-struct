@@ -71,8 +71,6 @@ pub(crate) struct BufPtr<T:?Sized>{
 }
 
 impl<U:?Sized, T:?Sized+Unsize<U>> CoerceUnsized<BufPtr<U>> for BufPtr<T> {}
-impl<T:?Sized> !Sync for BufPtr<T> {}
-impl<T:?Sized> !Send for BufPtr<T> {}
 
 fn check_alignment(ptr:*const GLvoid, align: usize) {
     assert_eq!((ptr as usize) % align, 0, "Invalid map alignment for type");

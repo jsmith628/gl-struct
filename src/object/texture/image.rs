@@ -44,11 +44,6 @@ pub struct TexImageMut<'a,F,T:TextureTarget<F>> {
     pub(super) tex: PhantomData<&'a mut Texture<F,T>>
 }
 
-impl<'a,F,T:TextureTarget<F>> !Sync for TexImage<'a,F,T> {}
-impl<'a,F,T:TextureTarget<F>> !Send for TexImage<'a,F,T> {}
-impl<'a,F,T:TextureTarget<F>> !Sync for TexImageMut<'a,F,T> {}
-impl<'a,F,T:TextureTarget<F>> !Send for TexImageMut<'a,F,T> {}
-
 impl<'a,'b:'a,F,T:TextureTarget<F>> From<&'a TexImage<'b,F,T>> for TexImage<'b,F,T> {
     #[inline] fn from(lvl: &'a TexImage<'b,F,T>) -> Self {*lvl}
 }

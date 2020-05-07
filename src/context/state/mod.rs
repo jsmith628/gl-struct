@@ -121,9 +121,6 @@ pub struct GLState<V:GLVersion> {
     debug_callback: DebugCallback
 }
 
-impl<V:GLVersion> !Send for GLState<V> {}
-impl<V:GLVersion> !Sync for GLState<V> {}
-
 impl<V:GLVersion> Drop for GLState<V> {
     fn drop(&mut self) {
 
