@@ -4,11 +4,11 @@ use super::*;
 use crate::gl;
 use crate::format::pixel::*;
 
-use std::alloc::{Global, Alloc, Layout};
 use std::marker::{PhantomData, Unsize};
 use std::slice::{from_raw_parts, SliceIndex};
 use std::ops::CoerceUnsized;
 use std::convert::TryInto;
+use std::alloc::*;
 use std::ptr::*;
 use std::mem::*;
 
@@ -246,14 +246,13 @@ impl<T, A:Initialized> Buffer<[MaybeUninit<T>], A> {
 pub(self) fn map_dealloc<T:?Sized, U, F:FnOnce(*mut T)->U>(data: Box<T>, f:F) -> U {
     unsafe {
         //turn the box into a pointer
-        let non_null = Box::<T>::into_raw_non_null(data);
-        let ptr = non_null.as_ptr();
+        let ptr = Box::<T>::into_raw(data);
 
         //run the thing
         let result = f(ptr);
 
         //deallocate the heap storage without running the object destructor
-        Global.dealloc(non_null.cast(), Layout::for_value(&*ptr));
+        dealloc(ptr as *mut u8, Layout::for_value(&*ptr));
 
         result
     }
@@ -262,7 +261,7 @@ pub(self) fn map_dealloc<T:?Sized, U, F:FnOnce(*mut T)->U>(data: Box<T>, f:F) ->
 pub(self) fn map_alloc<T:?Sized, F:FnOnce(*mut T)>(buf: BufPtr<T>, f:F) -> Box<T> {
     unsafe {
         //Manually allocate a pointer on the head that we will store the data in
-        let data = Global.alloc(Layout::from_size_align_unchecked(buf.size(), buf.align())).unwrap().as_ptr();
+        let data = alloc(Layout::from_size_align_unchecked(buf.size(), buf.align()));
 
         //next, construct a *mut T pointer from the u8 pointer we just allocated using the metadata
         //stored in this buf
