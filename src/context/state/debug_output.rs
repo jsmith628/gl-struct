@@ -38,7 +38,7 @@ glenum! {
 
 pub(super) enum DebugCallback {
     Null,
-    Asynchronous(Box<Arc<Mutex<dyn FnMut(DebugMessage) + Send + Sync + 'static>>>),
+    Asynchronous(Box<Arc<Mutex<dyn FnMut(DebugMessage) + Send + 'static>>>),
     Synchronous(Box<Box<dyn FnMut(DebugMessage) + 'static>>),
 }
 
@@ -95,7 +95,7 @@ extern "system" fn debug_callback_async(
     unsafe {
         let message_str = from_utf8(from_raw_parts(message as *const u8, length as usize));
         if let Ok(msg) = message_str {
-            let callback = user_param as *mut Arc<Mutex<dyn FnMut(DebugMessage) + Send + Sync + 'static>>;
+            let callback = user_param as *mut Arc<Mutex<dyn FnMut(DebugMessage) + Send + 'static>>;
             let arc = (&*callback).clone();
             let lock = arc.lock();
 
@@ -166,13 +166,13 @@ impl<V:Supports<GL43>+Supports<GL20>> GLState<V> {
         }
     }
 
-    pub fn debug_message_callback<F:FnMut(DebugMessage)+Send+Sync+'static>(&mut self, callback:F) {
+    pub fn debug_message_callback<F:FnMut(DebugMessage)+Send+'static>(&mut self, callback:F) {
         unsafe {
-            let mut boxed: Box<Arc<Mutex<dyn FnMut(DebugMessage)+Send+Sync+'static>>> =
+            let mut boxed: Box<Arc<Mutex<dyn FnMut(DebugMessage)+Send+'static>>> =
                 Box::new(Arc::new(Mutex::new(callback)));
             gl::DebugMessageCallback(
                 Some(debug_callback_async),
-                &mut *boxed as *mut Arc<Mutex<dyn FnMut(DebugMessage)+Send+Sync+'static>> as *mut GLvoid
+                &mut *boxed as *mut Arc<Mutex<dyn FnMut(DebugMessage)+Send+'static>> as *mut GLvoid
             );
             self.debug_callback = DebugCallback::Asynchronous(boxed);
             self.disable_debug_output_synchronous();
