@@ -1,7 +1,7 @@
 use super::*;
 
 
-pub trait Vertex<'a>: GLSLType {
+pub trait Vertex<'a>: Sized {
     type Arrays: Copy;
 
     fn num_indices() -> usize;
