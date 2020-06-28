@@ -1,7 +1,7 @@
 use super::*;
 
 
-pub trait Vertex<'a>: Sized {
+pub trait Vertex<'a>: Sized + 'a {
     type Arrays: Copy;
 
     fn num_indices() -> usize;
