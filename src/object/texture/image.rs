@@ -20,7 +20,11 @@ impl CubeMapFace {
 
 impl Default for CubeMapFace { fn default() -> Self { Self::PositiveX } }
 
-pub(super) trait ImageSelector: TextureType { type Selection: GLEnum + Default; }
+pub(super) trait ImageSelector: TextureType {
+    type Selection: Sized + Copy + Hash + Debug + Display + Into<GLenum> + TryFrom<GLenum, Error=GLError> + Default;
+}
+
+// pub(super) trait ImageSelector: TextureType { type Selection: GLEnum + Default; }
 impl<T: TextureType> ImageSelector for T { default type Selection = Self; }
 impl<T: BaseImage> ImageSelector for T { type Selection = Self; }
 impl ImageSelector for TEXTURE_CUBE_MAP { type Selection = CubeMapFace; }
