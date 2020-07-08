@@ -224,6 +224,12 @@ unsafe impl AttribFormat for VecFormat {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct IVecFormat(pub IntType, pub u32);
 
+impl IVecFormat {
+    pub fn normalized(self) -> VecFormat {
+        VecFormat::Normalized(self.0, self.1)
+    }
+}
+
 unsafe impl AttribFormat for IVecFormat {
 
     fn from_layouts(layouts: &[GenAttribFormat]) -> Result<Self,GLError> {
