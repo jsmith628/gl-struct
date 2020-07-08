@@ -200,8 +200,13 @@ impl<T:Sized, A:Initialized> Buffer<[T],A> {
     //
 
     #[inline]
-    pub fn attrib_arrays<'a, Attrib:Copy>(&'a self) -> Attrib where T:SplitAttribs<'a,Attrib> {
-        T::split(self.as_slice())
+    pub fn into_attribs(&self) -> AttribArray<T::GLSL> where T:AttribData {
+        self.as_slice().into()
+    }
+
+    #[inline]
+    pub fn split_attribs<'a>(&'a self) -> T::AttribArrays where T:SplitAttribs<'a> {
+        T::split_buffer(self.as_slice())
     }
 
     //

@@ -189,8 +189,13 @@ impl<'a,T:Sized,A:Initialized> Slice<'a,[T],A> {
     }
 
     #[inline]
-    pub fn attrib_arrays<Attrib:Copy>(self) -> Attrib where T:SplitAttribs<'a,Attrib> {
-        T::split(self)
+    pub fn into_attribs(self) -> AttribArray<'a,T::GLSL> where T:AttribData {
+        self.into()
+    }
+
+    #[inline]
+    pub fn split_attribs(self) -> T::AttribArrays where T:SplitAttribs<'a> {
+        T::split_buffer(self)
     }
 
     #[inline]
@@ -300,8 +305,13 @@ impl<'a,T:Sized,A:Initialized> SliceMut<'a,[T],A> {
     }
 
     #[inline]
-    pub fn attrib_arrays<Attrib:Copy>(self) -> Attrib where T:SplitAttribs<'a,Attrib> {
-        T::split(self.into())
+    pub fn into_attribs(self) -> AttribArray<'a,T::GLSL> where T:AttribData {
+        Slice::from(self).into()
+    }
+
+    #[inline]
+    pub fn split_attribs(self) -> T::AttribArrays where T:SplitAttribs<'a> {
+        T::split_buffer(Slice::from(self))
     }
 
     #[inline]

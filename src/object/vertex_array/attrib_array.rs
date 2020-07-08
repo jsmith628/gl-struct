@@ -27,41 +27,57 @@ impl<'a,A:GLSLType> AttribArray<'a,A> {
 
 }
 
-impl<'a,'b,A1:GLSLType,A2:GLSLType<AttribFormat=A1::AttribFormat>> From<&'a AttribArray<'b,A1>> for AttribArray<'b,A2> {
-    fn from(arr:&'a AttribArray<'b,A1>) -> Self {
-        unsafe { Self::from_raw_parts(arr.format(), arr.id(), arr.stride(), arr.offset()) }
-    }
-}
-
-pub unsafe trait SplitAttribs<'a, A:Copy>: Copy {
-    fn split<B:Initialized>(buf:Slice<'a,[Self],B>) -> A;
-}
-
-unsafe impl<'a, A:GLSLType, T:AttribData<A::AttribFormat>> SplitAttribs<'a,AttribArray<'a,A>> for T {
-    fn split<B:Initialized>(buf:Slice<'a,[T],B>) -> AttribArray<'a,A> {
+impl<'b, A:GLSLType, B:Initialized, T> From<Slice<'b,[T],B>> for AttribArray<'b,A>
+where T: AttribData<GLSL=A, Format=A::AttribFormat>
+{
+    fn from(buf: Slice<'b,[T],B>) -> Self {
         unsafe {
-            AttribArray::from_raw_parts(T::format(), buf.id(), size_of::<T>(), buf.offset())
+            Self::from_raw_parts(T::format(), buf.id(), size_of::<T>(), buf.offset())
         }
     }
 }
 
+impl<'a,'b,A1:GLSLType,A2:GLSLType> From<&'a AttribArray<'b,A1>> for AttribArray<'b,A2>
+where A2::AttribFormat: From<A1::AttribFormat>
+{
+    fn from(arr: &'a AttribArray<'b,A1>) -> Self {
+        unsafe {
+            Self::from_raw_parts(From::from(arr.format()), arr.id(), arr.stride(), arr.offset())
+        }
+    }
+}
+
+pub unsafe trait SplitAttribs<'a>: Copy {
+    type AttribArrays;
+    fn split_array(array: AttribArray<'a,Self>) -> Self::AttribArrays where Self: GLSLType;
+    fn split_buffer<B:Initialized>(buf: Slice<'a,[Self],B>) -> Self::AttribArrays;
+}
+
 macro_rules! impl_split_tuple {
 
-    () => {
-        impl_split_tuple!(@loop {T1:A1} T2:A2 T3:A3 T4:A4 T5:A5 T6:A6 T7:A7 T8:A8 T9:A9 T10:A10 T11:A11 T12:A12);
-    };
+    ($($T:ident:$a:ident)*) => {
+        unsafe impl<'a, $($T:AttribData),*> SplitAttribs<'a> for ($($T,)*) {
 
-    (@loop {$($T:ident:$A:ident)*} ) => { impl_split_tuple!(@impl $($T:$A)*); };
-    (@loop {$($T:ident:$A:ident)*} $T0:ident:$A0:ident $($rest:tt)*) => {
-        impl_split_tuple!(@impl $($T:$A)*);
-        impl_split_tuple!(@loop {$($T:$A)* $T0:$A0}  $($rest)*);
-    };
-
-    (@impl $($T:ident:$A:ident)*) => {
-        unsafe impl<'a,$($A:GLSLType,)* $($T:AttribData<$A::AttribFormat>),*> SplitAttribs<'a,($(AttribArray<'a,$A>,)*)> for ($($T,)*) {
+            type AttribArrays = ($(AttribArray<'a,$T::GLSL>,)*);
 
             #[allow(unused_variables, unused_mut, unused_assignments)]
-            fn split<B:Initialized>(buf:Slice<'a,[Self],B>) -> ($(AttribArray<'a,$A>,)*) {
+            fn split_array(array: AttribArray<'a,Self>) -> Self::AttribArrays where Self: GLSLType {
+                let (id, stride) = (array.id(), array.stride());
+                let mut pointer = array.offset();
+                (
+                    $(
+                        unsafe {
+                            let arr = AttribArray::from_raw_parts($T::format(), id, stride, pointer);
+                            pointer += size_of::<$T>();
+                            pointer += (pointer as *const u8).align_offset(align_of::<$T>());
+                            arr
+                        },
+                    )*
+                )
+            }
+
+            #[allow(unused_variables, unused_mut, unused_assignments)]
+            fn split_buffer<B:Initialized>(buf:Slice<'a,[Self],B>) -> Self::AttribArrays {
                 let (id, stride) = (buf.id(), size_of::<Self>());
                 let mut pointer = buf.offset();
                 (
@@ -80,4 +96,7 @@ macro_rules! impl_split_tuple {
     }
 }
 
-impl_split_tuple!();
+impl_tuple!(
+    {A0:a0 A1:a1 A2:a2 A3:a3 A4:a4 A5:a5 A6:a6 A7:a7 A8:a8 A9:a9 AA:aa AB:ab AC:ac AD:ad AE:ae} AF:af
+    impl_split_tuple
+);

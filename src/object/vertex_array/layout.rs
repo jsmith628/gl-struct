@@ -85,8 +85,10 @@ pub unsafe trait AttribFormat: Sized + Clone + Copy + PartialEq + Eq + Hash + De
 
 }
 
-pub unsafe trait AttribData<A:AttribFormat>: Sized + Copy {
-    fn format() -> A;
+pub unsafe trait AttribData: Sized + Copy {
+    type Format: AttribFormat;
+    type GLSL: GLSLType<AttribFormat=Self::Format>;
+    fn format() -> Self::Format;
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -124,6 +126,14 @@ pub enum VecFormat {
 
     #[allow(non_camel_case_types)]
     UInt_10F_11F_11F_Rev
+}
+
+impl From<IVecFormat> for VecFormat {
+    fn from(ivec: IVecFormat) -> VecFormat { VecFormat::Int(ivec.0, ivec.1) }
+}
+
+impl From<DVecFormat> for VecFormat {
+    fn from(dvec: DVecFormat) -> VecFormat { VecFormat::Double(dvec.0) }
 }
 
 unsafe impl AttribFormat for VecFormat {
@@ -283,9 +293,9 @@ unsafe impl AttribFormat for ! {
     fn integer(self, _: usize) -> bool { self }
 }
 
-unsafe impl AttribFormat for void {
+unsafe impl AttribFormat for () {
 
-    fn from_layouts(_: &[GenAttribFormat]) -> Result<void,GLError> { Ok(()) }
+    fn from_layouts(_: &[GenAttribFormat]) -> Result<(),GLError> { Ok(()) }
 
     fn attrib_count() -> usize {1}
     fn offset(self, _: usize) -> usize { 0 }
@@ -366,12 +376,17 @@ macro_rules! array_format {
 
             }
 
-            unsafe impl<A:AttribFormat,T:AttribData<A>> AttribData<[OffsetFormat<A>; $num]> for [T;$num] {
-                fn format() -> [OffsetFormat<A>; $num] {
+            unsafe impl<T:AttribData> AttribData for [T;$num] {
+
+                type Format = [OffsetFormat<T::Format>; $num];
+                type GLSL = [T::GLSL; $num];
+
+                fn format() -> Self::Format {
                     let mut fmt = [OffsetFormat { offset: 0, fmt: T::format() }; $num];
                     for i in 0..$num { fmt[i].offset = i*size_of::<T>(); }
                     fmt
                 }
+
             }
 
         )*
@@ -383,52 +398,73 @@ array_format!{
     01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32
 }
 
-macro_rules! prim_attr {
-    ($(@$kind:ident $prim:ident $value:ident)*) => {
+macro_rules! attrib_data {
+    ($($ty:ty, $format:ty, $glsl:ty, $expr:expr;)*) => {
         $(
-            prim_attr!(@$kind $value 1 $prim);
-            prim_attr!(@$kind $value 1 [$prim; 1]);
-            prim_attr!(@$kind $value 2 [$prim; 2]);
-            prim_attr!(@$kind $value 3 [$prim; 3]);
-            prim_attr!(@$kind $value 4 [$prim; 4]);
+            unsafe impl AttribData for $ty {
+                type Format = $format;
+                type GLSL = $glsl;
+                fn format() -> $format {
+                    $expr
+                }
+            }
         )*
-    };
-
-    (@int $value:ident $num:literal $ty:ty) => {
-        unsafe impl AttribData<IVecFormat> for $ty {
-            fn format() -> IVecFormat { IVecFormat(IntType::$value, $num) }
-        }
-
-        unsafe impl AttribData<VecFormat> for $ty {
-            fn format() -> VecFormat { VecFormat::Int(IntType::$value, $num) }
-        }
-    };
-
-    (@float $value:ident $num:literal $ty:ty) => {
-        unsafe impl AttribData<VecFormat> for $ty {
-            fn format() -> VecFormat { VecFormat::Float(FloatType::$value, $num) }
-        }
-    };
-
-    (@double $value:ident $num:literal $ty:ty) => {
-        unsafe impl AttribData<VecFormat> for $ty {
-            fn format() -> VecFormat { VecFormat::Double($num) }
-        }
-        unsafe impl AttribData<DVecFormat> for $ty {
-            fn format() -> DVecFormat { DVecFormat($num) }
-        }
-    };
+    }
 }
 
-prim_attr! {
-    @int bool UByte
-    @int gl_bool UInt
-    @int i8 Byte
-    @int u8 UByte
-    @int i16 Short
-    @int u16 UShort
-    @int i32 Int
-    @int u32 UInt
-    @float f32 Float
-    @double f64 Double
+use self::IntType::*;
+use self::FloatType::*;
+
+attrib_data! {
+
+    bool, IVecFormat, gl_bool, IVecFormat(UByte, 1);
+    gl_bool, IVecFormat, gl_bool, IVecFormat(UInt, 1);
+    bvec2, IVecFormat, bvec2, IVecFormat(UByte, 2);
+    bvec3, IVecFormat, bvec3, IVecFormat(UByte, 3);
+    bvec4, IVecFormat, bvec4, IVecFormat(UByte, 4);
+
+    u8, IVecFormat, uint, IVecFormat(UByte, 1);
+    u16, IVecFormat, uint, IVecFormat(UShort, 1);
+    u32, IVecFormat, uint, IVecFormat(UInt, 1);
+    uvec2, IVecFormat, uvec2, IVecFormat(UInt, 2);
+    uvec3, IVecFormat, uvec3, IVecFormat(UInt, 3);
+    uvec4, IVecFormat, uvec4, IVecFormat(UInt, 4);
+
+    i8, IVecFormat, int, IVecFormat(Byte, 1);
+    i16, IVecFormat, int, IVecFormat(Short, 1);
+    i32, IVecFormat, int, IVecFormat(Int, 1);
+    ivec2, IVecFormat, ivec2, IVecFormat(Int, 2);
+    ivec3, IVecFormat, ivec3, IVecFormat(Int, 3);
+    ivec4, IVecFormat, ivec4, IVecFormat(Int, 4);
+
+    f32, VecFormat, float, VecFormat::Float(Float, 1);
+    vec2, VecFormat, vec2, VecFormat::Float(Float, 2);
+    vec3, VecFormat, vec3, VecFormat::Float(Float, 3);
+    vec4, VecFormat, vec4, VecFormat::Float(Float, 4);
+
+    mat2x2, Mat2Format, mat2x2, <[vec2; 2] as AttribData>::format();
+    mat2x3, Mat2Format, mat2x3, <[vec3; 2] as AttribData>::format();
+    mat2x4, Mat2Format, mat2x4, <[vec4; 2] as AttribData>::format();
+    mat3x2, Mat3Format, mat3x2, <[vec2; 3] as AttribData>::format();
+    mat3x3, Mat3Format, mat3x2, <[vec3; 3] as AttribData>::format();
+    mat3x4, Mat3Format, mat3x2, <[vec4; 3] as AttribData>::format();
+    mat4x2, Mat4Format, mat4x2, <[vec2; 4] as AttribData>::format();
+    mat4x3, Mat4Format, mat4x2, <[vec3; 4] as AttribData>::format();
+    mat4x4, Mat4Format, mat4x2, <[vec4; 4] as AttribData>::format();
+
+    f64, DVecFormat, double, DVecFormat(1);
+    dvec2, DVecFormat, dvec2, DVecFormat(2);
+    dvec3, DVecFormat, dvec3, DVecFormat(3);
+    dvec4, DVecFormat, dvec4, DVecFormat(4);
+
+    dmat2x2, DMat2Format, dmat2x2, <[dvec2; 2] as AttribData>::format();
+    dmat2x3, DMat2Format, dmat2x3, <[dvec3; 2] as AttribData>::format();
+    dmat2x4, DMat2Format, dmat2x4, <[dvec4; 2] as AttribData>::format();
+    dmat3x2, DMat3Format, dmat3x2, <[dvec2; 3] as AttribData>::format();
+    dmat3x3, DMat3Format, dmat3x2, <[dvec3; 3] as AttribData>::format();
+    dmat3x4, DMat3Format, dmat3x2, <[dvec4; 3] as AttribData>::format();
+    dmat4x2, DMat4Format, dmat4x2, <[dvec2; 4] as AttribData>::format();
+    dmat4x3, DMat4Format, dmat4x2, <[dvec3; 4] as AttribData>::format();
+    dmat4x4, DMat4Format, dmat4x2, <[dvec4; 4] as AttribData>::format();
+
 }
