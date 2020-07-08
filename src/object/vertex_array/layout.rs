@@ -6,23 +6,19 @@ use std::mem::*;
 use std::convert::*;
 
 glenum! {
+
+    ///All OpenGL data types that can encode vertex element index information
+    #[non_exhaustive]
     pub enum ElementType {
         [UByte UNSIGNED_BYTE "UByte"],
         [UShort UNSIGNED_SHORT "UShort"],
         [UInt UNSIGNED_INT "UInt"]
     }
-}
 
-impl From<ElementType> for IntType {
-    fn from(e: ElementType) -> IntType { (e as GLenum).try_into().unwrap() }
-}
+    //TODO: add GL version checks on the packed attribute types
 
-impl TryFrom<IntType> for ElementType {
-    type Error = GLError;
-    fn try_from(e: IntType) -> Result<ElementType,GLError> { (e as GLenum).try_into() }
-}
-
-glenum! {
+    ///All OpenGL data types that can encode vertex attribute data
+    #[non_exhaustive]
     pub enum AttribType {
         [Byte BYTE "Byte"],
         [UByte UNSIGNED_BYTE "UByte"],
@@ -45,6 +41,16 @@ glenum! {
         #[allow(non_camel_case_types)]
         [UInt_10F_11F_11F_Rev UNSIGNED_INT_10F_11F_11F_REV "UInt-10F-11F-11F-Rev"]
     }
+
+}
+
+impl From<ElementType> for IntType {
+    fn from(e: ElementType) -> IntType { (e as GLenum).try_into().unwrap() }
+}
+
+impl TryFrom<IntType> for ElementType {
+    type Error = GLError;
+    fn try_from(e: IntType) -> Result<ElementType,GLError> { (e as GLenum).try_into() }
 }
 
 impl From<FloatType> for AttribType {
@@ -53,21 +59,6 @@ impl From<FloatType> for AttribType {
 
 impl From<IntType> for AttribType {
     fn from(f:IntType) -> AttribType { (f as GLenum).try_into().unwrap() }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct AttribLayout {
-    pub(crate) offset: usize,
-    pub(crate) size: GLenum,
-    pub(crate) ty: AttribType,
-    pub(crate) normalized: bool
-}
-
-impl AttribLayout {
-    pub fn offset(self) -> usize { self.offset }
-    pub fn size(self) -> GLenum { self.size }
-    pub fn ty(self) -> AttribType { self.ty }
-    pub fn normalized(self) -> bool { self.normalized }
 }
 
 pub unsafe trait Element: Copy {
@@ -90,7 +81,7 @@ pub unsafe trait AttribFormat: Sized + Clone + Copy + PartialEq + Eq + Hash + De
     fn long(self, index: usize) -> bool;
     fn integer(self, index: usize) -> bool;
 
-    fn from_layouts(layouts: &[AttribLayout]) -> Result<Self,GLError>;
+    fn from_layouts(layouts: &[GenAttribFormat]) -> Result<Self,GLError>;
 
 }
 
@@ -98,6 +89,22 @@ pub unsafe trait AttribData<A:AttribFormat>: Sized + Copy {
     fn format() -> A;
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct GenAttribFormat {
+    pub(crate) offset: usize,
+    pub(crate) size: GLenum,
+    pub(crate) ty: AttribType,
+    pub(crate) normalized: bool
+}
+
+impl GenAttribFormat {
+    pub fn offset(self) -> usize { self.offset }
+    pub fn size(self) -> GLenum { self.size }
+    pub fn ty(self) -> AttribType { self.ty }
+    pub fn normalized(self) -> bool { self.normalized }
+}
+
+#[non_exhaustive]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum VecFormat {
     Float(FloatType, u32),
@@ -121,7 +128,7 @@ pub enum VecFormat {
 
 unsafe impl AttribFormat for VecFormat {
 
-    fn from_layouts(layouts: &[AttribLayout]) -> Result<Self,GLError> {
+    fn from_layouts(layouts: &[GenAttribFormat]) -> Result<Self,GLError> {
         use self::AttribType::*;
 
         let layout = layouts[0];
@@ -209,7 +216,7 @@ pub struct IVecFormat(pub IntType, pub u32);
 
 unsafe impl AttribFormat for IVecFormat {
 
-    fn from_layouts(layouts: &[AttribLayout]) -> Result<Self,GLError> {
+    fn from_layouts(layouts: &[GenAttribFormat]) -> Result<Self,GLError> {
         Ok(IVecFormat((layouts[0].ty as GLenum).try_into()?, layouts[0].size))
     }
 
@@ -236,7 +243,7 @@ pub struct DVecFormat(pub u32);
 
 unsafe impl AttribFormat for DVecFormat {
 
-    fn from_layouts(layouts: &[AttribLayout]) -> Result<Self,GLError> {
+    fn from_layouts(layouts: &[GenAttribFormat]) -> Result<Self,GLError> {
         Ok(DVecFormat(layouts[0].size))
     }
 
@@ -260,7 +267,7 @@ unsafe impl AttribFormat for DVecFormat {
 
 unsafe impl AttribFormat for ! {
 
-    fn from_layouts(_: &[AttribLayout]) -> Result<Self,GLError> {
+    fn from_layouts(_: &[GenAttribFormat]) -> Result<Self,GLError> {
         Err(GLError::InvalidValue("Uninstantiable attribute format".to_string()))
     }
 
@@ -278,7 +285,7 @@ unsafe impl AttribFormat for ! {
 
 unsafe impl AttribFormat for void {
 
-    fn from_layouts(_: &[AttribLayout]) -> Result<void,GLError> { Ok(()) }
+    fn from_layouts(_: &[GenAttribFormat]) -> Result<void,GLError> { Ok(()) }
 
     fn attrib_count() -> usize {1}
     fn offset(self, _: usize) -> usize { 0 }
@@ -300,7 +307,7 @@ pub struct OffsetFormat<A:AttribFormat> {
 
 unsafe impl<A:AttribFormat> AttribFormat for OffsetFormat<A> {
 
-    fn from_layouts(layouts: &[AttribLayout]) -> Result<Self,GLError> {
+    fn from_layouts(layouts: &[GenAttribFormat]) -> Result<Self,GLError> {
         Ok(OffsetFormat { offset: layouts[0].offset, fmt: A::from_layouts(layouts)? } )
     }
 
@@ -345,7 +352,7 @@ macro_rules! array_format {
                 array_format!(fn integer<A>() -> bool);
 
 
-                fn from_layouts(layouts: &[AttribLayout]) -> Result<Self,GLError> {
+                fn from_layouts(layouts: &[GenAttribFormat]) -> Result<Self,GLError> {
                     let mut fmt = MaybeUninit::<Self>::uninit();
 
                     for i in 0..$num {

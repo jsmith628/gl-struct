@@ -80,7 +80,7 @@ impl<'a,'b,T:GLSLType> VertexAttrib<'a,'b,T> {
 
         let layouts = (0 .. self.num_indices() as GLuint).into_iter().map(
             |i| unsafe {
-                AttribLayout {
+                GenAttribFormat {
                     offset: self.get_pointer(i).offset_from(ptr) as usize,
                     size: self.get(gl::VERTEX_ATTRIB_ARRAY_SIZE, i) as GLenum,
                     ty: (self.get(gl::VERTEX_ATTRIB_ARRAY_TYPE, i) as GLenum).try_into().unwrap(),
