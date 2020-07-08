@@ -9,13 +9,11 @@ use format::*;
 
 pub use self::layout::*;
 pub use self::vertex::*;
-pub use self::element::*;
 pub use self::attrib::*;
 pub use self::attrib_array::*;
 
-mod layout;
-mod vertex;
-mod element;
+pub mod layout;
+pub mod vertex;
 mod attrib;
 mod attrib_array;
 
