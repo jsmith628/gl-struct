@@ -4,16 +4,31 @@ use std::marker::PhantomData;
 use std::mem::*;
 use std::ptr::*;
 
-use format::attribute::*;
-use format::element::*;
 use object::buffer::AttribArray;
 use glsl::GLSLType;
+use format::*;
 
-pub use self::attrib::*;
+pub use self::layout::*;
 pub use self::vertex::*;
+pub use self::element::*;
+pub use self::attrib::*;
 
-mod attrib;
+mod layout;
 mod vertex;
+mod element;
+mod attrib;
+
+fn test() {
+
+    use glsl::*;
+
+    let gl = unsafe { assume_supported() };
+
+    let vao: VertexArray<_,(vec4,)> = VertexArray::create(&gl).append_attrib_arrays(
+        (unsafe { AttribArray::<vec4>::from_raw_parts(VecFormat::Fixed(4), 0, 4*4, 0) },)
+    );
+
+}
 
 #[repr(transparent)]
 pub struct VertexArray<'a,E:Copy,V:Vertex<'a>> {

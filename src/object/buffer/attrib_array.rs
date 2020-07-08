@@ -1,7 +1,6 @@
 
 use super::*;
 use glsl::GLSLType;
-use format::attribute::*;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound=""), Copy(bound=""))]
