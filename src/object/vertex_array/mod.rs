@@ -17,18 +17,6 @@ pub mod vertex;
 mod attrib;
 mod attrib_array;
 
-fn test() {
-
-    use glsl::*;
-
-    let gl = unsafe { assume_supported() };
-
-    let vao: VertexArray<_,(vec4,)> = VertexArray::create(&gl).append_attrib_arrays(
-        (unsafe { AttribArray::<vec4>::from_raw_parts(VecFormat::Fixed(4), 0, 4*4, 0) },)
-    );
-
-}
-
 #[repr(transparent)]
 pub struct VertexArray<'a,E:Copy,V:Vertex<'a>> {
     id: GLuint,
