@@ -4,7 +4,6 @@ use std::marker::PhantomData;
 use std::mem::*;
 use std::ptr::*;
 
-use object::buffer::AttribArray;
 use glsl::GLSLType;
 use format::*;
 
@@ -12,11 +11,13 @@ pub use self::layout::*;
 pub use self::vertex::*;
 pub use self::element::*;
 pub use self::attrib::*;
+pub use self::attrib_array::*;
 
 mod layout;
 mod vertex;
 mod element;
 mod attrib;
+mod attrib_array;
 
 fn test() {
 

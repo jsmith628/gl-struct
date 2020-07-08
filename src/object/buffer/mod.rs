@@ -21,7 +21,6 @@ pub use self::slice::*;
 pub use self::any::*;
 pub use self::cmp::*;
 pub use self::fmt::*;
-pub use self::attrib_array::*;
 
 pub mod storage;
 pub mod hint;
@@ -33,7 +32,6 @@ mod slice;
 mod any;
 mod cmp;
 mod fmt;
-mod attrib_array;
 
 pub struct Buffer<T:?Sized, A:BufferStorage> {
     ptr: BufPtr<T>,
