@@ -105,3 +105,55 @@ impl_tuple!(
     {A0:a0 A1:a1 A2:a2 A3:a3 A4:a4 A5:a5 A6:a6 A7:a7 A8:a8 A9:a9 AA:aa AB:ab AC:ac AD:ad AE:ae} AF:af
     impl_split_tuple
 );
+
+macro_rules! impl_split_array {
+    ($($n:literal)*) => {
+        $(
+            unsafe impl<'a, T:AttribData> SplitAttribs<'a> for [T; $n] {
+
+                type AttribArrays = [AttribArray<'a,T::GLSL>; $n];
+
+                #[allow(unused_variables, unused_mut, unused_assignments)]
+                fn split_array(array: AttribArray<'a,Self>) -> Self::AttribArrays where Self: GLSLType {
+                    let (id, stride, base_offset) = (array.id(), array.stride(), array.offset());
+                    let format = <[T; $n] as AttribData>::format();
+
+                    let mut attribs = MaybeUninit::<Self::AttribArrays>::uninit();
+                    for i in 0..$n {
+                        unsafe {
+                            attribs.get_mut()[i] = AttribArray::from_raw_parts(
+                                format[i].fmt, id, stride, base_offset + format[i].offset
+                            );
+                        }
+                    }
+
+                    unsafe { attribs.assume_init() }
+
+                }
+
+                #[allow(unused_variables, unused_mut, unused_assignments)]
+                fn split_buffer<B:Initialized>(buf:Slice<'a,[Self],B>) -> Self::AttribArrays {
+                    let (id, stride, base_offset) = (buf.id(), size_of::<Self>(), buf.offset());
+                    let format = <[T; $n] as AttribData>::format();
+
+                    let mut attribs = MaybeUninit::<Self::AttribArrays>::uninit();
+                    for i in 0..$n {
+                        unsafe {
+                            attribs.get_mut()[i] = AttribArray::from_raw_parts(
+                                format[i].fmt, id, stride, base_offset + format[i].offset
+                            );
+                        }
+                    }
+
+                    unsafe { attribs.assume_init() }
+                }
+
+            }
+
+        )*
+    }
+}
+
+impl_split_array! {
+    1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32
+}
