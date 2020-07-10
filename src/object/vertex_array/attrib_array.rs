@@ -1,6 +1,6 @@
 
 use super::*;
-use glsl::GLSLType;
+use glsl::*;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound=""), Copy(bound=""))]
@@ -156,4 +156,65 @@ macro_rules! impl_split_array {
 
 impl_split_array! {
     1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32
+}
+
+macro_rules! impl_split_matrix {
+
+    ($($mat:ident => [$vec:ident; $n:literal];)*) => {
+
+        $(
+            unsafe impl<'a> SplitAttribs<'a> for $mat {
+
+                type AttribArrays = [AttribArray<'a,$vec>; $n];
+
+                #[allow(unused_variables, unused_mut, unused_assignments)]
+                fn split_array(array: AttribArray<'a,Self>) -> Self::AttribArrays {
+                    SplitAttribs::split_array(
+                        AttribArray::<'a, [$vec; $n]> {
+                            id: array.id(), stride: array.stride(),
+                            format: array.format(), pointer: array.offset(),
+                            buf: PhantomData
+                        }
+                    )
+                }
+
+                #[allow(unused_variables, unused_mut, unused_assignments)]
+                fn split_buffer<B:Initialized>(buf:Slice<'a,[Self],B>) -> Self::AttribArrays {
+                    SplitAttribs::split_array(
+                        AttribArray::<'a, [$vec; $n]> {
+                            id: buf.id(), stride: size_of::<Self>(),
+                            format: <Self as AttribData>::format(), pointer: buf.offset(),
+                            buf: PhantomData
+                        }
+                    )
+                }
+
+            }
+        )*
+
+    }
+
+
+}
+
+impl_split_matrix!{
+    mat2x2 => [vec2; 2];
+    mat2x3 => [vec3; 2];
+    mat2x4 => [vec4; 2];
+    mat3x2 => [vec2; 3];
+    mat3x3 => [vec3; 3];
+    mat3x4 => [vec4; 3];
+    mat4x2 => [vec2; 4];
+    mat4x3 => [vec3; 4];
+    mat4x4 => [vec4; 4];
+
+    dmat2x2 => [dvec2; 2];
+    dmat2x3 => [dvec3; 2];
+    dmat2x4 => [dvec4; 2];
+    dmat3x2 => [dvec2; 3];
+    dmat3x3 => [dvec3; 3];
+    dmat3x4 => [dvec4; 3];
+    dmat4x2 => [dvec2; 4];
+    dmat4x3 => [dvec3; 4];
+    dmat4x4 => [dvec4; 4];
 }
