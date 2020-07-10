@@ -87,10 +87,6 @@ macro_rules! glsl_type {
         // impl From<$prim> for $name { #[inline] fn from(v: $prim) -> Self { $name{value: v} } }
         // impl From<$name> for $prim { #[inline] fn from(v: $name) -> Self { v.value } }
 
-        unsafe impl<A:AttribFormat> AttribData<A> for $name where $prim: AttribData<A> {
-            #[inline] fn format() -> A { <$prim as AttribData<A>>::format() }
-        }
-
         glsl_type!($($rest)*);
     };
 
