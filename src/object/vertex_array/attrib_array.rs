@@ -52,7 +52,7 @@ where A2::AttribFormat: From<A1::AttribFormat>
     }
 }
 
-pub unsafe trait SplitAttribs<'a>: Copy {
+pub trait SplitAttribs<'a>: Copy {
     type AttribArrays;
     fn split_array(array: AttribArray<'a,Self>) -> Self::AttribArrays where Self: GLSLType;
     fn split_buffer<B:Initialized>(buf: Slice<'a,[Self],B>) -> Self::AttribArrays;
@@ -61,7 +61,7 @@ pub unsafe trait SplitAttribs<'a>: Copy {
 macro_rules! impl_split_tuple {
 
     ($($T:ident:$a:ident)*) => {
-        unsafe impl<'a, $($T:AttribData),*> SplitAttribs<'a> for ($($T,)*) {
+        impl<'a, $($T:AttribData),*> SplitAttribs<'a> for ($($T,)*) {
 
             type AttribArrays = ($(AttribArray<'a,$T::GLSL>,)*);
 
@@ -109,7 +109,7 @@ impl_tuple!(
 macro_rules! impl_split_array {
     ($($n:literal)*) => {
         $(
-            unsafe impl<'a, T:AttribData> SplitAttribs<'a> for [T; $n] {
+            impl<'a, T:AttribData> SplitAttribs<'a> for [T; $n] {
 
                 type AttribArrays = [AttribArray<'a,T::GLSL>; $n];
 
@@ -163,7 +163,7 @@ macro_rules! impl_split_matrix {
     ($($mat:ident => [$vec:ident; $n:literal];)*) => {
 
         $(
-            unsafe impl<'a> SplitAttribs<'a> for $mat {
+            impl<'a> SplitAttribs<'a> for $mat {
 
                 type AttribArrays = [AttribArray<'a,$vec>; $n];
 
