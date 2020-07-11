@@ -404,6 +404,90 @@ array_format!{
     01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32
 }
 
+macro_rules! tuple_format {
+
+    //constructs a function that takes in an index, selects the tuple element for that index,
+    //and returns the desired property for that index
+    (fn $fn:ident<$($A:ident:$a:ident)*>() -> $ret:ty {$default:expr} ) => {
+
+        #[allow(unused_assignments)]
+        fn $fn(self, mut i: usize) -> $ret {
+            let ($($a,)*) = self;
+            $(
+                if i < $A::attrib_count() {
+                    return $a.$fn(i);
+                } else {
+                    i -= $A::attrib_count()
+                }
+            )*
+            return $default;
+        }
+    };
+
+    ($($A:ident:$a:ident)*) => {
+
+        unsafe impl<$($A:AttribFormat),*> AttribFormat for ($($A,)*) {
+            fn attrib_count() -> usize { 0 $( + $A::attrib_count())* }
+
+            tuple_format!(fn offset<$($A:$a)*>() -> usize {0});
+
+            tuple_format!(fn size<$($A:$a)*>() -> GLenum {0});
+            tuple_format!(fn ty<$($A:$a)*>() -> AttribType {AttribType::Int});
+            tuple_format!(fn normalized<$($A:$a)*>() -> bool {false});
+
+            tuple_format!(fn packed<$($A:$a)*>() -> bool {false});
+            tuple_format!(fn long<$($A:$a)*>() -> bool {false});
+            tuple_format!(fn integer<$($A:$a)*>() -> bool {false});
+
+            #[allow(unused_assignments)]
+            fn from_layouts(mut layouts: &[GenAttribFormat]) -> Result<Self,GLError> {
+                Ok((
+                    $(
+                        {
+                            let fmt = $A::from_layouts(layouts)?;
+                            layouts = &layouts[$A::attrib_count()..];
+                            fmt
+                        },
+                    )*
+                ))
+            }
+
+        }
+
+        unsafe impl<$($A:AttribData),*> AttribData for ($($A,)*) {
+            type Format = ($(OffsetFormat<$A::Format>,)*);
+            type GLSL = ($($A::GLSL,)*);
+
+            fn format() -> Self::Format {
+
+                //Here, since there are no guarrantees on the memory layout of tuples,
+                //we create an uninitialized tuple and use pointer offsets to figure out
+                //exactly where each element is. Yes, this is gross and potentially inefficient,
+                //but it should pretty much always get constant folded and/or optimized by the
+                //compiler at least...
+
+                let x = MaybeUninit::<Self>::uninit();
+                let base_ptr = x.as_ptr();
+                let ($($a,)*) = unsafe { &*base_ptr };
+                let fmt = (
+                    $(
+                        OffsetFormat {
+                            fmt: $A::format(),
+                            offset: ($a as *const $A as usize) - (base_ptr as usize) as usize
+                        },
+                    )*
+                );
+
+                fmt
+            }
+        }
+    }
+}
+
+impl_tuple!(
+    tuple_format
+);
+
 macro_rules! attrib_data {
     ($($ty:ty, $format:ty, $glsl:ty, $expr:expr;)*) => {
         $(

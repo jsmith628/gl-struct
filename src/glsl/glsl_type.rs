@@ -101,7 +101,7 @@ impl_glsl_type! {
 macro_rules! impl_tuple_type {
     ($($A:ident:$a:ident)*) => {
         unsafe impl<$($A:GLSLType),*> GLSLType for ($($A,)*) {
-            type AttribFormat = !;
+            type AttribFormat = ($(OffsetFormat<$A::AttribFormat>,)*);
 
             #[allow(unused_assignments)]
             unsafe fn load_uniforms(id: GLint, data: &[Self]){
