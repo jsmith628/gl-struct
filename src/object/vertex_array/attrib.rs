@@ -78,7 +78,7 @@ impl<'a,'b,T:GLSLType> VertexAttrib<'a,'b,T> {
 
         let ptr = unsafe { self.get_pointer(0) };
 
-        let layouts = (0 .. self.num_indices() as GLuint).into_iter().map(
+        let layouts = (0 .. self.num_indices() as GLuint).into_iter().map(|i| self.index+i).map(
             |i| unsafe {
                 GenAttribFormat {
                     offset: self.get_pointer(i).offset_from(ptr) as usize,
@@ -130,13 +130,13 @@ impl<'a,'b,T:GLSLType> VertexAttribMut<'a,'b,T> {
     pub fn enable_array(&mut self) {
         unsafe {
             if gl::EnableVertexArrayAttrib::is_loaded() {
-                for i in self.index .. T::AttribFormat::attrib_count() as GLuint {
-                    gl::EnableVertexArrayAttrib(self.vaobj, i);
+                for i in 0 .. T::AttribFormat::attrib_count() as GLuint {
+                    gl::EnableVertexArrayAttrib(self.vaobj, self.index + i);
                 }
             } else {
                 gl::BindVertexArray(self.vaobj);
-                for i in self.index .. T::AttribFormat::attrib_count() as GLuint {
-                    gl::EnableVertexAttribArray(i);
+                for i in 0 .. T::AttribFormat::attrib_count() as GLuint {
+                    gl::EnableVertexAttribArray(self.index + i);
                 }
                 gl::BindVertexArray(0);
             }
@@ -145,13 +145,13 @@ impl<'a,'b,T:GLSLType> VertexAttribMut<'a,'b,T> {
 
     pub unsafe fn disable_array(&mut self) {
         if gl::DisableVertexArrayAttrib::is_loaded() {
-            for i in self.index .. T::AttribFormat::attrib_count() as GLuint {
-                gl::DisableVertexArrayAttrib(self.vaobj, i);
+            for i in 0 .. T::AttribFormat::attrib_count() as GLuint {
+                gl::DisableVertexArrayAttrib(self.vaobj, self.index + i);
             }
         } else {
             gl::BindVertexArray(self.vaobj);
-            for i in self.index .. T::AttribFormat::attrib_count() as GLuint {
-                gl::DisableVertexAttribArray(i);
+            for i in 0 .. T::AttribFormat::attrib_count() as GLuint {
+                gl::DisableVertexAttribArray(self.index + i);
             }
             gl::BindVertexArray(0);
         }
@@ -187,8 +187,8 @@ impl<'a,'b,T:GLSLType> VertexAttribMut<'a,'b,T> {
     pub fn divisor(&mut self, gl:&GL33, divisor: GLuint) {
         unsafe {
             gl::BindVertexArray(self.vaobj);
-            for i in self.index .. T::AttribFormat::attrib_count() as GLuint {
-                gl::VertexAttribDivisor(i, divisor);
+            for i in 0 .. T::AttribFormat::attrib_count() as GLuint {
+                gl::VertexAttribDivisor(self.index+i, divisor);
             }
             gl::BindVertexArray(0);
         }
