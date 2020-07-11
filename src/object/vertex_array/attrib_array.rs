@@ -20,14 +20,17 @@ impl<'a,A:GLSLType> AttribArray<'a,A> {
     #[inline] pub fn offset(&self) -> usize { self.pointer }
     #[inline] pub fn pointer(&self) -> *const GLvoid { self.pointer as *const _ }
 
-    pub unsafe fn from_raw_parts(fmt:A::AttribFormat, id:GLuint, stride:usize, ptr:usize) -> Self {
-        AttribArray { id:id, format:fmt, stride:stride, pointer:ptr, buf:PhantomData }
+    pub fn split(self) -> A::Split where A:SplitAttribs<'a> { A::split_array(self) }
+    pub fn normalize(self) -> AttribArray<'a, A::Normalized> where A:NormalizeAttrib {
+        AttribArray {
+            id: self.id, stride: self.stride, pointer: self.pointer,
+            format: A::normalize_format(self.format),
+            buf: PhantomData
+        }
     }
 
-    pub fn from_slice<T, B:Initialized>(buf: Slice<'a,[T],B>) -> Self
-    where T: AttribData<GLSL=A, Format=A::AttribFormat>
-    {
-        buf.into()
+    pub unsafe fn from_raw_parts(fmt:A::AttribFormat, id:GLuint, stride:usize, ptr:usize) -> Self {
+        AttribArray { id:id, format:fmt, stride:stride, pointer:ptr, buf:PhantomData }
     }
 
 }
