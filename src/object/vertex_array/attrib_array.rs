@@ -133,32 +133,6 @@ macro_rules! impl_tuple_attrib {
 
 impl_tuple!(impl_tuple_attrib);
 
-macro_rules! arr {
-    (for $i:ident in 0..$n:literal { $expr:expr }) => { arr![for $i in 0..($n) { $expr }]};
-    (for $i:ident in 0..=$n:literal { $expr:expr }) => { arr![for $i in 0..($n+1) { $expr }]};
-    (for $i:ident in 0..=($n:expr) { $expr:expr }) => { arr![for $i in 0..($n+1) { $expr }]};
-    (for $i:ident in 0..($n:expr) { $expr:expr }) => {
-        {
-            //create a MaybeUninit containint the array
-            let mut arr = ::std::mem::MaybeUninit::<[_;$n]>::uninit();
-
-            //loop over the array and assign each entry according to the index
-            for $i in 0..$n {
-
-                //compute the value here because we don't want the unsafe block to transfer
-                let val = $expr;
-
-                //we use write() here because we don't want to drop the previous value
-                unsafe { ::std::ptr::write(&mut (*arr.as_mut_ptr())[$i], val); }
-
-            }
-            
-            unsafe { arr.assume_init() }
-        }
-    }
-}
-
-
 macro_rules! impl_split_array {
     ($($n:literal)*) => {
         $(
