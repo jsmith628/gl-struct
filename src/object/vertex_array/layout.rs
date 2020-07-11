@@ -373,7 +373,9 @@ macro_rules! array_format {
 
                     for i in 0..$num {
                         unsafe {
-                            fmt.get_mut()[i] = OffsetFormat::from_layouts(&layouts[i..])?;
+                            fmt.get_mut()[i] = OffsetFormat::from_layouts(
+                                &layouts[(i*A::attrib_count())..]
+                            )?;
                         }
                     }
 
