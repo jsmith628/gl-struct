@@ -151,11 +151,11 @@ macro_rules! impl_array_type {
                 }
 
                 unsafe fn get_uniform(p: GLuint, id:GLint) -> Self {
-                    let mut data = MaybeUninit::<Self>::uninit();
-                    for i in 0..$num {
-                        data.get_mut()[i] = T::get_uniform(p, id + i as GLint);
-                    }
-                    data.assume_init()
+                    arr![
+                        for i in 0..$num {
+                            T::get_uniform(p, id + i as GLint)
+                        }
+                    ]
                 }
 
                 #[inline] fn uniform_locations() -> GLuint { T::uniform_locations() * $num }

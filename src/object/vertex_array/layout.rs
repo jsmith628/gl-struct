@@ -370,17 +370,15 @@ macro_rules! array_format {
 
 
                 fn from_layouts(layouts: &[GenAttribFormat]) -> Result<Self,GLError> {
-                    let mut fmt = MaybeUninit::<Self>::uninit();
-
-                    for i in 0..$num {
-                        unsafe {
-                            fmt.get_mut()[i] = OffsetFormat::from_layouts(
-                                &layouts[(i*A::attrib_count())..]
-                            )?;
-                        }
-                    }
-
-                    Ok(unsafe {fmt.assume_init()})
+                    Ok(
+                        arr![
+                            for i in 0..$num {
+                                OffsetFormat::from_layouts(
+                                    &layouts[(i*A::attrib_count())..]
+                                )?
+                            }
+                        ]
+                    )
                 }
 
             }
