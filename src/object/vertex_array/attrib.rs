@@ -96,8 +96,8 @@ impl<'a,'b,T:GLSLType> VertexAttrib<'a,'b,T> {
     pub fn get_array(&self) -> AttribArray<'b,T> {
         unsafe {
             AttribArray::from_raw_parts(
-                self.get_format(),
                 self.get(gl::VERTEX_ATTRIB_ARRAY_BUFFER_BINDING, 0) as GLuint,
+                self.get_format(),
                 self.get(gl::VERTEX_ATTRIB_ARRAY_STRIDE, 0) as usize,
                 self.get_pointer(0) as usize
             )
