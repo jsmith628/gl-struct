@@ -87,8 +87,8 @@ impl_vec_normalize!{
 }
 
 pub trait SplitAttribs<'a>: GLSLType {
-    type AttribArrays;
-    fn split_array(array: AttribArray<'a,Self>) -> Self::AttribArrays;
+    type Split;
+    fn split_array(array: AttribArray<'a,Self>) -> Self::Split;
 }
 
 macro_rules! impl_tuple_attrib {
@@ -110,10 +110,10 @@ macro_rules! impl_tuple_attrib {
 
         impl<'a, $($T:GLSLType),*> SplitAttribs<'a> for ($($T,)*) {
 
-            type AttribArrays = ($(AttribArray<'a,$T>,)*);
+            type Split = ($(AttribArray<'a,$T>,)*);
 
             #[allow(unused_variables, unused_mut, unused_assignments)]
-            fn split_array(array: AttribArray<'a,Self>) -> Self::AttribArrays {
+            fn split_array(array: AttribArray<'a,Self>) -> Self::Split {
                 let (id, stride, base_offset) = (array.id(), array.stride(), array.offset());
                 let ($($t,)*) = array.format();
                 (
@@ -155,10 +155,10 @@ macro_rules! impl_split_array {
 
             impl<'a, T:GLSLType> SplitAttribs<'a> for [T; $n] {
 
-                type AttribArrays = [AttribArray<'a,T>; $n];
+                type Split = [AttribArray<'a,T>; $n];
 
                 #[allow(unused_variables, unused_mut, unused_assignments)]
-                fn split_array(array: AttribArray<'a,Self>) -> Self::AttribArrays {
+                fn split_array(array: AttribArray<'a,Self>) -> Self::Split {
                     let (id, stride, base_offset) = (array.id(), array.stride(), array.offset());
                     let format = array.format();
 
@@ -191,10 +191,10 @@ macro_rules! impl_split_matrix {
         $(
             impl<'a> SplitAttribs<'a> for $mat {
 
-                type AttribArrays = [AttribArray<'a,$vec>; $n];
+                type Split = [AttribArray<'a,$vec>; $n];
 
                 #[allow(unused_variables, unused_mut, unused_assignments)]
-                fn split_array(array: AttribArray<'a,Self>) -> Self::AttribArrays {
+                fn split_array(array: AttribArray<'a,Self>) -> Self::Split {
                     SplitAttribs::split_array(
                         AttribArray::<'a, [$vec; $n]>::from(&array)
                     )

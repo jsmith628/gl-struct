@@ -226,7 +226,7 @@ impl<T:AttribData, A:Initialized> Buffer<[T],A> {
     }
 
     #[inline]
-    pub fn split_attribs<'a>(&'a self) -> <T::GLSL as SplitAttribs<'a>>::AttribArrays
+    pub fn split_attribs<'a>(&'a self) -> <T::GLSL as SplitAttribs<'a>>::Split
     where T::GLSL: SplitAttribs<'a>
     {
         <T::GLSL as SplitAttribs<'a>>::split_array(self.attrib_array())

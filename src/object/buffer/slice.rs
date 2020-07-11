@@ -207,7 +207,7 @@ impl<'a,T:AttribData, A:Initialized> Slice<'a,[T],A> {
         self.into()
     }
 
-    pub fn split_attribs(self) -> <T::GLSL as SplitAttribs<'a>>::AttribArrays
+    pub fn split_attribs(self) -> <T::GLSL as SplitAttribs<'a>>::Split
     where T::GLSL: SplitAttribs<'a>
     {
         <T::GLSL as SplitAttribs<'a>>::split_array(self.into())
@@ -327,7 +327,7 @@ impl<'a,T:AttribData, A:Initialized> SliceMut<'a,[T],A> {
         Slice::from(self).into()
     }
 
-    pub fn split_attribs(self) -> <T::GLSL as SplitAttribs<'a>>::AttribArrays
+    pub fn split_attribs(self) -> <T::GLSL as SplitAttribs<'a>>::Split
     where T::GLSL: SplitAttribs<'a>
     {
         <T::GLSL as SplitAttribs<'a>>::split_array(self.into_attrib_array())
