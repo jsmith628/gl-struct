@@ -56,14 +56,58 @@ where A2::AttribFormat: From<A1::AttribFormat>
     }
 }
 
+pub trait NormalizeAttrib: GLSLType {
+    type Normalized: GLSLType;
+    fn normalize_format(fmt: Self::AttribFormat) -> <Self::Normalized as GLSLType>::AttribFormat;
+}
+
+macro_rules! impl_vec_normalize {
+    ($($ivec:ident => $vec:ident;)*) => {
+        $(
+            impl NormalizeAttrib for $ivec {
+                type Normalized = $vec;
+                fn normalize_format(fmt: Self::AttribFormat) -> <Self::Normalized as GLSLType>::AttribFormat {
+                    fmt.normalize()
+                }
+            }
+        )*
+    }
+}
+
+impl_vec_normalize!{
+    int => float;
+    ivec2 => vec2;
+    ivec3 => vec3;
+    ivec4 => vec4;
+
+    uint => float;
+    uvec2 => vec2;
+    uvec3 => vec3;
+    uvec4 => vec4;
+}
+
 pub trait SplitAttribs<'a>: GLSLType {
     type AttribArrays;
     fn split_array(array: AttribArray<'a,Self>) -> Self::AttribArrays;
 }
 
-macro_rules! impl_split_tuple {
+macro_rules! impl_tuple_attrib {
 
     ($($T:ident:$t:ident)*) => {
+
+        impl<$($T:NormalizeAttrib),*> NormalizeAttrib for ($($T,)*) {
+
+            type Normalized = ($($T::Normalized,)*);
+
+            fn normalize_format(fmt: Self::AttribFormat) -> <Self::Normalized as GLSLType>::AttribFormat {
+                let ($($t,)*) = fmt;
+                (
+                    $(OffsetFormat {offset: $t.offset, fmt:$T::normalize_format($t.fmt)},)*
+                )
+            }
+
+        }
+
         impl<'a, $($T:GLSLType),*> SplitAttribs<'a> for ($($T,)*) {
 
             type AttribArrays = ($(AttribArray<'a,$T>,)*);
@@ -87,11 +131,54 @@ macro_rules! impl_split_tuple {
     }
 }
 
-impl_tuple!(impl_split_tuple);
+impl_tuple!(impl_tuple_attrib);
+
+macro_rules! arr {
+    (for $i:ident in 0..$n:literal { $expr:expr }) => { arr![for $i in 0..($n) { $expr }]};
+    (for $i:ident in 0..=$n:literal { $expr:expr }) => { arr![for $i in 0..($n+1) { $expr }]};
+    (for $i:ident in 0..=($n:expr) { $expr:expr }) => { arr![for $i in 0..($n+1) { $expr }]};
+    (for $i:ident in 0..($n:expr) { $expr:expr }) => {
+        {
+            //create a MaybeUninit containint the array
+            let mut arr = ::std::mem::MaybeUninit::<[_;$n]>::uninit();
+
+            //loop over the array and assign each entry according to the index
+            for $i in 0..$n {
+
+                //compute the value here because we don't want the unsafe block to transfer
+                let val = $expr;
+
+                //we use write() here because we don't want to drop the previous value
+                unsafe { ::std::ptr::write(&mut (*arr.as_mut_ptr())[$i], val); }
+
+            }
+            
+            unsafe { arr.assume_init() }
+        }
+    }
+}
+
 
 macro_rules! impl_split_array {
     ($($n:literal)*) => {
         $(
+
+            impl<T:NormalizeAttrib> NormalizeAttrib for [T; $n] {
+                type Normalized = [T::Normalized; $n];
+
+                fn normalize_format(fmt: Self::AttribFormat) -> <Self::Normalized as GLSLType>::AttribFormat {
+                    arr![
+                        for i in 0..$n {
+                            OffsetFormat {
+                                offset: fmt[i].offset,
+                                fmt: T::normalize_format(fmt[i].fmt)
+                            }
+                        }
+                    ]
+                }
+
+            }
+
             impl<'a, T:GLSLType> SplitAttribs<'a> for [T; $n] {
 
                 type AttribArrays = [AttribArray<'a,T>; $n];
@@ -101,16 +188,15 @@ macro_rules! impl_split_array {
                     let (id, stride, base_offset) = (array.id(), array.stride(), array.offset());
                     let format = array.format();
 
-                    let mut attribs = MaybeUninit::<Self::AttribArrays>::uninit();
-                    for i in 0..$n {
-                        unsafe {
-                            attribs.get_mut()[i] = AttribArray::from_raw_parts(
-                                format[i].fmt, id, stride, base_offset + format[i].offset
-                            );
+                    arr![
+                        for i in 0..$n {
+                            unsafe {
+                                AttribArray::from_raw_parts(
+                                    format[i].fmt, id, stride, base_offset + format[i].offset
+                                )
+                            }
                         }
-                    }
-
-                    unsafe { attribs.assume_init() }
+                    ]
 
                 }
 

@@ -225,7 +225,7 @@ unsafe impl AttribFormat for VecFormat {
 pub struct IVecFormat(pub IntType, pub u32);
 
 impl IVecFormat {
-    pub fn normalized(self) -> VecFormat {
+    pub fn normalize(self) -> VecFormat {
         VecFormat::Normalized(self.0, self.1)
     }
 }
