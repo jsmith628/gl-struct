@@ -324,7 +324,8 @@ pub struct OffsetFormat<A:AttribFormat> {
 unsafe impl<A:AttribFormat> AttribFormat for OffsetFormat<A> {
 
     fn from_layouts(layouts: &[GenAttribFormat]) -> Result<Self,GLError> {
-        Ok(OffsetFormat { offset: layouts[0].offset, fmt: A::from_layouts(layouts)? } )
+        let fmt = A::from_layouts(layouts)?;
+        Ok(OffsetFormat { offset: layouts[0].offset - fmt.offset(0), fmt: fmt } )
     }
 
     fn attrib_count() -> usize { A::attrib_count() }
