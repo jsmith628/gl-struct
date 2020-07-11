@@ -62,10 +62,12 @@ macro_rules! arr {
                 let val = $expr;
 
                 //we use write() here because we don't want to drop the previous value
+                #[allow(unused_unsafe)]
                 unsafe { ::std::ptr::write(&mut (*arr.as_mut_ptr())[$i], val); }
 
             }
-
+            
+            #[allow(unused_unsafe)]
             unsafe { arr.assume_init() }
         }
     }
