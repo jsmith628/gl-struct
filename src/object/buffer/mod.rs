@@ -196,20 +196,6 @@ impl<T:Sized, A:Initialized> Buffer<[T],A> {
     }
 
     //
-    //Vertex Attributes
-    //
-
-    #[inline]
-    pub fn into_attribs(&self) -> AttribArray<T::GLSL> where T:AttribData {
-        self.as_slice().into()
-    }
-
-    #[inline]
-    pub fn split_attribs<'a>(&'a self) -> T::AttribArrays where T:SplitAttribs<'a> {
-        T::split_buffer(self.as_slice())
-    }
-
-    //
     //Buffer invalidation
     //
 
@@ -225,6 +211,25 @@ impl<T:Sized, A:Initialized> Buffer<[T],A> {
             self.index_mut(i).invalidate_subdata_raw();
             transmute(self)
         }
+    }
+
+}
+
+//
+//Vertex Attributes
+//
+impl<T:AttribData, A:Initialized> Buffer<[T],A> {
+
+    #[inline]
+    pub fn attrib_array(&self) -> AttribArray<T::GLSL> {
+        self.as_slice().into()
+    }
+
+    #[inline]
+    pub fn split_attribs<'a>(&'a self) -> <T::GLSL as SplitAttribs<'a>>::AttribArrays
+    where T::GLSL: SplitAttribs<'a>
+    {
+        <T::GLSL as SplitAttribs<'a>>::split_array(self.attrib_array())
     }
 
 }

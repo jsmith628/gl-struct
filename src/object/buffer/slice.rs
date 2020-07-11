@@ -189,16 +189,6 @@ impl<'a,T:Sized,A:Initialized> Slice<'a,[T],A> {
     }
 
     #[inline]
-    pub fn into_attribs(self) -> AttribArray<'a,T::GLSL> where T:AttribData {
-        self.into()
-    }
-
-    #[inline]
-    pub fn split_attribs(self) -> T::AttribArrays where T:SplitAttribs<'a> {
-        T::split_buffer(self)
-    }
-
-    #[inline]
     pub fn get_subdata_slice(&self, data: &mut [T]) where T:Copy {
         if size_of_val(data) != self.size() {
             panic!("Destination size not equal to source size: {} != {}", size_of_val(data), self.size())
@@ -207,6 +197,23 @@ impl<'a,T:Sized,A:Initialized> Slice<'a,[T],A> {
     }
 
 }
+
+//
+//Vertex Attributes
+//
+impl<'a,T:AttribData, A:Initialized> Slice<'a,[T],A> {
+
+    pub fn into_attrib_array(self) -> AttribArray<'a,T::GLSL> {
+        self.into()
+    }
+
+    pub fn split_attribs(self) -> <T::GLSL as SplitAttribs<'a>>::AttribArrays
+    where T::GLSL: SplitAttribs<'a>
+    {
+        <T::GLSL as SplitAttribs<'a>>::split_array(self.into())
+    }
+}
+
 
 impl<'a,F:SpecificCompressed, A:Initialized> Slice<'a,CompressedPixels<F>,A> {
     #[inline] pub fn blocks(&self) -> usize { self.ptr.blocks() }
@@ -305,20 +312,26 @@ impl<'a,T:Sized,A:Initialized> SliceMut<'a,[T],A> {
     }
 
     #[inline]
-    pub fn into_attribs(self) -> AttribArray<'a,T::GLSL> where T:AttribData {
-        Slice::from(self).into()
-    }
-
-    #[inline]
-    pub fn split_attribs(self) -> T::AttribArrays where T:SplitAttribs<'a> {
-        T::split_buffer(Slice::from(self))
-    }
-
-    #[inline]
     pub fn get_subdata_slice(&self, data: &mut [T]) where T:Copy {
         self.as_immut().get_subdata_slice(data)
     }
 
+}
+
+//
+//Vertex Attributes
+//
+impl<'a,T:AttribData, A:Initialized> SliceMut<'a,[T],A> {
+
+    pub fn into_attrib_array(self) -> AttribArray<'a,T::GLSL> {
+        Slice::from(self).into()
+    }
+
+    pub fn split_attribs(self) -> <T::GLSL as SplitAttribs<'a>>::AttribArrays
+    where T::GLSL: SplitAttribs<'a>
+    {
+        <T::GLSL as SplitAttribs<'a>>::split_array(self.into_attrib_array())
+    }
 }
 
 impl<'a,F:SpecificCompressed, A:Initialized> SliceMut<'a,CompressedPixels<F>,A> {
