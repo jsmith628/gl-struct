@@ -15,7 +15,7 @@ pub struct VertexAttribMut<'a, 'b, T:GLSLType+'b> {
 }
 
 
-impl<'a,'b:'a,'arr,T:GLSLType> From<&'a VertexAttrib<'b,'arr,T>> for VertexAttrib<'a,'arr,T> {
+impl<'a,'b:'a,'arr,T:GLSLType> From<&'a VertexAttrib<'b,'arr,T>> for VertexAttrib<'b,'arr,T> {
     #[inline] fn from(attr: &'a VertexAttrib<'b,'arr,T>) -> Self { *attr }
 }
 
