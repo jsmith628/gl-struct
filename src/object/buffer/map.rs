@@ -326,3 +326,22 @@ impl<'a,T:?Sized,A:Persistent> SliceMut<'a,T,A> {
     }
 
 }
+
+impl<T:?Sized,A:Persistent> Buffer<T,A> {
+
+    #[inline]
+    pub fn get_map(&self) -> Map<T,PersistMapRead> where A:ReadMappable {
+        unsafe {Slice::get_map_raw(&self.as_slice())}
+    }
+
+    #[inline]
+    pub fn get_map_write(&mut self) -> Map<T,PersistMapWrite> where A:WriteMappable {
+        unsafe {Slice::get_map_raw(&self.as_slice())}
+    }
+
+    #[inline]
+    pub fn get_map_mut(&mut self) -> Map<T,PersistMapReadWrite> where A:ReadWriteMappable {
+        unsafe {Slice::get_map_raw(&self.as_slice())}
+    }
+
+}
