@@ -2,14 +2,15 @@ use super::*;
 use format::pixel::*;
 
 use std::marker::PhantomData;
+use std::mem::*;
 
 glenum! {
 
-    pub enum RenderbufferTarget {
+    enum RenderbufferTarget {
         [Renderbuffer RENDERBUFFER "Renderbuffer"]
     }
 
-    pub enum RenderbufferParameter {
+    enum RenderbufferParameter {
         [Width RENDERBUFFER_WIDTH "Width"],
         [Height RENDERBUFFER_HEIGHT "Height"],
         [InternalFormat RENDERBUFFER_INTERNAL_FORMAT "Internal Format"],
@@ -24,67 +25,134 @@ glenum! {
 
 }
 
-gl_resource!{
-    pub struct RawRenderbuffer {
-        gl = GL30,
-        target = RenderbufferTarget,
-        ident = Renderbuffer,
-        gen = GenRenderbuffers,
-        bind = BindRenderbuffer,
-        is = IsRenderbuffer,
-        delete = DeleteRenderbuffers
+pub struct Renderbuffer<F, MS=MS0> {
+    id: GLuint,
+    fmt: PhantomData<(F,MS, *const ())>
+}
+
+pub type UninitRenderbuffer = Renderbuffer<!,!>;
+
+impl UninitRenderbuffer {
+
+    pub fn gen(#[allow(unused_variables)] gl: &GL30) -> GLuint {
+        unsafe {
+            let mut rb = MaybeUninit::uninit();
+            gl::GenRenderbuffers(1, rb.as_mut_ptr());
+            rb.assume_init()
+        }
     }
+
+    pub fn gen_renderbuffers(#[allow(unused_variables)] gl: &GL30, n: GLuint) -> Box<[GLuint]> {
+        if n==0 { return Box::new([]); }
+        unsafe {
+            let mut rb = Box::new_uninit_slice(n as usize);
+            gl::GenRenderbuffers(rb.len().try_into().unwrap(), MaybeUninit::first_ptr_mut(&mut *rb));
+            rb.assume_init()
+        }
+    }
+
+    pub fn create(#[allow(unused_variables)] gl: &GL30) -> Self {
+        let mut rb: MaybeUninit<Self> = MaybeUninit::uninit();
+        unsafe {
+            if gl::CreateRenderbuffers::is_loaded() {
+                gl::CreateRenderbuffers(1, rb.as_mut_ptr() as *mut GLuint);
+            } else {
+                gl::CreateRenderbuffers(1, rb.as_mut_ptr() as *mut GLuint);
+                gl::BindRenderbuffer(gl::RENDERBUFFER, rb.get_mut().id());
+                gl::BindRenderbuffer(gl::RENDERBUFFER, 0);
+            }
+            rb.assume_init()
+        }
+    }
+
+    pub fn create_renderbuffers(#[allow(unused_variables)] gl: &GL30, n: GLuint) -> Box<[Self]> {
+        if n==0 { return Box::new([]); }
+        let mut rb:Box<[MaybeUninit<Self>]> = Box::new_uninit_slice(n as usize);
+        unsafe {
+            if gl::CreateTextures::is_loaded() {
+                gl::CreateRenderbuffers(rb.len().try_into().unwrap(), rb[0].as_mut_ptr() as *mut GLuint);
+            } else {
+                gl::GenRenderbuffers(rb.len().try_into().unwrap(), rb[0].as_mut_ptr() as *mut GLuint);
+                for t in rb.iter_mut() { gl::BindRenderbuffer(gl::RENDERBUFFER, t.get_mut().id()) }
+                gl::BindRenderbuffer(gl::RENDERBUFFER, 0);
+            }
+            rb.assume_init()
+        }
+    }
+
+    #[allow(unused_variables)]
+    pub fn storage<F:ReqRenderBuffer>(
+        self, gl:&F::GL, width: usize, height: usize
+    ) -> Renderbuffer<F> {
+
+        //get the id and forget self so that we don't accidentally drop the renderbuffer
+        let id = self.id;
+        forget(self);
+
+        //allocate the storage
+        let (w,h) = (width as GLint, height as GLint);
+        unsafe {
+            if gl::NamedRenderbufferStorage::is_loaded() {
+                gl::NamedRenderbufferStorage(id, F::glenum(), w, h);
+            } else {
+                gl::BindRenderbuffer(gl::RENDERBUFFER, id);
+                gl::RenderbufferStorage(gl::RENDERBUFFER, F::glenum(), w, h);
+                gl::BindRenderbuffer(gl::RENDERBUFFER, 0);
+            }
+        }
+
+        //return
+        Renderbuffer { id: id, fmt: PhantomData }
+
+    }
+
+    #[allow(unused_variables)]
+    pub fn storage_multisample<F:ReqRenderBuffer, MS:RenderbufferMSFormat>(
+        self, gl:&F::GL, width: usize, height: usize
+    ) -> Renderbuffer<F,MS> {
+
+        //get the id and forget self so that we don't accidentally drop the renderbuffer
+        let id = self.id;
+        forget(self);
+
+        //allocate the storage
+        let (w,h,samples) = (width as GLint, height as GLint, MS::SAMPLES.try_into().unwrap());
+        unsafe {
+            if gl::NamedRenderbufferStorageMultisample::is_loaded() {
+                gl::NamedRenderbufferStorageMultisample(id, samples, F::glenum(), w, h);
+            } else {
+                gl::BindRenderbuffer(gl::RENDERBUFFER, id);
+                gl::RenderbufferStorageMultisample(gl::RENDERBUFFER, samples, F::glenum(), w, h);
+                gl::BindRenderbuffer(gl::RENDERBUFFER, 0);
+            }
+        }
+
+        //return
+        Renderbuffer { id: id, fmt: PhantomData }
+
+    }
+
 }
 
-static mut TARGET: BindingLocation<RawRenderbuffer,RenderbufferTarget> =
-    BindingLocation(RenderbufferTarget::Renderbuffer, PhantomData);
+impl<F,MS> Renderbuffer<F,MS> {
 
-pub struct Renderbuffer<T:InternalFormat> {
-    raw: RawRenderbuffer,
-    fmt: PhantomData<T>
-}
+    pub fn id(&self) -> GLuint { self.id }
+    pub fn gl(&self) -> GL30 { unsafe {assume_supported()} }
 
-impl<T:InternalFormat> Renderbuffer<T> {
-
-    pub fn parameter(&self, pname: RenderbufferParameter) -> GLint {
+    fn parameter(&self, pname: RenderbufferParameter) -> GLint {
         unsafe {
             let mut params = ::std::mem::MaybeUninit::uninit();
 
             if gl::GetNamedRenderbufferParameteriv::is_loaded() {
-                gl::GetNamedRenderbufferParameteriv(self.raw.id(), pname as GLenum, params.as_mut_ptr());
+                gl::GetNamedRenderbufferParameteriv(self.id(), pname as GLenum, params.as_mut_ptr());
             } else {
-                let binding = TARGET.bind(&self.raw);
-                gl::GetRenderbufferParameteriv(binding.target_id(), pname as GLenum, params.as_mut_ptr());
+                gl::BindRenderbuffer(gl::RENDERBUFFER, self.id());
+                gl::GetRenderbufferParameteriv(gl::RENDERBUFFER, pname as GLenum, params.as_mut_ptr());
+                gl::BindRenderbuffer(gl::RENDERBUFFER, 0);
             }
 
             params.assume_init()
         }
-    }
-
-    pub fn storage(renderbuffer: RawRenderbuffer, width: usize, height: usize) -> Self {
-        let (w,h) = (width as GLint, height as GLint);
-        unsafe {
-            if gl::NamedRenderbufferStorage::is_loaded() {
-                gl::NamedRenderbufferStorage(renderbuffer.id(), T::glenum(), w, h);
-            } else {
-                let binding = TARGET.bind(&renderbuffer);
-                gl::RenderbufferStorage(binding.target_id(), T::glenum(), w, h);
-            }
-        }
-        Renderbuffer { raw: renderbuffer, fmt: PhantomData }
-    }
-
-    pub fn storage_multisample(renderbuffer: RawRenderbuffer, samples:usize, width: usize, height: usize) -> Self {
-        let (s,w,h) = (samples as GLsizei, width as GLint, height as GLint);
-        unsafe {
-            if gl::NamedRenderbufferStorageMultisample::is_loaded() {
-                gl::NamedRenderbufferStorageMultisample(renderbuffer.id(), s, T::glenum(), w, h);
-            } else {
-                let binding = TARGET.bind(&renderbuffer);
-                gl::RenderbufferStorageMultisample(binding.target_id(), s, T::glenum(), w, h);
-            }
-        }
-        Renderbuffer { raw: renderbuffer, fmt: PhantomData }
     }
 
     #[inline] pub fn width(&self) -> GLuint { self.parameter(RenderbufferParameter::Width) as GLuint }
@@ -99,4 +167,17 @@ impl<T:InternalFormat> Renderbuffer<T> {
     #[inline] pub fn depth_size(&self) -> GLuint { self.parameter(RenderbufferParameter::DepthSize) as GLuint }
     #[inline] pub fn stencil_size(&self) -> GLuint { self.parameter(RenderbufferParameter::StencilSize) as GLuint }
 
+    pub fn delete(self) { drop(self); }
+    pub fn delete_renderbuffers(rb: Box<[Self]>) {
+        if rb.len()==0 {return;}
+        unsafe {
+            let ids: Box<[GLuint]> = transmute(rb);
+            gl::DeleteRenderbuffers(ids.len() as GLsizei, &ids[0])
+        }
+    }
+
+}
+
+impl<F,MS> Drop for Renderbuffer<F,MS> {
+    fn drop(&mut self) { unsafe { gl::DeleteRenderbuffers(1, &self.id); } }
 }

@@ -5,8 +5,14 @@ pub trait MultisampleFormat {
     const FIXED: bool;
 }
 
+pub unsafe trait RenderbufferMSFormat: MultisampleFormat {}
+
 macro_rules! ms {
-    ($($ms:ident = ($samples:expr, $fixed:expr);)*) => {
+
+    (@rb $ms:ident true) => {};
+    (@rb $ms:ident false) => { unsafe impl RenderbufferMSFormat for $ms {} };
+
+    ($($ms:ident = ($samples:literal, $fixed:ident);)*) => {
         $(
             pub struct $ms;
 
@@ -14,6 +20,9 @@ macro_rules! ms {
                 const SAMPLES: GLuint = $samples;
                 const FIXED: bool = $fixed;
             }
+
+            ms!(@rb $ms $fixed);
+
         )*
     }
 }
