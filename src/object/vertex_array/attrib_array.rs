@@ -21,10 +21,19 @@ impl<'a,A:GLSLType> AttribArray<'a,A> {
     #[inline] pub fn pointer(&self) -> *const GLvoid { self.pointer as *const _ }
 
     pub fn split(self) -> A::Split where A:SplitAttribs<'a> { A::split_array(self) }
+    
     pub fn normalize(self) -> AttribArray<'a, A::Normalized> where A:NormalizeAttrib {
         AttribArray {
             id: self.id, stride: self.stride, pointer: self.pointer,
             format: A::normalize_format(self.format),
+            buf: PhantomData
+        }
+    }
+
+    pub fn cast<B:GLSLType>(self) -> AttribArray<'a,B> where B::AttribFormat: From<A::AttribFormat> {
+        AttribArray {
+            format: self.format.into(), id: self.id,
+            stride: self.stride, pointer: self.pointer,
             buf: PhantomData
         }
     }
@@ -50,13 +59,7 @@ where T: AttribData<GLSL=A, Format=A::AttribFormat>
 impl<'a,'b,A1:GLSLType,A2:GLSLType> From<&'a AttribArray<'b,A1>> for AttribArray<'b,A2>
 where A2::AttribFormat: From<A1::AttribFormat>
 {
-    fn from(arr: &'a AttribArray<'b,A1>) -> Self {
-        AttribArray {
-            format: arr.format().into(), id: arr.id(),
-            stride: arr.stride(), pointer: arr.offset(),
-            buf: PhantomData
-        }
-    }
+    fn from(arr: &'a AttribArray<'b,A1>) -> AttribArray<'b,A2> { arr.cast() }
 }
 
 pub trait NormalizeAttrib: GLSLType {
