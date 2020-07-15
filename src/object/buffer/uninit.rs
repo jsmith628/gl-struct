@@ -7,20 +7,20 @@ impl UninitBuf {
 
     unsafe fn from_id(id:GLuint) -> Self { Buffer { ptr: BufPtr::new(id, null_mut()), access: PhantomData } }
 
-    pub fn gen(#[allow(unused_variables)] gl: &GL15) -> UninitBuf {
-        let mut id = MaybeUninit::uninit();
+    pub fn gen(#[allow(unused_variables)] gl: &GL15) -> GLuint {
         unsafe {
+            let mut id = MaybeUninit::uninit();
             gl::GenBuffers(1, id.as_mut_ptr());
-            Self::from_id(id.assume_init())
+            id.assume_init()
         }
     }
 
-    pub fn gen_buffers(#[allow(unused_variables)] gl: &GL15, n:GLuint) -> Box<[UninitBuf]> {
+    pub fn gen_buffers(#[allow(unused_variables)] gl: &GL15, n:GLuint) -> Box<[GLuint]> {
         if n==0 { return Box::new([]); }
-        let mut ids = Box::new_uninit_slice(n as usize);
         unsafe {
+            let mut ids = Box::new_uninit_slice(n as usize);
             gl::GenBuffers(n.try_into().unwrap(), ids[0].as_mut_ptr());
-            ids.into_iter().map(|id| Self::from_id(id.assume_init())).collect()
+            ids.assume_init()
         }
     }
 
@@ -46,8 +46,12 @@ impl UninitBuf {
                 gl::CreateBuffers(n.try_into().unwrap(), ids[0].as_mut_ptr());
                 ids.into_iter().map(|id| Self::from_id(id.assume_init())).collect()
             } else {
-                let mut bufs = Self::gen_buffers(gl, n);
-                for b in bufs.iter_mut() { gl::BindBuffer(gl::COPY_WRITE_BUFFER, b.id()); }
+                let bufs = Self::gen_buffers(gl, n).into_iter().map(
+                    |b| {
+                        gl::BindBuffer(gl::COPY_WRITE_BUFFER, *b);
+                        Self::from_id(*b)
+                    }
+                ).collect();
                 gl::BindBuffer(gl::COPY_WRITE_BUFFER, 0);
                 bufs
             }

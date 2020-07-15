@@ -24,19 +24,19 @@ pub struct VertexArray<'a,E:Copy,V:Vertex<'a>> {
 }
 
 impl<'a> VertexArray<'a,!,()> {
-    pub fn gen(#[allow(unused_variables)] gl:&GL30) -> Self {
-        let mut dest = MaybeUninit::uninit();
+    pub fn gen(#[allow(unused_variables)] gl:&GL30) -> GLuint {
         unsafe {
-            gl::GenVertexArrays(1, dest.as_mut_ptr() as *mut _);
+            let mut dest = MaybeUninit::uninit();
+            gl::GenVertexArrays(1, dest.as_mut_ptr());
             dest.assume_init()
         }
     }
 
-    pub fn gen_vertex_arrays(#[allow(unused_variables)] gl:&GL30, n:GLuint) -> Box<[Self]> {
+    pub fn gen_vertex_arrays(#[allow(unused_variables)] gl:&GL30, n:GLuint) -> Box<[GLuint]> {
         if n==0 { return Box::new([]); }
-        let mut dest = Box::new_uninit_slice(n as usize);
         unsafe {
-            gl::GenVertexArrays(dest.len().try_into().unwrap(), dest[0].as_mut_ptr() as *mut GLuint);
+        let mut dest = Box::new_uninit_slice(n as usize);
+            gl::GenVertexArrays(dest.len().try_into().unwrap(), MaybeUninit::first_ptr_mut(&mut *dest));
             dest.assume_init()
         }
     }
@@ -181,7 +181,7 @@ impl<'a,E:Copy,V:Vertex<'a>> Clone for VertexArray<'a,E,V> {
     fn clone(&self) -> Self {
 
         //copy over all the array settings
-        let dest:VertexArray<'a,!,V> = VertexArray::gen(&self.gl()).append_attrib_arrays(self.get_attrib_arrays());
+        let dest: VertexArray<'a,!,V> = VertexArray::create(&self.gl()).append_attrib_arrays(self.get_attrib_arrays());
         let mut dest:Self = unsafe { transmute(dest) };
 
         unsafe { gl::BindVertexArray(self.id()); }

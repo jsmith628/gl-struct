@@ -3,19 +3,19 @@ use super::*;
 pub type UninitTex<T> = Texture<!,T>;
 
 impl<T:TextureType> UninitTex<T> {
-    pub fn gen(#[allow(unused_variables)] gl: &T::GL) -> Self {
-        let mut tex = MaybeUninit::uninit();
+    pub fn gen(#[allow(unused_variables)] gl: &T::GL) -> GLuint {
         unsafe {
-            gl::GenTextures(1, tex.as_mut_ptr() as *mut GLuint);
+            let mut tex = MaybeUninit::uninit();
+            gl::GenTextures(1, tex.as_mut_ptr());
             tex.assume_init()
         }
     }
 
-    pub fn gen_textures(#[allow(unused_variables)] gl: &T::GL, n: GLuint) -> Box<[Self]> {
+    pub fn gen_textures(#[allow(unused_variables)] gl: &T::GL, n: GLuint) -> Box<[GLuint]> {
         if n==0 { return Box::new([]); }
-        let mut tex:Box<[MaybeUninit<Self>]> = Box::new_uninit_slice(n as usize);
         unsafe {
-            gl::GenTextures(tex.len().try_into().unwrap(), tex[0].as_mut_ptr() as *mut GLuint);
+            let mut tex = Box::new_uninit_slice(n as usize);
+            gl::GenTextures(tex.len().try_into().unwrap(), MaybeUninit::first_ptr_mut(&mut *tex));
             tex.assume_init()
         }
     }

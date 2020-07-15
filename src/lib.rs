@@ -17,6 +17,7 @@
 #![feature(get_mut_unchecked)]
 #![feature(arbitrary_enum_discriminant)]
 #![feature(never_type)]
+#![feature(maybe_uninit_slice)]
 #![recursion_limit="32768"]
 
 pub extern crate gl;
@@ -66,7 +67,7 @@ macro_rules! arr {
                 unsafe { ::std::ptr::write(&mut (*arr.as_mut_ptr())[$i], val); }
 
             }
-            
+
             #[allow(unused_unsafe)]
             unsafe { arr.assume_init() }
         }

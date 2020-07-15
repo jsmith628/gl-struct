@@ -284,7 +284,7 @@ impl<T:?Sized+GPUCopy,A:Initialized> Clone for Buffer<T,A> {
         unsafe {
             //allocate storage
             let mut dest = {
-                let raw = UninitBuf::gen(&self.gl());
+                let raw = UninitBuf::create(&self.gl());
                 let ptr = self.ptr.swap_ptr_unchecked(null());
 
                 if <A as BufferStorage>::MapPersistent::VALUE || self.immutable_storage() {
