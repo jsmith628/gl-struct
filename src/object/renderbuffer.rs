@@ -57,7 +57,7 @@ impl UninitRenderbuffer {
             if gl::CreateRenderbuffers::is_loaded() {
                 gl::CreateRenderbuffers(1, rb.as_mut_ptr() as *mut GLuint);
             } else {
-                gl::CreateRenderbuffers(1, rb.as_mut_ptr() as *mut GLuint);
+                gl::GenRenderbuffers(1, rb.as_mut_ptr() as *mut GLuint);
                 gl::BindRenderbuffer(gl::RENDERBUFFER, rb.get_mut().id());
                 gl::BindRenderbuffer(gl::RENDERBUFFER, 0);
             }
@@ -69,7 +69,7 @@ impl UninitRenderbuffer {
         if n==0 { return Box::new([]); }
         let mut rb:Box<[MaybeUninit<Self>]> = Box::new_uninit_slice(n as usize);
         unsafe {
-            if gl::CreateTextures::is_loaded() {
+            if gl::CreateRenderbuffers::is_loaded() {
                 gl::CreateRenderbuffers(rb.len().try_into().unwrap(), rb[0].as_mut_ptr() as *mut GLuint);
             } else {
                 gl::GenRenderbuffers(rb.len().try_into().unwrap(), rb[0].as_mut_ptr() as *mut GLuint);
