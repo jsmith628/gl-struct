@@ -246,7 +246,7 @@ impl<T:Sized,A:NonPersistent> Buffer<[T],A> {
 //
 
 impl<'a,T:?Sized,A:Persistent> Slice<'a,T,A> {
-    unsafe fn get_pointer_raw<'b,B:Persistent>(this:*const Self) -> Map<'b,T,B> {
+    unsafe fn get_map_raw<'b,B:Persistent>(this:*const Self) -> Map<'b,T,B> {
         let mut ptr = MaybeUninit::uninit();
 
         //get the size of the full buffer
@@ -303,26 +303,26 @@ impl<'a,T:?Sized,A:Persistent> Slice<'a,T,A> {
 }
 
 impl<'a,T:?Sized,A:ReadMappable+Persistent> Slice<'a,T,A> {
-    #[inline] pub fn get_pointer(&self) -> Map<T,PersistMapRead> {
-        unsafe {Self::get_pointer_raw(self)}
+    #[inline] pub fn get_map(&self) -> Map<T,PersistMapRead> {
+        unsafe {Self::get_map_raw(self)}
     }
 }
 
 impl<'a,T:?Sized,A:Persistent> SliceMut<'a,T,A> {
 
     #[inline]
-    pub fn get_pointer(&self) -> Map<T,PersistMapRead> where A:ReadMappable {
-        unsafe {Slice::get_pointer_raw(&self.as_immut())}
+    pub fn get_map(&self) -> Map<T,PersistMapRead> where A:ReadMappable {
+        unsafe {Slice::get_map_raw(&self.as_immut())}
     }
 
     #[inline]
-    pub fn get_write_pointer(&mut self) -> Map<T,PersistMapWrite> where A:WriteMappable {
-        unsafe {Slice::get_pointer_raw(&self.as_immut())}
+    pub fn get_map_write(&mut self) -> Map<T,PersistMapWrite> where A:WriteMappable {
+        unsafe {Slice::get_map_raw(&self.as_immut())}
     }
 
     #[inline]
-    pub fn get_mut_pointer(&mut self) -> Map<T,PersistMapReadWrite> where A:ReadWriteMappable {
-        unsafe {Slice::get_pointer_raw(&self.as_immut())}
+    pub fn get_map_mut(&mut self) -> Map<T,PersistMapReadWrite> where A:ReadWriteMappable {
+        unsafe {Slice::get_map_raw(&self.as_immut())}
     }
 
 }
