@@ -4,6 +4,8 @@ use crate::gl;
 
 use std::slice::SliceIndex;
 use std::ops::{Deref, DerefMut, CoerceUnsized};
+use std::fmt::{Pointer, Debug, Display, Formatter};
+use std::cmp::*;
 
 pub struct Map<'a, T:?Sized, A:Initialized> {
     pub(super) ptr: *mut T,
@@ -13,6 +15,46 @@ pub struct Map<'a, T:?Sized, A:Initialized> {
 }
 
 impl<'a,U:?Sized,T:?Sized+Unsize<U>,A:Initialized> CoerceUnsized<Map<'a,U,A>> for Map<'a,T,A> {}
+
+//
+//Formatting traits
+//
+
+impl<'a, T:?Sized+Debug, A:ReadMappable> Debug for Map<'a,T,A> {
+    fn fmt(&self, f:&mut Formatter) -> ::std::fmt::Result { Debug::fmt(&**self, f) }
+}
+impl<'a, T:?Sized+Display, A:ReadMappable> Display for Map<'a,T,A> {
+    fn fmt(&self, f:&mut Formatter) -> ::std::fmt::Result { Display::fmt(&**self, f) }
+}
+impl<'a, T:?Sized, A:Initialized> Pointer for Map<'a,T,A> {
+    fn fmt(&self, f:&mut Formatter) -> ::std::fmt::Result { Pointer::fmt(&self.ptr, f) }
+}
+
+//
+//Equality
+//
+
+impl<'a,'b,T,U,A,B> PartialEq<Map<'a,U,A>> for Map<'b,T,B> where
+    T:?Sized+PartialEq<U>,U:?Sized, A:ReadMappable,B:ReadMappable
+{
+    fn eq(&self, rhs:&Map<'a,U,A>) -> bool { (&**self).eq(&**rhs) }
+    fn ne(&self, rhs:&Map<'a,U,A>) -> bool { (&**self).ne(&**rhs) }
+}
+
+impl<'a,'b,T,U,A,B> PartialOrd<Map<'a,U,A>> for Map<'b,T,B> where
+    T:?Sized+PartialOrd<U>,U:?Sized,A:ReadMappable,B:ReadMappable
+{
+    fn partial_cmp(&self, rhs:&Map<'a,U,A>) -> Option<Ordering> { (&**self).partial_cmp(&**rhs) }
+}
+
+impl<'a,T:?Sized+Eq,A:ReadMappable> Eq for Map<'a,T,A> {}
+impl<'a,T:?Sized+Ord,A:ReadMappable> Ord for Map<'a,T,A> {
+    fn cmp(&self, rhs:&Self) -> Ordering { (&**self).cmp(&**rhs) }
+}
+
+//
+//Map-destruction
+//
 
 impl<'a,T:?Sized,A:Initialized> Drop for Map<'a,T,A> {
     fn drop(&mut self) {

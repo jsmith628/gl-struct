@@ -19,8 +19,6 @@ pub use self::uninit::*;
 pub use self::map::*;
 pub use self::slice::*;
 pub use self::any::*;
-pub use self::cmp::*;
-pub use self::fmt::*;
 
 pub mod storage;
 pub mod hint;
@@ -30,8 +28,6 @@ mod uninit;
 mod map;
 mod slice;
 mod any;
-mod cmp;
-mod fmt;
 
 pub struct Buffer<T:?Sized, A:BufferStorage> {
     ptr: BufPtr<T>,
