@@ -97,8 +97,8 @@ impl<'a,E:Copy,V:Vertex<'a>> VertexArray<'a,E,V> {
     #[inline] pub fn attrib_arrays(&mut self, arrays: V::Arrays) { V::attrib_arrays(self, arrays) }
 
     #[inline]
-    pub fn append_attrib_arrays<V2:Vertex<'a>>(self, arrays: V2::Arrays) -> VertexArray<'a,E,V::Output> where
-        V:VertexAppend<'a,V2>
+    pub fn append_attrib_arrays<A>(self, arrays: A) -> VertexArray<'a,E,V::Output> where
+        V:VertexAppend<'a,A>
     {
         V::append_arrays(self, arrays)
     }
@@ -177,44 +177,44 @@ impl<'a,E:Copy,V:Vertex<'a>> Drop for VertexArray<'a,E,V> {
     }
 }
 
-impl<'a,E:Copy,V:Vertex<'a>> Clone for VertexArray<'a,E,V> {
-    fn clone(&self) -> Self {
-
-        //copy over all the array settings
-        let dest: VertexArray<'a,!,V> = VertexArray::create(&self.gl()).append_attrib_arrays(self.get_attrib_arrays());
-        let mut dest:Self = unsafe { transmute(dest) };
-
-        unsafe { gl::BindVertexArray(self.id()); }
-
-        //get the divisors
-        let num_divisors = if gl::VertexAttribDivisor::is_loaded() { V::num_indices() } else { 0 };
-        let divisors = (0..num_divisors).into_iter().map(
-            |i| {
-                let mut div = MaybeUninit::uninit();
-                unsafe {
-                    gl::GetVertexAttribiv(i as GLuint, gl::VERTEX_ATTRIB_ARRAY_DIVISOR, div.as_mut_ptr());
-                    div.assume_init()
-                }
-            }
-        ).collect::<Vec<_>>();
-
-        //get the element array id
-        let buf = unsafe {
-            let mut id = MaybeUninit::uninit();
-            gl::GetIntegerv(gl::ELEMENT_ARRAY_BUFFER_BINDING, id.as_mut_ptr());
-            id.assume_init()
-        };
-
-        unsafe { gl::BindVertexArray((&mut dest).id()); }
-
-        //set the divisors and element array
-        unsafe {
-            for i in 0..num_divisors { gl::VertexAttribDivisor(i as GLuint, divisors[i] as GLuint); }
-            gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, buf as GLuint);
-        }
-
-        unsafe { gl::BindVertexArray(0); }
-
-        dest
-    }
-}
+// impl<'a,E:Copy,V:Vertex<'a>> Clone for VertexArray<'a,E,V> {
+//     fn clone(&self) -> Self {
+//
+//         //copy over all the array settings
+//         let dest: VertexArray<'a,!,V> = VertexArray::create(&self.gl()).append_attrib_arrays(self.get_attrib_arrays());
+//         let mut dest:Self = unsafe { transmute(dest) };
+//
+//         unsafe { gl::BindVertexArray(self.id()); }
+//
+//         //get the divisors
+//         let num_divisors = if gl::VertexAttribDivisor::is_loaded() { V::num_indices() } else { 0 };
+//         let divisors = (0..num_divisors).into_iter().map(
+//             |i| {
+//                 let mut div = MaybeUninit::uninit();
+//                 unsafe {
+//                     gl::GetVertexAttribiv(i as GLuint, gl::VERTEX_ATTRIB_ARRAY_DIVISOR, div.as_mut_ptr());
+//                     div.assume_init()
+//                 }
+//             }
+//         ).collect::<Vec<_>>();
+//
+//         //get the element array id
+//         let buf = unsafe {
+//             let mut id = MaybeUninit::uninit();
+//             gl::GetIntegerv(gl::ELEMENT_ARRAY_BUFFER_BINDING, id.as_mut_ptr());
+//             id.assume_init()
+//         };
+//
+//         unsafe { gl::BindVertexArray((&mut dest).id()); }
+//
+//         //set the divisors and element array
+//         unsafe {
+//             for i in 0..num_divisors { gl::VertexAttribDivisor(i as GLuint, divisors[i] as GLuint); }
+//             gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, buf as GLuint);
+//         }
+//
+//         unsafe { gl::BindVertexArray(0); }
+//
+//         dest
+//     }
+// }

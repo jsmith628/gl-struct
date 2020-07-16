@@ -21,11 +21,11 @@ pub trait VertexRef<'a,'b:'a>: Vertex<'b> {
 
 }
 
-pub trait VertexAppend<'a, V:Vertex<'a>>: Vertex<'a> {
+pub trait VertexAppend<'a, A>: Vertex<'a> {
     type Output: Vertex<'a>;
 
     fn append_arrays<El:Copy>(
-        vaobj: VertexArray<'a,El,Self>, pointers: V::Arrays
+        vaobj: VertexArray<'a,El,Self>, pointers: A
     ) -> VertexArray<'a,El,Self::Output>;
 
 }
@@ -38,12 +38,12 @@ macro_rules! impl_append {
 
     ({$($T1:ident:$t1:ident)*} $($T2:ident:$t2:ident)*) => {
 
-        impl<'a,$($T1:GLSLType+'a,)* $($T2:GLSLType+'a),*> VertexAppend<'a,($($T2,)*)> for ($($T1,)*) {
+        impl<'a,$($T1:GLSLType+'a,)* $($T2:GLSLType+'a),*> VertexAppend<'a,($(AttribArray<'a,$T2>,)*)> for ($($T1,)*) {
             type Output = ($($T1,)* $($T2,)*);
 
             #[allow(unused_variables, non_snake_case)]
             fn append_arrays<El:Copy>(
-                vaobj: VertexArray<'a,El,Self>, pointers: <($($T2,)*) as Vertex<'a>>::Arrays
+                vaobj: VertexArray<'a,El,Self>, pointers: ($(AttribArray<'a,$T2>,)*)
             ) -> VertexArray<'a,El,Self::Output> {
                 let mut dest = VertexArray { id: vaobj.id(), buffers: PhantomData };
                 forget(vaobj);
@@ -70,7 +70,7 @@ macro_rules! impl_append {
     };
 }
 
-macro_rules! impl_vertex_ref {
+macro_rules! impl_vertex {
 
     ($($T:ident:$t:ident)*) => {
 
@@ -133,12 +133,12 @@ macro_rules! impl_vertex_ref {
 
         }
 
-        impl_append!(@next {} $($T:$t)*);
+        impl_append!({} $($T:$t)*);
 
     };
 }
 
-impl_tuple!(impl_vertex_ref);
+impl_tuple!(impl_vertex);
 
 impl<'a> Vertex<'a> for () {
     type Arrays = ();
@@ -154,12 +154,12 @@ impl<'a,'b:'a> VertexRef<'a,'b> for () {
     fn attribs_mut<El:Copy>(_: &'a mut VertexArray<'b,El,Self>) -> () { () }
 }
 
-impl<'a,V:Vertex<'a>> VertexAppend<'a,V> for () {
-    type Output = V;
-    fn append_arrays<El:Copy>(vaobj: VertexArray<'a,El,()>, arrays: V::Arrays) -> VertexArray<'a,El,V> {
-        let mut dest = VertexArray { id: vaobj.id(), buffers: PhantomData };
-        forget(vaobj);
-        V::attrib_arrays(&mut dest, arrays);
-        dest
-    }
-}
+// impl<'a,V:Vertex<'a>> VertexAppend<'a,V> for () {
+//     type Output = V;
+//     fn append_arrays<El:Copy>(vaobj: VertexArray<'a,El,()>, arrays: V::Arrays) -> VertexArray<'a,El,V> {
+//         let mut dest = VertexArray { id: vaobj.id(), buffers: PhantomData };
+//         forget(vaobj);
+//         V::attrib_arrays(&mut dest, arrays);
+//         dest
+//     }
+// }
