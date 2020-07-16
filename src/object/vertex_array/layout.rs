@@ -299,6 +299,7 @@ unsafe impl AttribFormat for ! {
     fn integer(self, _: usize) -> bool { self }
 }
 
+//the values here are picked specifically to be the default formatting values for vertex attributes
 unsafe impl AttribFormat for () {
 
     fn from_layouts(_: &[GenAttribFormat]) -> Result<(),GLError> { Ok(()) }
@@ -306,8 +307,8 @@ unsafe impl AttribFormat for () {
     fn attrib_count() -> usize {1}
     fn offset(self, _: usize) -> usize { 0 }
 
-    fn size(self, _: usize) -> GLenum { 0 }
-    fn ty(self, _: usize) -> AttribType { AttribType::Int }
+    fn size(self, _: usize) -> GLenum { 4 }
+    fn ty(self, _: usize) -> AttribType { AttribType::Float }
     fn normalized(self, _: usize) -> bool { false }
 
     fn packed(self, _: usize) -> bool { false }
@@ -507,6 +508,8 @@ use self::IntType::*;
 use self::FloatType::*;
 
 attrib_data! {
+
+    (), (), void, ();
 
     bool, IVecFormat, gl_bool, IVecFormat(UByte, 1);
     gl_bool, IVecFormat, gl_bool, IVecFormat(UInt, 1);

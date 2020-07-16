@@ -51,7 +51,13 @@ macro_rules! impl_append {
                 let ($($t1,)* $(mut $t2,)*) = Self::Output::attribs_mut(&mut dest);
                 let ($($T2,)*) = pointers;
                 $(
-                    $t2.enable_array();
+                    //for void types, we want to disable the array, and for actual data, we want
+                    //to enable it
+                    if size_of::<$T2>()==0 {
+                        $t2.disable_array();
+                    } else {
+                        $t2.enable_array();
+                    }
                     $t2.pointer($T2);
                 )*
 

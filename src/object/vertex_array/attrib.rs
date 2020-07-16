@@ -71,7 +71,7 @@ impl<'a,'b,T:GLSLType> VertexAttrib<'a,'b,T> {
     }
 
     pub fn array_enabled(&self) -> bool {
-        unsafe { self.get(gl::VERTEX_ATTRIB_ARRAY_ENABLED, 0) != 0 }
+        size_of::<T>()!=0 && unsafe { self.get(gl::VERTEX_ATTRIB_ARRAY_ENABLED, 0) != 0 }
     }
 
     pub fn get_format(&self) -> T::AttribFormat {
@@ -128,7 +128,13 @@ impl<'a,'b,T:GLSLType> VertexAttribMut<'a,'b,T> {
     #[inline] pub fn get_divisor(&self) -> GLuint { self.as_immut().get_divisor() }
 
     pub fn enable_array(&mut self) {
+        //if we are dealing with a ZST (ie '()'), then we don't want to enable anything.
+        //The reason being that the only way to even have a ZST attribute is to disable the array
+        //since formats of size 0 are not allowed
+        if size_of::<T>() == 0 {return};
+
         unsafe {
+            //10/10 quality naming. There is no way anyone could _ever_ mix these two functions up...
             if gl::EnableVertexArrayAttrib::is_loaded() {
                 for i in 0 .. T::AttribFormat::attrib_count() as GLuint {
                     gl::EnableVertexArrayAttrib(self.vaobj, self.index + i);
@@ -141,26 +147,39 @@ impl<'a,'b,T:GLSLType> VertexAttribMut<'a,'b,T> {
                 gl::BindVertexArray(0);
             }
         }
+
     }
 
-    pub unsafe fn disable_array(&mut self) {
-        if gl::DisableVertexArrayAttrib::is_loaded() {
-            for i in 0 .. T::AttribFormat::attrib_count() as GLuint {
-                gl::DisableVertexArrayAttrib(self.vaobj, self.index + i);
+    pub fn disable_array(&mut self) {
+        //if we are dealing with a ZST (ie '()'), then we already know that the array is disabled
+        //so we don't have to do anything.
+        if size_of::<T>() == 0 {return};
+
+        //10/10 quality naming. There is no way anyone could _ever_ mix these two functions up...
+        unsafe {
+            if gl::DisableVertexArrayAttrib::is_loaded() {
+                for i in 0 .. T::AttribFormat::attrib_count() as GLuint {
+                    gl::DisableVertexArrayAttrib(self.vaobj, self.index + i);
+                }
+            } else {
+                gl::BindVertexArray(self.vaobj);
+                for i in 0 .. T::AttribFormat::attrib_count() as GLuint {
+                    gl::DisableVertexAttribArray(self.index + i);
+                }
+                gl::BindVertexArray(0);
             }
-        } else {
-            gl::BindVertexArray(self.vaobj);
-            for i in 0 .. T::AttribFormat::attrib_count() as GLuint {
-                gl::DisableVertexAttribArray(self.index + i);
-            }
-            gl::BindVertexArray(0);
         }
     }
 
     pub fn pointer(&mut self, pointer: AttribArray<'b,T>) {
+
+        //if we are dealing with a ZST (ie '()'), then the array is always disabled
+        //so we don't have to do anything.
+        if size_of::<T>() == 0 {return};
+
         unsafe {
-            gl::BindBuffer(gl::ARRAY_BUFFER, pointer.id());
             gl::BindVertexArray(self.vaobj);
+            gl::BindBuffer(gl::ARRAY_BUFFER, pointer.id());
 
             let fmt = pointer.format();
             let (stride, pointer) = (pointer.stride() as GLsizei, pointer.pointer());
@@ -178,8 +197,8 @@ impl<'a,'b,T:GLSLType> VertexAttribMut<'a,'b,T> {
                 }
             }
 
-            gl::BindVertexArray(0);
             gl::BindBuffer(gl::ARRAY_BUFFER, 0);
+            gl::BindVertexArray(0);
         }
     }
 

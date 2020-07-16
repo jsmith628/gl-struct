@@ -21,7 +21,7 @@ impl<'a,A:GLSLType> AttribArray<'a,A> {
     #[inline] pub fn pointer(&self) -> *const GLvoid { self.pointer as *const _ }
 
     pub fn split(self) -> A::Split where A:SplitAttribs<'a> { A::split_array(self) }
-    
+
     pub fn normalize(self) -> AttribArray<'a, A::Normalized> where A:NormalizeAttrib {
         AttribArray {
             id: self.id, stride: self.stride, pointer: self.pointer,
@@ -42,6 +42,16 @@ impl<'a,A:GLSLType> AttribArray<'a,A> {
         AttribArray { id:buf, format:fmt, stride:stride, pointer:ptr, buf:PhantomData }
     }
 
+}
+
+impl<'a> AttribArray<'a,()> {
+    pub fn void() -> AttribArray<'a,()> {
+        //basically, void types are always used to mark that an index is not used by the shader,
+        //so it really doesn't matter what we put in here since we'll just be disabling the array anyway.
+        AttribArray {
+            id: 0, format: (), stride: 0, pointer: 0, buf: PhantomData
+        }
+    }
 }
 
 impl<'b, A:GLSLType, T, B:Initialized> From<Slice<'b,[T],B>> for AttribArray<'b,A>
