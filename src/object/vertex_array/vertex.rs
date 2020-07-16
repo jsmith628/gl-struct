@@ -1,7 +1,7 @@
 use super::*;
 
 
-pub trait Vertex<'a>: Sized + 'a {
+pub trait Vertex<'a>: Sized {
     type Arrays: Copy;
 
     fn num_indices() -> usize;
@@ -38,7 +38,7 @@ macro_rules! impl_append {
 
     ({$($T1:ident:$t1:ident)*} $($T2:ident:$t2:ident)*) => {
 
-        impl<'a,$($T1:GLSLType+'a,)* $($T2:GLSLType+'a),*> VertexAppend<'a,($(AttribArray<'a,$T2>,)*)> for ($($T1,)*) {
+        impl<'a,$($T1:GLSLType,)* $($T2:GLSLType),*> VertexAppend<'a,($(AttribArray<'a,$T2>,)*)> for ($($T1,)*) {
             type Output = ($($T1,)* $($T2,)*);
 
             #[allow(unused_variables, non_snake_case)]
@@ -74,7 +74,7 @@ macro_rules! impl_vertex {
 
     ($($T:ident:$t:ident)*) => {
 
-        impl<'a,$($T:GLSLType+'a),*> Vertex<'a> for ($($T,)*) {
+        impl<'a,$($T:GLSLType),*> Vertex<'a> for ($($T,)*) {
             type Arrays = ($(AttribArray<'a,$T>,)*);
 
             #[inline] fn num_indices() -> usize { 0 $( + $T::AttribFormat::attrib_count())* }
@@ -93,7 +93,7 @@ macro_rules! impl_vertex {
 
         }
 
-        impl<'a,'b:'a,$($T:GLSLType+'b),*> VertexRef<'a,'b> for ($($T,)*) {
+        impl<'a,'b:'a,$($T:GLSLType),*> VertexRef<'a,'b> for ($($T,)*) {
             type Attribs = ($(VertexAttrib<'a,'b,$T>,)*);
             type AttribsMut = ($(VertexAttribMut<'a,'b,$T>,)*);
 

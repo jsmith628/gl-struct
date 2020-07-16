@@ -26,7 +26,7 @@ mod ops;
 mod glsl_type;
 mod functions;
 
-pub unsafe trait GLSLType: Sized + Copy {
+pub unsafe trait GLSLType: Sized + Copy + 'static {
     type AttribFormat: AttribFormat;
 
     #[inline] fn uniform_locations() -> GLuint {1}
