@@ -35,31 +35,10 @@ impl Sync {
     }
 
     pub fn wait(self) { unsafe { gl::WaitSync(self.0, 0, gl::TIMEOUT_IGNORED); forget(self); } }
-}
 
-impl Drop for Sync {
-    fn drop(&mut self) { unsafe { gl::DeleteSync(self.0) } }
-}
+    pub fn delete(self) { drop(self) }
 
-unsafe impl Object for Sync {
-    type GL = GL32;
-    type Raw = GLsync;
-
-    fn into_raw(self) -> GLsync {
-        let sync = self.0;
-        forget(self);
-        sync
-    }
-
-    fn is(raw: GLsync) -> bool { unsafe {gl::IsSync(raw) != 0} }
-
-    unsafe fn from_raw(raw: GLsync) -> Option<Self> {
-        if Self::is(raw) { Some(Self(raw)) } else { None }
-    }
-
-    fn delete(self) { unsafe { gl::DeleteSync(self.0); forget(self); } }
-
-    fn label(&mut self, label: &str) -> Result<(), GLError> {
+    pub fn label(&mut self, label: &str) -> Result<(), GLError> {
         unsafe {
             if gl::ObjectPtrLabel::is_loaded() {
                 let mut max_length = MaybeUninit::uninit();
@@ -78,7 +57,7 @@ unsafe impl Object for Sync {
         }
     }
 
-    fn get_label(&self) -> Option<String> {
+    pub fn get_label(&self) -> Option<String> {
         unsafe {
             if gl::GetObjectPtrLabel::is_loaded() {
                 //get the length of the label
@@ -107,5 +86,8 @@ unsafe impl Object for Sync {
             }
         }
     }
+}
 
+impl Drop for Sync {
+    fn drop(&mut self) { unsafe { gl::DeleteSync(self.0) } }
 }
