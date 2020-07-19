@@ -2,7 +2,9 @@
 use super::*;
 
 use crate::gl;
+use crate::context::*;
 use crate::pixel::*;
+use crate::vertex_array::*;
 
 use std::marker::{PhantomData, Unsize};
 use std::slice::{from_raw_parts, SliceIndex};

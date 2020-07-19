@@ -1,5 +1,7 @@
 use super::*;
-use super::pixel::*;
+use crate::pixel::*;
+use crate::buffer::*;
+use crate::context::*;
 
 pub use self::align::*;
 pub use self::pixel_data::*;
@@ -18,8 +20,6 @@ use std::borrow::Cow;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::convert::TryInto;
-use object::buffer::*;
-use context::*;
 
 pub unsafe trait ImageSrc {
 

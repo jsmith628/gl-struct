@@ -4,6 +4,8 @@ use std::ptr::*;
 use std::time::*;
 use std::convert::TryInto;
 
+use crate::context::*;
+
 glenum! {
     pub enum SyncStatus {
         [AlreadySignaled ALREADY_SIGNALED "Already Signaled"],

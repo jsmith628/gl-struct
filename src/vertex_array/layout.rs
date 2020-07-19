@@ -2,9 +2,6 @@
 use super::*;
 use glsl::*;
 
-use std::mem::*;
-use std::convert::*;
-
 glenum! {
 
     ///All OpenGL data types that can encode vertex element index information

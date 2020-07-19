@@ -8,7 +8,7 @@ use std::mem::*;
 
 use num_traits::{Zero,One};
 
-use crate::object::*;
+use crate::vertex_array::*;
 
 pub use self::c_bool::*;
 pub use self::conv::*;

@@ -1,4 +1,5 @@
 use super::*;
+use crate::sampler::*;
 
 impl<F:InternalFormat, T:SampledTarget<F>> Texture<F,T> {
 

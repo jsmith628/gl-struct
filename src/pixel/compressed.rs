@@ -1,6 +1,6 @@
 use super::*;
-use object::buffer::GPUCopy;
 use std::mem::*;
+use crate::buffer::GPUCopy;
 
 pub struct CompressedPixels<F:SpecificCompressed> {
     data: [F::Block]
