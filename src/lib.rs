@@ -108,13 +108,10 @@ pub use gl_enum::*;
 
 #[macro_use] mod gl_enum;
 
-pub use program::*;
-
 #[macro_use] pub mod glsl;
 
 pub mod context;
 pub mod object;
-pub mod program;
 
 pub mod format;
 
@@ -132,9 +129,6 @@ impl<B:Bit> BitMasks<B> for High {}
 #[derive(Clone, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum GLError {
-    ShaderCompilation(GLuint, ShaderType, String),
-    ProgramLinking(GLuint, String),
-    ProgramValidation(GLuint, String),
     InvalidEnum(GLenum, String),
     InvalidOperation(String),
     InvalidValue(String),
@@ -149,9 +143,6 @@ impl Debug for GLError {
 
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            GLError::ShaderCompilation(id, ty, log) => write!(f, "{} #{} compilation error: {}", ty, id, log),
-            GLError::ProgramLinking(id, log) => write!(f, "Program #{} link error with Program: {}", id, log),
-            GLError::ProgramValidation(id, log) => write!(f, "Program #{} validation error: {}", id, log),
             GLError::InvalidEnum(id, ty) => write!(f, "Invalid enum: #{} is not a valid {}", id, ty),
             GLError::InvalidOperation(msg) => write!(f, "Invalid operation: {}", msg),
             GLError::InvalidValue(msg) => write!(f, "Invalid value: {}", msg),
