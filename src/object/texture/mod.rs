@@ -1,6 +1,6 @@
 use super::*;
-use format::pixel::*;
-use format::image::*;
+use crate::pixel::*;
+use crate::image::*;
 
 use std::mem::*;
 use std::ops::*;

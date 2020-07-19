@@ -1,5 +1,5 @@
 use super::*;
-use format::pixel::*;
+use crate::pixel::*;
 
 use std::marker::PhantomData;
 use std::mem::*;

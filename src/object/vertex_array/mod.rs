@@ -4,8 +4,8 @@ use std::marker::PhantomData;
 use std::mem::*;
 use std::ptr::*;
 
-use glsl::GLSLType;
-use format::*;
+use crate::glsl::GLSLType;
+use crate::pixel::*;
 
 pub use self::layout::*;
 pub use self::vertex::*;

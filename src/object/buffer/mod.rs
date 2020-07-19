@@ -2,7 +2,7 @@
 use super::*;
 
 use crate::gl;
-use crate::format::pixel::*;
+use crate::pixel::*;
 
 use std::marker::{PhantomData, Unsize};
 use std::slice::{from_raw_parts, SliceIndex};
