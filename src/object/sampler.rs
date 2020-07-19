@@ -1,6 +1,7 @@
 use super::*;
 
 use std::convert::TryInto;
+use std::mem::*;
 
 glenum! {
 
@@ -48,16 +49,73 @@ glenum! {
 
 }
 
-gl_resource!{
-    pub struct Sampler {
-        gl = GL33,
-        target = !,
-        ident = Sampler,
-        gen = GenSamplers,
-        // bind = BindSampler,
-        is = IsSampler,
-        delete = DeleteSamplers
+#[repr(transparent)]
+pub struct Sampler(GLuint);
+
+impl Sampler {
+
+    pub fn gen(#[allow(unused_variables)] gl: &GL33) -> GLuint {
+        unsafe {
+            let mut s = MaybeUninit::uninit();
+            gl::GenSamplers(1, s.as_mut_ptr());
+            s.assume_init()
+        }
     }
+
+    pub fn gen_samplers(#[allow(unused_variables)] gl: &GL33, n: GLuint) -> Box<[GLuint]> {
+        if n==0 { return Box::new([]); }
+        unsafe {
+            let mut s = Box::new_uninit_slice(n as usize);
+            gl::GenSamplers(s.len().try_into().unwrap(), MaybeUninit::first_ptr_mut(&mut *s));
+            s.assume_init()
+        }
+    }
+
+    pub fn create(#[allow(unused_variables)] gl: &GL33) -> Self {
+        let mut s: MaybeUninit<Self> = MaybeUninit::uninit();
+        unsafe {
+            if gl::CreateSamplers::is_loaded() {
+                gl::CreateSamplers(1, s.as_mut_ptr() as *mut GLuint);
+            } else {
+                gl::GenSamplers(1, s.as_mut_ptr() as *mut GLuint);
+                gl::BindSampler(0, s.get_mut().id());
+                gl::BindSampler(0, 0);
+            }
+            s.assume_init()
+        }
+    }
+
+    pub fn create_renderbuffers(#[allow(unused_variables)] gl: &GL30, n: GLuint) -> Box<[Self]> {
+        if n==0 { return Box::new([]); }
+        let mut s:Box<[MaybeUninit<Self>]> = Box::new_uninit_slice(n as usize);
+        unsafe {
+            if gl::CreateSamplers::is_loaded() {
+                gl::CreateSamplers(s.len().try_into().unwrap(), s[0].as_mut_ptr() as *mut GLuint);
+            } else {
+                gl::GenSamplers(s.len().try_into().unwrap(), s[0].as_mut_ptr() as *mut GLuint);
+                for t in s.iter_mut() { gl::BindSampler(0, t.get_mut().id()) }
+                gl::BindSampler(0, 0);
+            }
+            s.assume_init()
+        }
+    }
+
+    pub fn id(&self) -> GLuint { self.0 }
+    pub fn gl(&self) -> GL33 { unsafe { assume_supported() } }
+
+    pub fn delete(self) { drop(self) }
+    pub fn delete_samplers(s: Box<[Self]>) {
+        if s.len()==0 {return;}
+        unsafe {
+            let ids: Box<[GLuint]> = transmute(s);
+            gl::DeleteSamplers(ids.len() as GLsizei, &ids[0])
+        }
+    }
+
+}
+
+impl Drop for Sampler {
+    fn drop(&mut self) { unsafe { gl::DeleteSamplers(1, &self.0) } }
 }
 
 macro_rules! sampler_params {
