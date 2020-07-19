@@ -34,9 +34,6 @@ use std::fmt;
 use std::fmt::{Display, Debug, Formatter};
 use std::hash::Hash;
 
-pub use gl_enum::*;
-
-#[macro_use] mod gl_enum;
 #[macro_use] mod macros;
 #[macro_use] pub mod glsl;
 
@@ -45,6 +42,19 @@ pub mod object;
 
 pub mod image;
 pub mod pixel;
+
+pub trait Bit { const VALUE:bool; }
+pub struct High;
+pub struct Low;
+
+impl Bit for High { const VALUE:bool = true; }
+impl Bit for Low { const VALUE:bool = false; }
+
+#[marker] pub trait BitMasks<B:Bit>: Bit {}
+impl<B:Bit> BitMasks<Low> for B {}
+impl<B:Bit> BitMasks<B> for High {}
+
+pub trait GLEnum: Sized + Copy + Eq + Hash + Debug + Display + Into<GLenum> + TryFrom<GLenum, Error=GLError> {}
 
 glenum! {
     pub enum IntType {
@@ -82,17 +92,6 @@ impl FloatType {
         }
     }
 }
-
-pub trait Bit { const VALUE:bool; }
-pub struct High;
-pub struct Low;
-
-impl Bit for High { const VALUE:bool = true; }
-impl Bit for Low { const VALUE:bool = false; }
-
-#[marker] pub trait BitMasks<B:Bit>: Bit {}
-impl<B:Bit> BitMasks<Low> for B {}
-impl<B:Bit> BitMasks<B> for High {}
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 #[non_exhaustive]
