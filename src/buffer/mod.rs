@@ -31,6 +31,14 @@ mod map;
 mod slice;
 mod any;
 
+pub(self) static mut COPY_READ_BUFFER: BindingLocation<BufferTarget> = unsafe {
+    BindingLocation::new(BufferTarget::CopyReadBuffer)
+};
+
+pub(self) static mut COPY_WRITE_BUFFER: BindingLocation<BufferTarget> = unsafe {
+    BindingLocation::new(BufferTarget::CopyReadBuffer)
+};
+
 pub struct Buffer<T:?Sized, A:BufferStorage> {
     ptr: BufPtr<T>,
     access: PhantomData<A>
@@ -151,7 +159,7 @@ impl<T:?Sized, A:Initialized> Buffer<T,A> {
             gl::InvalidateBufferData(self.id())
         } else if !self.immutable_storage() {
             let (size, usage) = (self.size() as GLsizeiptr, self.usage() as GLenum);
-            BufferTarget::CopyWriteBuffer.as_loc().map_bind(self,
+            COPY_WRITE_BUFFER.map_bind(self,
                 |b| gl::BufferData(b.target_id(), size, null(), usage)
             );
         }

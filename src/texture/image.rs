@@ -93,7 +93,7 @@ impl<'a,F,T:TextureTarget<F>> TexImage<'a,F,T> {
         if T::glenum()!=gl::TEXTURE_CUBE_MAP && gl::GetTextureLevelParameteriv::is_loaded() {
             gl::GetTextureLevelParameteriv(self.id(), lvl, pname, param.as_mut_ptr());
         } else {
-            T::bind_loc_level().map_bind(self,
+            TEXTURE0.map_bind(self,
                 |_| gl::GetTexLevelParameteriv(self.face.into(), lvl, pname, param.as_mut_ptr())
             );
         }

@@ -14,7 +14,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImage<'a,F,T> {
         };
 
         id.map(|i| gl::BindBuffer(gl::PIXEL_PACK_BUFFER, i));
-        T::bind_loc_level().map_bind(self,
+        TEXTURE0.map_bind(self,
             |_| gl(self.face.into(), self.level() as GLsizei, ptr)
         );
         id.map(|_| gl::BindBuffer(gl::PIXEL_PACK_BUFFER, 0));

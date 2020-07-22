@@ -36,21 +36,7 @@ macro_rules! tex_target {
         impl GLEnum for $name {}
 
         unsafe impl TextureType for $name { type GL = $GL; type Dim = $dim; }
-        impl<F:$bound> Target<Texture<F,Self>> for $name {
-            fn target_id(self) -> GLenum { self.into() }
-            unsafe fn bind(self, tex: &Texture<F,Self>) { gl::BindTexture(self.into(), tex.id()) }
-            unsafe fn unbind(self) { gl::BindTexture(self.into(), 0) }
-        }
-        impl<'a,F:$bound> Target<TexImage<'a,F,Self>> for $name {
-            fn target_id(self) -> GLenum { self.into() }
-            unsafe fn bind(self, tex: &TexImage<'a,F,Self>) { gl::BindTexture(self.into(), tex.id()) }
-            unsafe fn unbind(self) { gl::BindTexture(self.into(), 0) }
-        }
-        impl<'a,F:$bound> Target<TexImageMut<'a,F,Self>> for $name {
-            fn target_id(self) -> GLenum { self.into() }
-            unsafe fn bind(self, tex: &TexImageMut<'a,F,Self>) { gl::BindTexture(self.into(), tex.id()) }
-            unsafe fn unbind(self) { gl::BindTexture(self.into(), 0) }
-        }
+        impl<F:$bound> TextureTarget<F> for $name {}
 
         tex_target!($($rest)*);
     }
@@ -61,21 +47,6 @@ pub unsafe trait TextureType: GLEnum + Default {
     type Dim: TexDim;
 
     #[inline] fn glenum() -> GLenum {Self::default().into()}
-
-    #[inline]
-    fn bind_loc<F>() -> BindingLocation<Texture<F,Self>,Self> where Self: TextureTarget<F> {
-        unsafe {Self::default().as_loc()}
-    }
-
-    #[inline]
-    fn bind_loc_level<'a,F>() -> BindingLocation<TexImage<'a,F,Self>,Self> where Self: TextureTarget<F> {
-        unsafe {Self::default().as_loc()}
-    }
-
-    #[inline]
-    fn bind_loc_level_mut<'a,F>() -> BindingLocation<TexImageMut<'a,F,Self>,Self> where Self: TextureTarget<F> {
-        unsafe {Self::default().as_loc()}
-    }
 
     #[inline]
     fn multisampled() -> bool {
@@ -103,20 +74,6 @@ pub unsafe trait TextureType: GLEnum + Default {
     }
 
 }
-
-pub trait TextureTarget<F> = TextureType +
-    Target<Texture<F,Self>> +
-    for<'a> Target<TexImage<'a,F,Self>> +
-    for<'a> Target<TexImageMut<'a,F,Self>>;
-
-pub trait OwnedTarget<F> = Owned + TextureTarget<F>;
-pub trait SampledTarget<F> = Sampled + TextureTarget<F>;
-pub trait MipmappedTarget<F> = Mipmapped + TextureTarget<F>;
-pub trait MultisampledTarget<F> = Multisampled + TextureTarget<F>;
-pub trait PixelTransferTarget<F> = PixelTransfer + TextureTarget<F>;
-pub trait CompressedTransferTarget<F> = CompressedTransfer + TextureTarget<F>;
-pub trait LayeredTarget<F> = Layered + TextureTarget<F>;
-pub trait CubeMapTarget<F> = CubeMapped + TextureTarget<F>;
 
 #[marker] pub unsafe trait Owned: TextureType {}
 #[marker] pub unsafe trait Sampled: Owned {}
@@ -222,36 +179,19 @@ unsafe impl CubeMapped for TEXTURE_CUBE_MAP_ARRAY {}
 unsafe impl Multisampled for TEXTURE_2D_MULTISAMPLE {}
 unsafe impl Multisampled for TEXTURE_2D_MULTISAMPLE_ARRAY {}
 
+#[marker] pub trait TextureTarget<F>: TextureType {}
 
-impl<T:TextureType> Target<UninitTex<Self>> for T {
-    fn target_id(self) -> GLenum { self.into() }
-    unsafe fn bind(self, tex: &UninitTex<Self>) { gl::BindTexture(self.into(), tex.id()) }
-    unsafe fn unbind(self) { gl::BindTexture(self.into(), 0) }
-}
-impl<'a,T:TextureType> Target<TexImage<'a,!,Self>> for T {
-    fn target_id(self) -> GLenum { self.into() }
-    unsafe fn bind(self, tex: &TexImage<'a,!,Self>) { gl::BindTexture(self.into(), tex.id()) }
-    unsafe fn unbind(self) { gl::BindTexture(self.into(), 0) }
-}
-impl<'a,T:TextureType> Target<TexImageMut<'a,!,Self>> for T {
-    fn target_id(self) -> GLenum { self.into() }
-    unsafe fn bind(self, tex: &TexImageMut<'a,!,Self>) { gl::BindTexture(self.into(), tex.id()) }
-    unsafe fn unbind(self) { gl::BindTexture(self.into(), 0) }
-}
+impl<T:TextureType> TextureTarget<!> for T {}
+impl<F,T:TextureTarget<F>> TextureTarget<MaybeUninit<F>> for T {}
 
+//for some reason, the trait aliases have to be down here or else
+//the syntax highlighting freaks out
 
-impl<F,T:TextureTarget<F>> Target<Texture<MaybeUninit<F>,Self>> for T {
-    fn target_id(self) -> GLenum { self.into() }
-    unsafe fn bind(self, tex: &Texture<MaybeUninit<F>,Self>) { gl::BindTexture(self.into(), tex.id()) }
-    unsafe fn unbind(self) { gl::BindTexture(self.into(), 0) }
-}
-impl<'a,F,T:TextureTarget<F>> Target<TexImage<'a,MaybeUninit<F>,Self>> for T {
-    fn target_id(self) -> GLenum { self.into() }
-    unsafe fn bind(self, tex: &TexImage<'a,MaybeUninit<F>,Self>) { gl::BindTexture(self.into(), tex.id()) }
-    unsafe fn unbind(self) { gl::BindTexture(self.into(), 0) }
-}
-impl<'a,F,T:TextureTarget<F>> Target<TexImageMut<'a,MaybeUninit<F>,Self>> for T {
-    fn target_id(self) -> GLenum { self.into() }
-    unsafe fn bind(self, tex: &TexImageMut<'a,MaybeUninit<F>,Self>) { gl::BindTexture(self.into(), tex.id()) }
-    unsafe fn unbind(self) { gl::BindTexture(self.into(), 0) }
-}
+pub trait OwnedTarget<F> = Owned + TextureTarget<F>;
+pub trait SampledTarget<F> = Sampled + TextureTarget<F>;
+pub trait MipmappedTarget<F> = Mipmapped + TextureTarget<F>;
+pub trait MultisampledTarget<F> = Multisampled + TextureTarget<F>;
+pub trait PixelTransferTarget<F> = PixelTransfer + TextureTarget<F>;
+pub trait CompressedTransferTarget<F> = CompressedTransfer + TextureTarget<F>;
+pub trait LayeredTarget<F> = Layered + TextureTarget<F>;
+pub trait CubeMapTarget<F> = CubeMapped + TextureTarget<F>;

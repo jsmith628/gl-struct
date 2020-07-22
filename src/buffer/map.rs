@@ -61,7 +61,6 @@ impl<'a,T:?Sized,A:Initialized> Drop for Map<'a,T,A> {
         if Self::size(self)==0 { return; }
         unsafe {
             let status;
-            let mut target = BufferTarget::CopyWriteBuffer.as_loc();
             let ptr = BufPtr::new(self.id, self.ptr);
 
             if !<A::MapPersistent as Bit>::VALUE {
@@ -69,7 +68,7 @@ impl<'a,T:?Sized,A:Initialized> Drop for Map<'a,T,A> {
                 if gl::UnmapNamedBuffer::is_loaded() {
                     status = gl::UnmapNamedBuffer(self.id);
                 } else {
-                    status = target.map_bind(&ptr, |b| gl::UnmapBuffer(b.target_id()));
+                    status = COPY_WRITE_BUFFER.map_bind(&ptr, |b| gl::UnmapBuffer(b.target_id()));
                 }
             } else {
                 //else, we need to flush any writes that happened in this range
@@ -82,7 +81,7 @@ impl<'a,T:?Sized,A:Initialized> Drop for Map<'a,T,A> {
                             size_of_val(&*self.ptr) as GLsizeiptr
                         );
                     } else {
-                        target.map_bind(&ptr, |b|
+                        COPY_WRITE_BUFFER.map_bind(&ptr, |b|
                             gl::FlushMappedBufferRange(
                                 b.target_id(), self.offset as GLintptr, Self::size(&self) as GLsizeiptr
                             )
@@ -157,7 +156,7 @@ impl<T:?Sized, A:Initialized> Buffer<T,A> {
             } else if gl::MapNamedBuffer::is_loaded() {
                 gl::MapNamedBuffer(self.id(), map_access::<B>())
             } else {
-                BufferTarget::CopyWriteBuffer.as_loc().map_bind(self,
+                COPY_WRITE_BUFFER.map_bind(self,
                     |b| gl::MapBuffer(b.target_id(), map_access::<B>())
                 )
             }
@@ -210,7 +209,6 @@ unsafe fn map_range_flags<B:Initialized>() -> GLbitfield {
 
 impl<'a,T:?Sized,A:Initialized> SliceMut<'a,T,A> {
     unsafe fn map_range_raw<'b,B:Initialized>(self) -> Map<'b,T,B> {
-        let mut target = BufferTarget::CopyWriteBuffer.as_loc();
         let ptr = self.ptr.swap_mut_ptr(
             if self.size()==0 {
                 NonNull::dangling().as_mut()
@@ -225,7 +223,7 @@ impl<'a,T:?Sized,A:Initialized> SliceMut<'a,T,A> {
                         self.id(), self.offset() as GLintptr, self.size() as GLsizeiptr, flags
                     )
                 } else {
-                    target.map_bind(&self, |b|
+                    COPY_WRITE_BUFFER.map_bind(&self, |b|
                         gl::MapBufferRange(
                             b.target_id(), self.offset() as GLintptr, self.size() as GLsizeiptr, flags
                         )
@@ -236,7 +234,9 @@ impl<'a,T:?Sized,A:Initialized> SliceMut<'a,T,A> {
                 if gl::MapNamedBuffer::is_loaded() {
                     gl::MapNamedBuffer(self.id(), map_access::<B>())
                 } else {
-                    target.map_bind(&self, |b| gl::MapBuffer(b.target_id(), map_access::<B>()))
+                    COPY_WRITE_BUFFER.map_bind(&self, |b|
+                        gl::MapBuffer(b.target_id(), map_access::<B>())
+                    )
                 }.offset(self.offset() as isize)
             }
         );
@@ -299,7 +299,7 @@ impl<'a,T:?Sized,A:Persistent> Slice<'a,T,A> {
         } else if gl::GetNamedBufferPointerv::is_loaded() {
             gl::GetNamedBufferPointerv((&*this).id(), gl::BUFFER_MAP_POINTER, ptr.as_mut_ptr());
         } else {
-            BufferTarget::CopyReadBuffer.as_loc().map_bind(&*this, |b|
+            COPY_READ_BUFFER.map_bind(&*this, |b|
                 gl::GetBufferPointerv(b.target_id(), gl::BUFFER_MAP_POINTER, ptr.as_mut_ptr())
             );
         }
@@ -315,7 +315,7 @@ impl<'a,T:?Sized,A:Persistent> Slice<'a,T,A> {
                 if gl::GetNamedBufferParameteriv::is_loaded() && gl::MapNamedBufferRange::is_loaded() {
                     gl::MapNamedBufferRange((&*this).id(), 0, buf_size as GLsizeiptr, flags)
                 } else {
-                    BufferTarget::CopyReadBuffer.as_loc().map_bind(&*this,
+                    COPY_READ_BUFFER.map_bind(&*this,
                         |b| gl::MapBufferRange(b.target_id(), 0, buf_size as GLsizeiptr, flags)
                     )
                 }

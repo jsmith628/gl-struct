@@ -26,6 +26,41 @@ mod unpack;
 mod swizzle;
 mod params;
 
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub(self) struct ActiveTexture(GLuint);
+
+impl Display for ActiveTexture {
+    fn fmt(&self, f: &mut Formatter) -> ::std::fmt::Result {
+        write!(f, "Active Texture #{}", self.0)
+    }
+}
+
+impl<F, T:TextureTarget<F>> Target<Texture<F,T>> for ActiveTexture {
+    fn target_id(self) -> GLenum { T::glenum() }
+    unsafe fn bind(self, tex: &Texture<F,T>) { gl::BindTexture(T::glenum(), tex.id()); }
+    unsafe fn unbind(self) { gl::BindTexture(T::glenum(), 0); }
+}
+
+impl<'a, F, T:TextureTarget<F>> Target<TexImage<'a,F,T>> for ActiveTexture {
+    fn target_id(self) -> GLenum { T::glenum() }
+    unsafe fn bind(self, tex: &TexImage<'a,F,T>) { gl::BindTexture(T::glenum(), tex.id()); }
+    unsafe fn unbind(self) { gl::BindTexture(T::glenum(), 0); }
+}
+
+impl<'a, F, T:TextureTarget<F>> Target<TexImageMut<'a,F,T>> for ActiveTexture {
+    fn target_id(self) -> GLenum { T::glenum() }
+    unsafe fn bind(self, tex: &TexImageMut<'a,F,T>) { gl::BindTexture(T::glenum(), tex.id()); }
+    unsafe fn unbind(self) { gl::BindTexture(T::glenum(), 0); }
+}
+
+pub(self) static mut TEXTURE0: BindingLocation<ActiveTexture> = unsafe {
+    BindingLocation::new(ActiveTexture(0))
+};
+
+
+
+
+
 #[repr(transparent)]
 pub struct Texture<F, T:TextureTarget<F>> {
     id: GLuint,
@@ -50,7 +85,7 @@ impl<F, T:TextureTarget<F>> Texture<F,T> {
         if gl::TextureParameteri::is_loaded() {
             gl::TextureParameteri(self.id(), pname, Into::<GLenum>::into(param) as GLint);
         } else {
-            T::bind_loc().map_bind(self,
+            TEXTURE0.map_bind(self,
                 |b| gl::TexParameteri(b.target_id(), pname, Into::<GLenum>::into(param) as GLint)
             );
         }
@@ -61,7 +96,7 @@ impl<F, T:TextureTarget<F>> Texture<F,T> {
         if gl::TextureParameteriv::is_loaded() {
             gl::TextureParameteriv(self.id(), pname, params);
         } else {
-            T::bind_loc().map_bind(self, |b| gl::TexParameteriv(b.target_id(), pname, params));
+            TEXTURE0.map_bind(self, |b| gl::TexParameteriv(b.target_id(), pname, params));
         }
     }
 
@@ -70,7 +105,7 @@ impl<F, T:TextureTarget<F>> Texture<F,T> {
         if gl::TextureParameterfv::is_loaded() {
             gl::TextureParameterfv(self.id(), pname, params);
         } else {
-            T::bind_loc().map_bind(self, |b| gl::TexParameterfv(b.target_id(), pname, params));
+            TEXTURE0.map_bind(self, |b| gl::TexParameterfv(b.target_id(), pname, params));
         }
     }
 
@@ -79,7 +114,7 @@ impl<F, T:TextureTarget<F>> Texture<F,T> {
         if gl::TextureParameterIuiv::is_loaded() {
             gl::TextureParameterIiv(self.id(), pname, params);
         } else {
-            T::bind_loc().map_bind(self, |b| gl::TexParameterIiv(b.target_id(), pname, params));
+            TEXTURE0.map_bind(self, |b| gl::TexParameterIiv(b.target_id(), pname, params));
         }
     }
 
@@ -88,7 +123,7 @@ impl<F, T:TextureTarget<F>> Texture<F,T> {
         if gl::TextureParameterIuiv::is_loaded() {
             gl::TextureParameterIuiv(self.id(), pname, params);
         } else {
-            T::bind_loc().map_bind(self, |b| gl::TexParameterIuiv(b.target_id(), pname, params));
+            TEXTURE0.map_bind(self, |b| gl::TexParameterIuiv(b.target_id(), pname, params));
         }
     }
 
@@ -116,7 +151,7 @@ impl<F, T:TextureTarget<F>> Texture<F,T> {
         if gl::GetTextureParameteriv::is_loaded() {
             gl::GetTextureParameteriv(self.id(), pname, param);
         } else {
-            T::bind_loc().map_bind(self, |b| gl::GetTexParameteriv(b.target_id(), pname, param));
+            TEXTURE0.map_bind(self, |b| gl::GetTexParameteriv(b.target_id(), pname, param));
         }
     }
 
@@ -125,7 +160,7 @@ impl<F, T:TextureTarget<F>> Texture<F,T> {
         if gl::GetTextureParameterfv::is_loaded() {
             gl::GetTextureParameterfv(self.id(), pname, param);
         } else {
-            T::bind_loc().map_bind(self, |b| gl::GetTexParameterfv(b.target_id(), pname, param));
+            TEXTURE0.map_bind(self, |b| gl::GetTexParameterfv(b.target_id(), pname, param));
         }
     }
 
@@ -134,7 +169,7 @@ impl<F, T:TextureTarget<F>> Texture<F,T> {
         if gl::GetTextureParameterIiv::is_loaded() {
             gl::GetTextureParameterIiv(self.id(), pname, param);
         } else {
-            T::bind_loc().map_bind(self, |b| gl::GetTexParameterIiv(b.target_id(), pname, param));
+            TEXTURE0.map_bind(self, |b| gl::GetTexParameterIiv(b.target_id(), pname, param));
         }
     }
 
@@ -143,7 +178,7 @@ impl<F, T:TextureTarget<F>> Texture<F,T> {
         if gl::GetTextureParameterIuiv::is_loaded() {
             gl::GetTextureParameterIuiv(self.id(), pname, param);
         } else {
-            T::bind_loc().map_bind(self, |b| gl::GetTexParameterIuiv(b.target_id(), pname, param));
+            TEXTURE0.map_bind(self, |b| gl::GetTexParameterIuiv(b.target_id(), pname, param));
         }
     }
 

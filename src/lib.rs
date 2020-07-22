@@ -207,45 +207,32 @@ pub(self) fn get_object_label(identifier: ResourceIdentifier, name: GLuint) -> O
 }
 
 pub trait Target<R>: Copy + Eq + Hash + Debug + Display {
-
     fn target_id(self) -> GLenum;
-
     unsafe fn bind(self, obj: &R);
     unsafe fn unbind(self);
-
-    ///
-    ///Constructs a new binding location with the given target
-    ///
-    ///# Unsafety
-    ///It is up to the caller to guarrantee that this is the only location with the given
-    ///[binding target](Target) at the given time
-    #[inline] unsafe fn as_loc(self) -> BindingLocation<R,Self> { BindingLocation(self, PhantomData) }
 }
 
 ///An object that owns a [Target] to a glBind* function for a resource `R`
 #[derive(PartialEq, Eq, Hash)]
-pub struct BindingLocation<R,T:Target<R>>(pub(crate) T, PhantomData<*const R>);
+pub struct BindingLocation<T>(pub(crate) T, PhantomData<*const ()>);
 
 ///An object that owns a binding of a [Resource] to a particular [BindingLocation] and unbinds it when leaving scope
-pub struct Binding<'a,R,T:Target<R>>(pub(crate) &'a BindingLocation<R,T>, pub(crate) &'a R);
+pub struct Binding<'a,R,T:Target<R>>(pub(crate) &'a BindingLocation<T>, pub(crate) &'a R);
 
 impl<'a,R,T:Target<R>> Binding<'a,R,T> {
-    #[inline] pub fn target(&self) -> T { self.0.target() }
+    #[inline] pub fn target(&self) -> T { *self.0.target() }
     #[inline] pub fn resource(&self) -> &R { self.1 }
-    #[inline] pub fn target_id(&self) -> GLenum { self.0.target_id() }
+    #[inline] pub fn target_id(&self) -> GLenum { self.target().target_id() }
 }
 
 impl<'a,R,T:Target<R>> Drop for Binding<'a,R,T> {
     #[inline] fn drop(&mut self) { unsafe { self.target().unbind() } }
 }
 
-impl<R,T:Target<R>> BindingLocation<R,T> {
+impl<T> BindingLocation<T> {
 
     ///The [target](Target) of this location
-    pub fn target(&self) -> T { self.0 }
-
-    ///The the [GLenum] corresponding to this location's target
-    pub fn target_id(&self) -> GLenum { self.0.target_id() }
+    pub fn target(&self) -> &T where T:Copy { &self.0 }
 
     ///
     ///Constructs a new binding location with the given target
@@ -255,7 +242,7 @@ impl<R,T:Target<R>> BindingLocation<R,T> {
     ///[binding target](Target) at the given time
     ///
     #[inline]
-    pub unsafe fn new(target: T) -> Self {BindingLocation(target, PhantomData)}
+    pub const unsafe fn new(target: T) -> Self {BindingLocation(target, PhantomData)}
 
     ///
     ///A wrapper of glBind* for `R` using an owned resource
@@ -264,13 +251,15 @@ impl<R,T:Target<R>> BindingLocation<R,T> {
     ///id. Furthermore, for the same reasons as [bind_raw](BindingLocation::bind_raw), this method is actually safe
     ///
     #[inline]
-    pub fn bind<'a>(&'a mut self, resource: &'a R) -> Binding<'a,R,T> {
+    pub fn bind<'a,R>(&'a mut self, resource: &'a R) -> Binding<'a,R,T> where T:Target<R> {
         unsafe { self.target().bind(resource); }
         Binding(self, resource)
     }
 
     #[inline]
-    pub fn map_bind<'a, U, F:FnOnce(Binding<'a,R,T>)->U>(&'a mut self, resource: &'a R, f:F) -> U {
+    pub fn map_bind<'a,R,U,F>(&'a mut self, resource: &'a R, f:F) -> U
+    where T: Target<R>, F: FnOnce(Binding<'a,R,T>) -> U
+    {
         f(self.bind(resource))
     }
 

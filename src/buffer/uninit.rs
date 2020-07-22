@@ -84,7 +84,7 @@ impl UninitBuf {
             if gl::NamedBufferStorage::is_loaded() {
                 gl::NamedBufferStorage(self.id(), size, ptr, flags)
             } else {
-                BufferTarget::CopyWriteBuffer.as_loc().map_bind(&self,
+                COPY_WRITE_BUFFER.map_bind(&self,
                     |b| gl::BufferStorage(b.target_id(), size, ptr, flags)
                 );
             }
@@ -140,7 +140,7 @@ impl UninitBuf {
             if gl::NamedBufferData::is_loaded() {
                 gl::NamedBufferData(self.id(), size, ptr, usage)
             } else {
-                BufferTarget::CopyWriteBuffer.as_loc().map_bind(&self,
+                COPY_WRITE_BUFFER.map_bind(&self,
                     |b| gl::BufferData(b.target_id(), size, ptr, usage)
                 );
             }

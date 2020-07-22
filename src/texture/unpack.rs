@@ -17,7 +17,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImageMut<'a,F,T> {
         };
 
         id.map(|i| gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, i));
-        T::bind_loc_level_mut().map_bind(self, |_| gl(self.face.into(), self.level() as GLint, dim, ptr));
+        TEXTURE0.map_bind(self, |_| gl(self.face.into(), self.level() as GLint, dim, ptr));
         id.map(|_| gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, 0));
     }
 

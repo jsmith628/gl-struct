@@ -42,7 +42,7 @@ impl<F:InternalFormat, T:MipmappedTarget<F>> Texture<F,T> {
         //make sure the mipmap levels are complete.
         let prev = self.max_level();
         if check_complete && !self.immutable_format() && max > prev {
-            T::bind_loc().map_bind(self,
+            unsafe {&mut TEXTURE0}.map_bind(self,
                 |b| unsafe {
                     //Note that since we check dimensions at upload time, we only need to check
                     //if the layers are initialized
@@ -107,7 +107,7 @@ impl<F:InternalFormat, T:MipmappedTarget<F>> Texture<F,T> {
             if gl::GenerateTextureMipmap::is_loaded() {
                 gl::GenerateTextureMipmap(self.id());
             } else {
-                T::bind_loc().map_bind(self, |b| gl::GenerateMipmap(b.target_id()));
+                TEXTURE0.map_bind(self, |b| gl::GenerateMipmap(b.target_id()));
             }
         }
     }

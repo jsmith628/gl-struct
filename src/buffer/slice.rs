@@ -82,7 +82,7 @@ impl<'a,T:?Sized,A:Initialized> Slice<'a,T,A> {
                 self.id(), self.offset() as GLintptr, self.size() as GLintptr, data as *mut GLvoid
             );
         } else {
-            BufferTarget::CopyReadBuffer.as_loc().map_bind(self, |b|
+            COPY_READ_BUFFER.map_bind(self, |b|
                 gl::GetBufferSubData(
                     b.target_id(),
                     self.offset() as GLintptr,
@@ -95,8 +95,8 @@ impl<'a,T:?Sized,A:Initialized> Slice<'a,T,A> {
 
     pub unsafe fn copy_subdata_unchecked<'b>(&self, dest: &mut SliceMut<'b,T,A>) {
         if self.size()==0 || dest.size()==0 { return; }
-        BufferTarget::CopyReadBuffer.as_loc().map_bind(self, |b1|
-            BufferTarget::CopyWriteBuffer.as_loc().map_bind(dest, |b2|
+        COPY_READ_BUFFER.map_bind(self, |b1|
+            COPY_WRITE_BUFFER.map_bind(dest, |b2|
                 gl::CopyBufferSubData(
                     b1.target_id(), b2.target_id(),
                     self.offset as GLintptr, dest.offset as GLintptr,
@@ -353,7 +353,7 @@ impl<'a, T:?Sized, A:Dynamic> SliceMut<'a,T,A> {
         if gl::NamedBufferSubData::is_loaded() {
             gl::NamedBufferSubData(self.id(), self.offset as GLintptr, size, void);
         } else {
-            BufferTarget::CopyWriteBuffer.as_loc().map_bind(self,
+            COPY_WRITE_BUFFER.map_bind(self,
                 |b| gl::BufferSubData( b.target_id(), self.offset as GLintptr, size, void)
             );
         }
