@@ -11,6 +11,40 @@ mod fragment;
 mod bitplane;
 mod attachment;
 
+glenum! {
+    #[non_exhaustive]
+    pub enum FramebufferTarget {
+        [DrawFramebuffer DRAW_FRAMEBUFFER "Draw Framebuffer"],
+        [ReadFramebuffer READ_FRAMEBUFFER "Read Framebuffer"]
+    }
+}
+
+impl<'a, DS, F:'a> Target<Framebuffer<'a,DS,F>> for FramebufferTarget {
+    fn target_id(self) -> GLenum { self.into() }
+    unsafe fn bind(self, fb: &Framebuffer<'a,DS,F>) { gl::BindFramebuffer(self.into(), fb.id()) }
+    unsafe fn unbind(self) { gl::BindFramebuffer(self.into(), 0) }
+}
+
+impl<'a,'b,F:'b> Target<FramebufferAttachment<'a,'b,F>> for FramebufferTarget {
+    fn target_id(self) -> GLenum { self.into() }
+    unsafe fn bind(self, fb: &FramebufferAttachment<'a,'b,F>) { gl::BindFramebuffer(self.into(), fb.id()) }
+    unsafe fn unbind(self) { gl::BindFramebuffer(self.into(), 0) }
+}
+
+impl<'a,'b,F:'b> Target<FramebufferAttachmentMut<'a,'b,F>> for FramebufferTarget {
+    fn target_id(self) -> GLenum { self.into() }
+    unsafe fn bind(self, fb: &FramebufferAttachmentMut<'a,'b,F>) { gl::BindFramebuffer(self.into(), fb.id()) }
+    unsafe fn unbind(self) { gl::BindFramebuffer(self.into(), 0) }
+}
+
+static mut READ_FRAMEBUFFER: BindingLocation<FramebufferTarget> = unsafe {
+    BindingLocation::new(FramebufferTarget::DrawFramebuffer)
+};
+
+static mut DRAW_FRAMEBUFFER: BindingLocation<FramebufferTarget> = unsafe {
+    BindingLocation::new(FramebufferTarget::ReadFramebuffer)
+};
+
 pub struct Framebuffer<'a, DS, F:'a> {
     id: GLuint,
     attachments: PhantomData<&'a mut (DS, F)>
@@ -65,7 +99,7 @@ impl<'a> Framebuffer<'a,!,!> {
     }
 }
 
-impl<'a, DS, F: Fragment<'a>> Framebuffer<'a,DS,F> {
+impl<'a, DS, F:'a> Framebuffer<'a,DS,F> {
 
     pub fn id(&self) -> GLuint { self.id }
     pub fn gl(&self) -> GL30 { unsafe {assume_supported()} }

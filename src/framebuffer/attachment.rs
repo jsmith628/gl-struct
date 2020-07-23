@@ -11,3 +11,11 @@ pub struct FramebufferAttachmentMut<'a,'b,F:'b> {
     attachment: GLenum,
     reference: PhantomData<&'a mut Framebuffer<'b,DEPTH_STENCIL,(F,)>>
 }
+
+impl<'a,'b,F:'b> FramebufferAttachment<'a,'b,F> {
+    pub fn id(&self) -> GLuint { self.fb }
+}
+
+impl<'a,'b,F:'b> FramebufferAttachmentMut<'a,'b,F> {
+    pub fn id(&self) -> GLuint { self.fb }
+}
