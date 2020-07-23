@@ -11,6 +11,7 @@ glenum! {
         [Renderbuffer RENDERBUFFER "Renderbuffer"]
     }
 
+    #[non_exhaustive]
     enum RenderbufferParameter {
         [Width RENDERBUFFER_WIDTH "Width"],
         [Height RENDERBUFFER_HEIGHT "Height"],
