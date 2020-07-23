@@ -5,11 +5,57 @@ macro_rules! tex_target {
 
     () => {};
 
-    ([$name:ident $display:expr]; $GL:ty; $dim:ty, $($rest:tt)*) => {
+    ([$name:ident $display:literal]; $GL:ty; $dim:ty, $($rest:tt)*) => {
         tex_target!([$name $display]; InternalFormat; $GL; $dim, $($rest)*);
     };
 
-    ([$name:ident $display:expr]; $bound:ident; $GL:ty; $dim:ty, $($rest:tt)*) => {
+    ([$name:ident<$ms:ident> $display:literal]; $bound:ident; $GL:ty; $dim:ty, $($rest:tt)*) => {
+        #[allow(non_camel_case_types)]
+        #[derive(Derivative)]
+        #[derivative(Clone(bound=""), Copy(bound=""), PartialEq, Eq, Hash, Default)]
+        pub struct $name<$ms:MultisampleFormat> { ms: ::std::marker::PhantomData<$ms> }
+
+        impl<$ms:MultisampleFormat> Debug for $name<$ms> {
+            fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+                write!(
+                    f, concat!(stringify!($name), "x{}{}"),
+                    $ms::SAMPLES,
+                    if $ms::FIXED {"FIXED"} else {""}
+                )
+            }
+        }
+
+        impl<$ms:MultisampleFormat> Display for $name<$ms> {
+            fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+                write!(
+                    f, "{} x{} {}", $display, $ms::SAMPLES, if $ms::FIXED {"Fixed"} else {""}
+                )
+            }
+        }
+
+        impl<$ms:MultisampleFormat> From<$name<$ms>> for GLenum {
+            fn from(_:$name<$ms>) -> GLenum {gl::$name}
+        }
+
+        impl<$ms:MultisampleFormat> TryFrom<GLenum> for $name<$ms> {
+            type Error = GLError;
+            fn try_from(val:GLenum) -> Result<Self,GLError> {
+                if val == gl::$name {
+                    Ok(Self{ms: PhantomData})
+                } else {
+                    Err(GLError::InvalidEnum(val,"".to_string()))
+                }
+            }
+        }
+        impl<$ms:MultisampleFormat> GLEnum for $name<$ms> {}
+
+        unsafe impl<$ms:MultisampleFormat> TextureType for $name<$ms> { type GL = $GL; type Dim = $dim; }
+        impl<$ms:MultisampleFormat,F:$bound> TextureTarget<F> for $name<$ms> {}
+
+        tex_target!($($rest)*);
+    };
+
+    ([$name:ident $display:literal]; $bound:ident; $GL:ty; $dim:ty, $($rest:tt)*) => {
         #[allow(non_camel_case_types)]
         #[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
         pub struct $name;
@@ -77,13 +123,17 @@ pub unsafe trait TextureType: GLEnum + Default {
 
 #[marker] pub unsafe trait Owned: TextureType {}
 #[marker] pub unsafe trait Sampled: Owned {}
-#[marker] pub unsafe trait Multisampled: Owned {}
 #[marker] pub unsafe trait Mipmapped: Sampled {}
 #[marker] pub unsafe trait PixelTransfer: Sampled {}
 #[marker] pub unsafe trait CompressedTransfer: Sampled + PixelTransfer {}
 #[marker] pub unsafe trait BaseImage: Owned {}
 #[marker] pub unsafe trait CubeMapped: Sampled {}
 #[marker] pub unsafe trait Layered: Owned {}
+
+pub unsafe trait Multisampled: Owned {
+    const SAMPLES: GLuint;
+    const FIXED: bool;
+}
 
 tex_target! {
     [TEXTURE_1D "Texture 1D"]; GL10; [usize;1],
@@ -95,8 +145,8 @@ tex_target! {
     [TEXTURE_BUFFER "Texture Buffer"]; ColorFormat; GL31; usize,
     [TEXTURE_CUBE_MAP "Texture Cube Map"]; GL13; <TEXTURE_2D as TextureType>::Dim,
     [TEXTURE_CUBE_MAP_ARRAY "Texture Cube Map Array"]; GL40; <TEXTURE_2D_ARRAY as TextureType>::Dim,
-    [TEXTURE_2D_MULTISAMPLE "Texture 2D Multisample"]; Renderable; GL32; <TEXTURE_2D as TextureType>::Dim,
-    [TEXTURE_2D_MULTISAMPLE_ARRAY "Texture 2D Multisample Array"]; Renderable; GL32; <TEXTURE_2D_ARRAY as TextureType>::Dim,
+    [TEXTURE_2D_MULTISAMPLE<MS> "Texture 2D Multisample"]; Renderable; GL32; <TEXTURE_2D as TextureType>::Dim,
+    [TEXTURE_2D_MULTISAMPLE_ARRAY<MS> "Texture 2D Multisample Array"]; Renderable; GL32; <TEXTURE_2D_ARRAY as TextureType>::Dim,
 }
 
 //All but TEXTURE_BUFFER
@@ -109,8 +159,8 @@ unsafe impl Owned for TEXTURE_2D_ARRAY { }
 unsafe impl Owned for TEXTURE_RECTANGLE { }
 unsafe impl Owned for TEXTURE_CUBE_MAP {}
 unsafe impl Owned for TEXTURE_CUBE_MAP_ARRAY {}
-unsafe impl Owned for TEXTURE_2D_MULTISAMPLE {}
-unsafe impl Owned for TEXTURE_2D_MULTISAMPLE_ARRAY {}
+unsafe impl<MS:MultisampleFormat> Owned for TEXTURE_2D_MULTISAMPLE<MS> {}
+unsafe impl<MS:MultisampleFormat> Owned for TEXTURE_2D_MULTISAMPLE_ARRAY<MS> {}
 
 //All but TEXTURE_BUFFER and the multisample textures
 
@@ -132,8 +182,8 @@ unsafe impl BaseImage for TEXTURE_1D_ARRAY { }
 unsafe impl BaseImage for TEXTURE_2D_ARRAY { }
 unsafe impl BaseImage for TEXTURE_RECTANGLE { }
 unsafe impl BaseImage for TEXTURE_CUBE_MAP_ARRAY {}
-unsafe impl BaseImage for TEXTURE_2D_MULTISAMPLE {}
-unsafe impl BaseImage for TEXTURE_2D_MULTISAMPLE_ARRAY {}
+unsafe impl<MS:MultisampleFormat> BaseImage for TEXTURE_2D_MULTISAMPLE<MS> {}
+unsafe impl<MS:MultisampleFormat> BaseImage for TEXTURE_2D_MULTISAMPLE_ARRAY<MS> {}
 
 //All but TEXTURE_BUFFER and the multisample textures
 
@@ -171,13 +221,19 @@ unsafe impl Mipmapped for TEXTURE_CUBE_MAP_ARRAY {}
 unsafe impl Layered for TEXTURE_1D_ARRAY {}
 unsafe impl Layered for TEXTURE_2D_ARRAY {}
 unsafe impl Layered for TEXTURE_CUBE_MAP_ARRAY {}
-unsafe impl Layered for TEXTURE_2D_MULTISAMPLE_ARRAY {}
+unsafe impl<MS:MultisampleFormat> Layered for TEXTURE_2D_MULTISAMPLE_ARRAY<MS> {}
 
 unsafe impl CubeMapped for TEXTURE_CUBE_MAP {}
 unsafe impl CubeMapped for TEXTURE_CUBE_MAP_ARRAY {}
 
-unsafe impl Multisampled for TEXTURE_2D_MULTISAMPLE {}
-unsafe impl Multisampled for TEXTURE_2D_MULTISAMPLE_ARRAY {}
+unsafe impl<MS:MultisampleFormat> Multisampled for TEXTURE_2D_MULTISAMPLE<MS> {
+    const SAMPLES: GLuint = MS::SAMPLES;
+    const FIXED: bool = MS::FIXED;
+}
+unsafe impl<MS:MultisampleFormat> Multisampled for TEXTURE_2D_MULTISAMPLE_ARRAY<MS> {
+    const SAMPLES: GLuint = MS::SAMPLES;
+    const FIXED: bool = MS::FIXED;    
+}
 
 #[marker] pub trait TextureTarget<F>: TextureType {}
 
