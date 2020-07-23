@@ -1,12 +1,15 @@
 use super::*;
 use crate::context::*;
+use crate::pixel::*;
+
 use std::mem::*;
 
 pub use self::fragment::*;
 
 mod fragment;
+mod bitplane;
 
-pub struct Framebuffer<'a, DS, F: Fragment<'a>> {
+pub struct Framebuffer<'a, DS, F:'a> {
     id: GLuint,
     attachments: PhantomData<&'a mut (DS, F)>
 }
@@ -76,6 +79,6 @@ impl<'a, DS, F: Fragment<'a>> Framebuffer<'a,DS,F> {
 
 }
 
-impl<'a, DS, F: Fragment<'a>> Drop for Framebuffer<'a,DS,F> {
+impl<'a, DS, F:'a> Drop for Framebuffer<'a,DS,F> {
     fn drop(&mut self) { unsafe { gl::DeleteFramebuffers(1, &self.id)} }
 }
