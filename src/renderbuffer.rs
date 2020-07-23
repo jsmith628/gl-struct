@@ -26,6 +26,16 @@ glenum! {
 
 }
 
+impl<F,MS> Target<Renderbuffer<F,MS>> for RenderbufferTarget {
+    fn target_id(self) -> GLenum { self.into() }
+    unsafe fn bind(self, rb: &Renderbuffer<F,MS>) { gl::BindRenderbuffer(self.into(), rb.id()) }
+    unsafe fn unbind(self) { gl::BindRenderbuffer(self.into(), 0) }
+}
+
+static mut RENDERBUFFER: BindingLocation<RenderbufferTarget> = unsafe {
+    BindingLocation::new(RenderbufferTarget::Renderbuffer)
+};
+
 pub struct Renderbuffer<F, MS=MS0> {
     id: GLuint,
     fmt: PhantomData<(F,MS, *const ())>
@@ -86,9 +96,8 @@ impl UninitRenderbuffer {
         self, gl:&F::GL, width: usize, height: usize
     ) -> Renderbuffer<F> {
 
-        //get the id and forget self so that we don't accidentally drop the renderbuffer
+        //get the id
         let id = self.id;
-        forget(self);
 
         //allocate the storage
         let (w,h) = (width as GLint, height as GLint);
@@ -96,11 +105,14 @@ impl UninitRenderbuffer {
             if gl::NamedRenderbufferStorage::is_loaded() {
                 gl::NamedRenderbufferStorage(id, F::glenum(), w, h);
             } else {
-                gl::BindRenderbuffer(gl::RENDERBUFFER, id);
-                gl::RenderbufferStorage(gl::RENDERBUFFER, F::glenum(), w, h);
-                gl::BindRenderbuffer(gl::RENDERBUFFER, 0);
+                RENDERBUFFER.map_bind(&self,
+                    |b| gl::RenderbufferStorage(b.target_id(), F::glenum(), w, h)
+                );
             }
         }
+
+        //forget self so that we don't accidentally drop the renderbuffer
+        forget(self);
 
         //return
         Renderbuffer { id: id, fmt: PhantomData }
@@ -112,9 +124,8 @@ impl UninitRenderbuffer {
         self, gl:&F::GL, width: usize, height: usize
     ) -> Renderbuffer<F,MS> {
 
-        //get the id and forget self so that we don't accidentally drop the renderbuffer
+        //get the id
         let id = self.id;
-        forget(self);
 
         //allocate the storage
         let (w,h,samples) = (width as GLint, height as GLint, MS::SAMPLES.try_into().unwrap());
@@ -122,11 +133,14 @@ impl UninitRenderbuffer {
             if gl::NamedRenderbufferStorageMultisample::is_loaded() {
                 gl::NamedRenderbufferStorageMultisample(id, samples, F::glenum(), w, h);
             } else {
-                gl::BindRenderbuffer(gl::RENDERBUFFER, id);
-                gl::RenderbufferStorageMultisample(gl::RENDERBUFFER, samples, F::glenum(), w, h);
-                gl::BindRenderbuffer(gl::RENDERBUFFER, 0);
+                RENDERBUFFER.map_bind(&self,
+                    |b| gl::RenderbufferStorageMultisample(b.target_id(), samples, F::glenum(), w, h)
+                );
             }
         }
+
+        //forget self so that we don't accidentally drop the renderbuffer
+        forget(self);
 
         //return
         Renderbuffer { id: id, fmt: PhantomData }
@@ -147,9 +161,11 @@ impl<F,MS> Renderbuffer<F,MS> {
             if gl::GetNamedRenderbufferParameteriv::is_loaded() {
                 gl::GetNamedRenderbufferParameteriv(self.id(), pname as GLenum, params.as_mut_ptr());
             } else {
-                gl::BindRenderbuffer(gl::RENDERBUFFER, self.id());
-                gl::GetRenderbufferParameteriv(gl::RENDERBUFFER, pname as GLenum, params.as_mut_ptr());
-                gl::BindRenderbuffer(gl::RENDERBUFFER, 0);
+                RENDERBUFFER.map_bind(self,
+                    |b| gl::GetRenderbufferParameteriv(
+                        b.target_id(), pname as GLenum, params.as_mut_ptr()
+                    )
+                );
             }
 
             params.assume_init()
