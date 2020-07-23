@@ -2,6 +2,7 @@ use super::*;
 use crate::context::*;
 use crate::pixel::*;
 use crate::image::*;
+use crate::buffer::*;
 
 use std::mem::*;
 use std::ops::*;

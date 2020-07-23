@@ -9,6 +9,7 @@ macro_rules! tex_target {
         tex_target!([$name $display]; InternalFormat; $GL; $dim, $($rest)*);
     };
 
+    //for multisampled targets
     ([$name:ident<$ms:ident> $display:literal]; $bound:ident; $GL:ty; $dim:ty, $($rest:tt)*) => {
         #[allow(non_camel_case_types)]
         #[derive(Derivative)]
@@ -142,12 +143,72 @@ tex_target! {
     [TEXTURE_1D_ARRAY "Texture 1D Array"]; GL30; (<TEXTURE_1D as TextureType>::Dim, usize),
     [TEXTURE_2D_ARRAY "Texture 2D Array"]; GL30; (<TEXTURE_2D as TextureType>::Dim, usize),
     [TEXTURE_RECTANGLE "Texture Rectangle"]; GL31; <TEXTURE_2D as TextureType>::Dim,
-    [TEXTURE_BUFFER "Texture Buffer"]; ColorFormat; GL31; usize,
+    // [TEXTURE_BUFFER "Texture Buffer"]; ColorFormat; GL31; usize,
     [TEXTURE_CUBE_MAP "Texture Cube Map"]; GL13; <TEXTURE_2D as TextureType>::Dim,
     [TEXTURE_CUBE_MAP_ARRAY "Texture Cube Map Array"]; GL40; <TEXTURE_2D_ARRAY as TextureType>::Dim,
     [TEXTURE_2D_MULTISAMPLE<MS> "Texture 2D Multisample"]; Renderable; GL32; <TEXTURE_2D as TextureType>::Dim,
     [TEXTURE_2D_MULTISAMPLE_ARRAY<MS> "Texture 2D Multisample Array"]; Renderable; GL32; <TEXTURE_2D_ARRAY as TextureType>::Dim,
 }
+
+//we can't really shoehorn in a phantom reference to a buffer in the macro, so
+//we have to manually do the TEXTURE_BUFFER targets
+
+#[allow(non_camel_case_types)]
+#[derive(Derivative)]
+#[derivative(Clone(bound=""), Copy(bound=""), PartialEq, Eq, Hash, Default)]
+pub struct TEXTURE_BUFFER<'a> { buf: PhantomData<Slice<'a, dyn std::any::Any, ReadOnly>> }
+
+#[allow(non_camel_case_types)]
+#[derive(Derivative)]
+#[derivative(Clone(bound=""), Copy(bound=""), PartialEq, Eq, Hash, Default)]
+pub struct TEXTURE_BUFFER_MUT<'a> { buf: PhantomData<SliceMut<'a, dyn std::any::Any, ReadOnly>> }
+
+impl<'a> Debug for TEXTURE_BUFFER<'a> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result { write!(f, "TEXTURE_BUFFER") }
+}
+impl<'a> Debug for TEXTURE_BUFFER_MUT<'a> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result { write!(f, "TEXTURE_BUFFER_MUT") }
+}
+
+impl<'a> Display for TEXTURE_BUFFER<'a> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result { write!(f, "Texture Buffer") }
+}
+impl<'a> Display for TEXTURE_BUFFER_MUT<'a> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result { write!(f, "Mutable Texture Buffer") }
+}
+
+impl<'a> From<TEXTURE_BUFFER<'a>> for GLenum { fn from(_:TEXTURE_BUFFER) -> GLenum {gl::TEXTURE_BUFFER} }
+impl<'a> From<TEXTURE_BUFFER_MUT<'a>> for GLenum { fn from(_:TEXTURE_BUFFER_MUT) -> GLenum {gl::TEXTURE_BUFFER} }
+impl<'a> TryFrom<GLenum> for TEXTURE_BUFFER<'a> {
+    type Error = GLError;
+    fn try_from(val:GLenum) -> Result<Self,GLError> {
+        if val == gl::TEXTURE_BUFFER {
+            Ok(Self::default())
+        } else {
+            Err(GLError::InvalidEnum(val,"".to_string()))
+        }
+    }
+}
+impl<'a> TryFrom<GLenum> for TEXTURE_BUFFER_MUT<'a> {
+    type Error = GLError;
+    fn try_from(val:GLenum) -> Result<Self,GLError> {
+        if val == gl::TEXTURE_BUFFER {
+            Ok(Self::default())
+        } else {
+            Err(GLError::InvalidEnum(val,"".to_string()))
+        }
+    }
+}
+
+impl<'a> GLEnum for TEXTURE_BUFFER<'a> {}
+impl<'a> GLEnum for TEXTURE_BUFFER_MUT<'a> {}
+
+unsafe impl<'a> TextureType for TEXTURE_BUFFER<'a> { type GL = GL31; type Dim = usize; }
+unsafe impl<'a> TextureType for TEXTURE_BUFFER_MUT<'a> { type GL = GL31; type Dim = usize; }
+
+impl<'a,F:ColorFormat> TextureTarget<F> for TEXTURE_BUFFER<'a> {}
+impl<'a,F:ColorFormat> TextureTarget<F> for TEXTURE_BUFFER_MUT<'a> {}
+
 
 //All but TEXTURE_BUFFER
 
@@ -232,7 +293,7 @@ unsafe impl<MS:MultisampleFormat> Multisampled for TEXTURE_2D_MULTISAMPLE<MS> {
 }
 unsafe impl<MS:MultisampleFormat> Multisampled for TEXTURE_2D_MULTISAMPLE_ARRAY<MS> {
     const SAMPLES: GLuint = MS::SAMPLES;
-    const FIXED: bool = MS::FIXED;    
+    const FIXED: bool = MS::FIXED;
 }
 
 #[marker] pub trait TextureTarget<F>: TextureType {}
