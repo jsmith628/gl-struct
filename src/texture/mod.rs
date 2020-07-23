@@ -230,3 +230,17 @@ impl<F:InternalFormat, T:TextureTarget<F>> Texture<F,T> {
 impl<F, T:TextureTarget<F>> Drop for Texture<F,T> {
     fn drop(&mut self) { unsafe { gl::DeleteTextures(1, &self.id) } }
 }
+
+//aliases for the different texture types
+
+pub type Tex1D<F> = Texture<F, TEXTURE_1D>;
+pub type Tex2D<F> = Texture<F, TEXTURE_2D>;
+pub type Tex3D<F> = Texture<F, TEXTURE_3D>;
+pub type Tex1DArray<F> = Texture<F, TEXTURE_1D_ARRAY>;
+pub type Tex2DArray<F> = Texture<F, TEXTURE_2D_ARRAY>;
+pub type TexRect<F> = Texture<F, TEXTURE_RECTANGLE>;
+pub type TexBuf<'a,F> = Texture<F, TEXTURE_BUFFER<'a>>;
+pub type TexBufMut<'a,F> = Texture<F, TEXTURE_BUFFER_MUT<'a>>;
+pub type TexCubeMap<F> = Texture<F, TEXTURE_CUBE_MAP>;
+pub type Tex2DMS<F,MS> = Texture<F, TEXTURE_2D_MULTISAMPLE<MS>>;
+pub type Tex2DMSArray<F,MS> = Texture<F, TEXTURE_2D_MULTISAMPLE_ARRAY<MS>>;
