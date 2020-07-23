@@ -5,9 +5,11 @@ use crate::pixel::*;
 use std::mem::*;
 
 pub use self::fragment::*;
+pub use self::attachment::*;
 
 mod fragment;
 mod bitplane;
+mod attachment;
 
 pub struct Framebuffer<'a, DS, F:'a> {
     id: GLuint,
