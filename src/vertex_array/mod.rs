@@ -18,6 +18,36 @@ pub mod vertex;
 mod attrib;
 mod attrib_array;
 
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
+pub struct VertexArrayTarget;
+display_from_debug!(VertexArrayTarget);
+
+impl<'a,E:Copy,V:Vertex<'a>> Target<VertexArray<'a,E,V>> for VertexArrayTarget {
+    fn target_id(self) -> GLenum {0}
+    unsafe fn bind(self, obj: &VertexArray<'a,E,V>) { gl::BindVertexArray(obj.id()) }
+    unsafe fn unbind(self) { gl::BindVertexArray(0) }
+}
+
+impl<'a,'b,T:GLSLType+'b> Target<VertexAttrib<'a,'b,T>> for VertexArrayTarget {
+    fn target_id(self) -> GLenum {0}
+    unsafe fn bind(self, obj: &VertexAttrib<'a,'b,T>) { gl::BindVertexArray(obj.id()) }
+    unsafe fn unbind(self) { gl::BindVertexArray(0) }
+}
+
+impl<'a,'b,T:GLSLType+'b> Target<VertexAttribMut<'a,'b,T>> for VertexArrayTarget {
+    fn target_id(self) -> GLenum {0}
+    unsafe fn bind(self, obj: &VertexAttribMut<'a,'b,T>) { gl::BindVertexArray(obj.id()) }
+    unsafe fn unbind(self) { gl::BindVertexArray(0) }
+}
+
+pub(self) static mut VERTEX_ARRAY: BindingLocation<VertexArrayTarget> = unsafe {
+    BindingLocation::new(VertexArrayTarget)
+};
+
+pub(self) static mut ARRAY_BUFFER: BindingLocation<BufferTarget> = unsafe {
+    BindingLocation::new(BufferTarget::ArrayBuffer)
+};
+
 #[repr(transparent)]
 pub struct VertexArray<'a,E:Copy,V:Vertex<'a>> {
     id: GLuint,
@@ -130,9 +160,11 @@ impl<'a,E:Element,V:Vertex<'a>> VertexArray<'a,E,V> {
     #[inline]
     pub fn bind_element_buffer<A:Initialized>(&mut self, elements: &'a Buffer<[E], A>) {
         unsafe {
-            gl::BindVertexArray(self.id());
-            gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, elements.id());
-            gl::BindVertexArray(0);
+            //we don't use the binding locations for ELEMENT_ARRAY_BUFFER here in order to make sure
+            //that we don't accidentally unbind the element buffer
+            VERTEX_ARRAY.map_bind(
+                self, |_| gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, elements.id())
+            );
         }
     }
 
@@ -142,9 +174,9 @@ impl<'a,E:Element,V:Vertex<'a>> VertexArray<'a,E,V> {
             if gl::GetVertexArrayiv::is_loaded() {
                 gl::GetVertexArrayiv(self.id(), gl::ELEMENT_ARRAY_BUFFER_BINDING, id.as_mut_ptr());
             } else {
-                gl::BindVertexArray(self.id());
-                gl::GetIntegerv(gl::ELEMENT_ARRAY_BUFFER_BINDING, id.as_mut_ptr());
-                gl::BindVertexArray(0);
+                VERTEX_ARRAY.map_bind(
+                    self, |_| gl::GetIntegerv(gl::ELEMENT_ARRAY_BUFFER_BINDING, id.as_mut_ptr())
+                );
             }
             id.assume_init() as GLuint
         }
@@ -154,9 +186,9 @@ impl<'a,E:Element,V:Vertex<'a>> VertexArray<'a,E,V> {
     pub fn bind_element_buffer_from(&mut self, elements: &VertexArray<'a,E,V>) {
         let id = elements.get_element_buffer_id();
         unsafe {
-            gl::BindVertexArray(self.id());
-            gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, id);
-            gl::BindVertexArray(0);
+            VERTEX_ARRAY.map_bind(
+                self, |_| gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, id)
+            );
         }
     }
 

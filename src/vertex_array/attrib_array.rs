@@ -72,6 +72,12 @@ where A2::AttribFormat: From<A1::AttribFormat>
     fn from(arr: &'a AttribArray<'b,A1>) -> AttribArray<'b,A2> { arr.cast() }
 }
 
+impl<'a,A:GLSLType> Target<AttribArray<'a,A>> for BufferTarget {
+    fn target_id(self) -> GLenum { self as GLenum }
+    unsafe fn bind(self, buf:&AttribArray<'a,A>) { gl::BindBuffer(self.into(), buf.id()) }
+    unsafe fn unbind(self) { gl::BindBuffer(self.into(), 0) }
+}
+
 pub trait NormalizeAttrib: GLSLType {
     type Normalized: GLSLType;
     fn normalize_format(fmt: Self::AttribFormat) -> <Self::Normalized as GLSLType>::AttribFormat;
