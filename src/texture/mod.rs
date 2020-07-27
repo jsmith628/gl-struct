@@ -63,7 +63,7 @@ pub(self) static mut TEXTURE0: BindingLocation<ActiveTexture> = unsafe {
 
 
 #[repr(transparent)]
-pub struct Texture<F, T:TextureTarget<F>> {
+pub struct Texture<F, T> {
     id: GLuint,
     phantom: PhantomData<(F, T, *const ())>
 }
@@ -227,7 +227,7 @@ impl<F:InternalFormat, T:TextureTarget<F>> Texture<F,T> {
 
 }
 
-impl<F, T:TextureTarget<F>> Drop for Texture<F,T> {
+impl<F, T> Drop for Texture<F,T> {
     fn drop(&mut self) { unsafe { gl::DeleteTextures(1, &self.id) } }
 }
 

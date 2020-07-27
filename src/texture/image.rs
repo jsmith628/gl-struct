@@ -20,11 +20,12 @@ impl CubeMapFace {
 
 impl Default for CubeMapFace { fn default() -> Self { Self::PositiveX } }
 
-pub(super) trait ImageSelector: TextureType {
+pub(super) trait ImageSelector {
     type Selection: Sized + Copy + Hash + Debug + Display + Into<GLenum> + TryFrom<GLenum, Error=GLError> + Default;
 }
 
 // pub(super) trait ImageSelector: TextureType { type Selection: GLEnum + Default; }
+impl<T> ImageSelector for T { default type Selection = TEXTURE_2D; }
 impl<T: TextureType> ImageSelector for T { default type Selection = Self; }
 impl<T: BaseImage> ImageSelector for T { type Selection = Self; }
 impl ImageSelector for TEXTURE_CUBE_MAP { type Selection = CubeMapFace; }
@@ -33,7 +34,7 @@ impl ImageSelector for TEXTURE_CUBE_MAP { type Selection = CubeMapFace; }
 #[repr(C)]
 #[derive(Derivative)]
 #[derivative(Clone(bound=""), Copy(bound=""))]
-pub struct TexImage<'a,F,T:TextureTarget<F>> {
+pub struct TexImage<'a,F,T> {
     pub(super) id: GLuint,
     pub(super) level: GLuint,
     pub(super) face: <T as ImageSelector>::Selection,
@@ -41,30 +42,30 @@ pub struct TexImage<'a,F,T:TextureTarget<F>> {
 }
 
 #[repr(C)]
-pub struct TexImageMut<'a,F,T:TextureTarget<F>> {
+pub struct TexImageMut<'a,F,T> {
     pub(super) id: GLuint,
     pub(super) level: GLuint,
     pub(super) face: <T as ImageSelector>::Selection,
     pub(super) tex: PhantomData<&'a mut Texture<F,T>>
 }
 
-impl<'a,'b:'a,F,T:TextureTarget<F>> From<&'a TexImage<'b,F,T>> for TexImage<'b,F,T> {
+impl<'a,'b:'a,F,T> From<&'a TexImage<'b,F,T>> for TexImage<'b,F,T> {
     #[inline] fn from(lvl: &'a TexImage<'b,F,T>) -> Self {*lvl}
 }
 
-impl<'a,F,T:TextureTarget<F>> From<TexImageMut<'a,F,T>> for TexImage<'a,F,T> {
+impl<'a,F,T> From<TexImageMut<'a,F,T>> for TexImage<'a,F,T> {
     #[inline] fn from(lvl: TexImageMut<'a,F,T>) -> Self {
         TexImage{id:lvl.id, level:lvl.level, face:lvl.face, tex:PhantomData}
     }
 }
 
-impl<'a,'b:'a,F,T:TextureTarget<F>> From<&'a TexImageMut<'b,F,T>> for TexImage<'a,F,T> {
+impl<'a,'b:'a,F,T> From<&'a TexImageMut<'b,F,T>> for TexImage<'a,F,T> {
     #[inline] fn from(lvl: &'a TexImageMut<'b,F,T>) -> Self {
         TexImage{id:lvl.id, level:lvl.level, face:lvl.face, tex:PhantomData}
     }
 }
 
-impl<'a,'b:'a,F,T:TextureTarget<F>> From<&'a mut TexImageMut<'b,F,T>> for TexImageMut<'a,F,T> {
+impl<'a,'b:'a,F,T> From<&'a mut TexImageMut<'b,F,T>> for TexImageMut<'a,F,T> {
     #[inline] fn from(lvl: &'a mut TexImageMut<'b,F,T>) -> Self {
         TexImageMut{id:lvl.id, level:lvl.level, face:lvl.face, tex:PhantomData}
     }
