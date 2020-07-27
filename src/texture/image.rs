@@ -20,11 +20,7 @@ impl CubeMapFace {
 
 impl Default for CubeMapFace { fn default() -> Self { Self::PositiveX } }
 
-pub(super) trait ImageSelector {
-    type Selection: Sized + Copy + Hash + Debug + Display + Into<GLenum> + TryFrom<GLenum, Error=GLError> + Default;
-}
-
-// pub(super) trait ImageSelector: TextureType { type Selection: GLEnum + Default; }
+pub(super) trait ImageSelector { type Selection: GLEnum + Default; }
 impl<T> ImageSelector for T { default type Selection = TEXTURE_2D; }
 impl<T: TextureType> ImageSelector for T { default type Selection = Self; }
 impl<T: BaseImage> ImageSelector for T { type Selection = Self; }
@@ -134,6 +130,9 @@ impl<'a,F,T:TextureTarget<F>> TexImage<'a,F,T> {
 
 }
 
+impl<'a,F> TexImage<'a,F,TEXTURE_CUBE_MAP> where TEXTURE_CUBE_MAP: TextureTarget<F> {
+    pub fn face(&self) -> CubeMapFace { self.face }
+}
 
 impl<'a,F,T:TextureTarget<F>> TexImageMut<'a,F,T> {
     pub fn id(&self) -> GLuint { self.id }
@@ -155,4 +154,8 @@ impl<'a,F,T:TextureTarget<F>> TexImageMut<'a,F,T> {
 
     pub fn base_dim(&self) -> T::Dim { self.as_immut().base_dim() }
 
+}
+
+impl<'a,F> TexImageMut<'a,F,TEXTURE_CUBE_MAP> where TEXTURE_CUBE_MAP: TextureTarget<F> {
+    pub fn face(&self) -> CubeMapFace { self.face }
 }
