@@ -1,6 +1,6 @@
 use super::*;
 
-pub trait MultisampleFormat {
+pub trait MultisampleFormat: 'static {
     const SAMPLES: GLuint;
     const FIXED: bool;
 }

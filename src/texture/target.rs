@@ -122,7 +122,7 @@ pub unsafe trait TextureType: GLEnum + Default {
 
 }
 
-#[marker] pub unsafe trait Owned: TextureType {}
+#[marker] pub unsafe trait Owned: TextureType + 'static {}
 #[marker] pub unsafe trait Sampled: Owned {}
 #[marker] pub unsafe trait Mipmapped: Sampled {}
 #[marker] pub unsafe trait PixelTransfer: Sampled {}
