@@ -1,15 +1,22 @@
 use super::*;
 use crate::context::*;
 use crate::pixel::*;
+use crate::glsl::*;
+use crate::texture::*;
+use crate::renderbuffer::*;
 
 use std::mem::*;
 
 pub use self::fragment::*;
 pub use self::attachment::*;
+pub use self::image::*;
+
+use self::fragment::Layered;
+use self::fragment::Multisampled;
 
 mod fragment;
-mod bitplane;
 mod attachment;
+mod image;
 
 glenum! {
     #[non_exhaustive]
