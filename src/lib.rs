@@ -37,6 +37,7 @@ use std::marker::PhantomData;
 #[macro_use] mod macros;
 #[macro_use] pub mod glsl;
 
+pub mod version;
 pub mod context;
 pub mod image;
 pub mod pixel;

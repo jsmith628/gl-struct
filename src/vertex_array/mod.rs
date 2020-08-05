@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 use std::mem::*;
 use std::ptr::*;
 
-use crate::context::*;
+use crate::version::*;
 use crate::buffer::*;
 use crate::glsl::GLSLType;
 

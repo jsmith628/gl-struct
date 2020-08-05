@@ -2,7 +2,7 @@
 use super::*;
 
 use crate::gl;
-use crate::context::*;
+use crate::version::*;
 use crate::pixel::*;
 use crate::vertex_array::*;
 

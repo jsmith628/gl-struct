@@ -2,10 +2,9 @@
 use super::*;
 use std::marker::PhantomData;
 
-pub use self::version::*;
+use crate::version::*;
 pub use self::state::*;
 
-mod version;
 mod state;
 
 ///

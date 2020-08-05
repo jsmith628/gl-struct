@@ -4,7 +4,7 @@ use std::ptr::*;
 use std::time::*;
 use std::convert::TryInto;
 
-use crate::context::*;
+use crate::version::*;
 
 glenum! {
     pub enum SyncStatus {
