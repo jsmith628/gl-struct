@@ -1,29 +1,92 @@
 
 use super::*;
 
-use std::mem::MaybeUninit;
+use std::mem::*;
+use std::str::*;
 
-// macro_rules! check_loaded {
-//     ($gl_fun0:ident, $($gl_fun:ident),+; $expr:expr) => {
-//         check_loaded!($gl_fun0; check_loaded!($($gl_fun),+; $expr)).map_or_else(|e| Err(e), |ok| ok)
-//     };
-//
-//     ($gl_fun:ident; $expr:expr) => {
-//         if $crate::gl::$gl_fun::is_loaded() {
-//             Ok($expr)
-//         } else {
-//             Err($crate::GLError::FunctionNotLoaded(concat!("gl", stringify!($gl_fun))))
-//         }
-//     }
-// }
+use std::ffi::CStr;
+use std::os::raw::c_char;
+use std::collections::HashSet;
 
-fn get_integerv(param: GLenum) -> GLint {
-    unsafe {
-        let mut dest = MaybeUninit::uninit();
-        gl::GetIntegerv(param, dest.get_mut());
-        dest.assume_init()
+unsafe fn get_integerv(name: GLenum) -> GLint {
+    let mut dest = MaybeUninit::uninit();
+    gl::GetIntegerv(name, dest.get_mut());
+    dest.assume_init()
+}
+
+unsafe fn get_string(name: GLenum) -> &'static CStr {
+    CStr::from_ptr(gl::GetString(name) as *const c_char)
+}
+
+unsafe fn get_string_i(name: GLenum, index: GLuint) -> &'static CStr {
+    CStr::from_ptr(gl::GetStringi(name, index) as *const c_char)
+}
+
+fn get_major_version() -> GLuint {
+    if gl::GetIntegerv::is_loaded() {
+        unsafe { get_integerv(gl::MAJOR_VERSION) as GLuint }
+    } else {
+        0
     }
 }
+
+fn get_minor_version() -> GLuint {
+    if gl::GetIntegerv::is_loaded() {
+        unsafe { get_integerv(gl::MINOR_VERSION) as GLuint }
+    } else {
+        0
+    }
+}
+
+enum ExtensionsIter {
+    String(SplitWhitespace<'static>),
+    Stringi(usize, usize),
+}
+
+impl Iterator for ExtensionsIter {
+    type Item = &'static str;
+
+    fn next(&mut self) -> Option<&'static str> {
+        match self {
+            Self::String(iter) => iter.next(),
+            Self::Stringi(count, index) => {
+                if index < count {
+                    *index += 1;
+                    unsafe {
+                        Some(get_string_i(gl::EXTENSIONS, (*index-1) as GLuint).to_str().unwrap())
+                    }
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self {
+            Self::String(iter) => iter.size_hint(),
+            Self::Stringi(count, index) => (count - index, Some(count - index))
+        }
+    }
+
+}
+
+
+fn get_extensions() -> ExtensionsIter {
+    unsafe {
+        if gl::GetStringi::is_loaded() {
+            //for GL30 onwards, we want to use gl::GetStringi and loop through that way
+            ExtensionsIter::Stringi(get_integerv(gl::NUM_EXTENSIONS).max(0) as usize, 0)
+        } else if gl::GetString::is_loaded() {
+            //else, we use glGetString to get a space-separated list of extensions
+            ExtensionsIter::String(get_string(gl::EXTENSIONS).to_str().unwrap().split_whitespace())
+        } else {
+            //else, the GL isn't loaded, so we just return nothing
+            ExtensionsIter::Stringi(0, 0)
+        }
+    }
+}
+
 
 #[inline]
 pub unsafe fn assume_supported<GL:GLVersion>() -> GL {
@@ -35,16 +98,24 @@ pub fn supported<GL:GLVersion>() -> Result<GL,GLError> {
     if gl::GetIntegerv::is_loaded() {
         upgrade_to(unsafe { &GL10::assume_loaded() })
     } else {
-        Err(GLError::Version(target.major_version(), target.minor_version()))
+        Err(GLError::Version(target.req_major_version(), target.req_minor_version()))
     }
 }
 
 #[inline]
-pub fn supports<Test:GLVersion+?Sized, Version:GLVersion+Sized>(gl: &Test) -> bool {
-    let target: Version = unsafe { ::std::mem::zeroed() };
-    let version = (target.major_version(), target.minor_version());
-    (gl.major_version(), gl.minor_version()) <= version ||
-    (gl.get_major_version(), gl.get_minor_version()) <= version
+pub fn supports<Test:GLVersion+?Sized, Version:GLVersion+Sized>(
+    #[allow(unused_variables)] gl: &Test
+) -> bool {
+
+    //use specialization and a helper trait to determine if Test supports Version
+    trait Helper<GL> { fn _supports() -> bool; }
+    impl<T:?Sized,U> Helper<U> for T { default fn _supports() -> bool {false} }
+    impl<T:Supports<U>+?Sized,U:GLVersion> Helper<U> for T {
+        fn _supports() -> bool {true}
+    }
+
+    <Test as Helper<Version>>::_supports()
+
 }
 
 pub fn upgrade_to<Test:GLVersion+?Sized, Version:GLVersion+Sized>(gl: &Test) -> Result<Version,GLError> {
@@ -52,51 +123,16 @@ pub fn upgrade_to<Test:GLVersion+?Sized, Version:GLVersion+Sized>(gl: &Test) -> 
     if supports::<Test,Version>(gl){
         Ok(target)
     } else {
-        Err(GLError::Version(target.major_version(), target.minor_version()))
+        Err(GLError::Version(target.req_major_version(), target.req_minor_version()))
     }
 }
 
-///
-///A trait representing the currently loaded openGL version
-///
-///The purpose of this is two-fold:
-/// * To provide an object that can "own" the functions loaded by [`gl::load_with()`]:<p>
-///     <i>As it stands currently, by default, all of the GL calls in [`gl-rs`](crate::gl) will panic unless loaded
-///     with a function pointer to the driver functions. However, by having an object be created when
-///     those functions are loaded and making it a requirement for instantiating the OpenGL object
-///     structs, we can guarrantee that those panics will not occur (and at compile-time with near 0 cost) </i>
-/// * To provide an object that can enscapulate openGL versioning: <p>
-///     <i>Even with a guarrantee that [`gl::load_with()`] has been called, there is still no guarrantee
-///     that the driver implements or the hardware supports any given version of OpenGL (or that the
-///     functions were even loaded properly!). Thus, by having an object be created on version checking
-///     and requiring it for creating objects using that version, we can guarrantee that the GL version
-///     is available (also at compile time at near 0 cost)</i>
-///
-/// ## Usage
-///
-///Every openGL object in this crate will require a reference to some object that implements this
-///trait. In order to obtain this object, two things are required:
-/// * Loading the function pointers to obtain a [`GL10`] object:<p>
-///   This can be done by passing a fuction loader from any compatible context-creation library
-///   to [`GL10::load()`], as per [`gl::load_with()`] from [`gl-rs`](crate::gl). However, since this is
-///   fundamentally unsafe, it is highly recommended that such aforementioned crates implemement a
-///   safe function to do this automatically and return the `GL10` object for the end user to use
-/// * "Upgrading" that `GL10` object to the appropriate version:<p>
-///   This is done with the corresponding `try_as_*` functions in this trait and any necessary error
-///   handling in the case of the version not being supported.
-///
 pub unsafe trait GLVersion {
 
-    fn major_version(&self) -> GLuint;
-    fn minor_version(&self) -> GLuint;
+    fn req_major_version(&self) -> GLuint;
+    fn req_minor_version(&self) -> GLuint;
 
-    #[inline] fn get_major_version(&self) -> GLuint {
-        if gl::GetIntegerv::is_loaded() {get_integerv(gl::MAJOR_VERSION) as GLuint} else {0}
-    }
-
-    #[inline] fn get_minor_version(&self) -> GLuint {
-        if gl::GetIntegerv::is_loaded() {get_integerv(gl::MINOR_VERSION) as GLuint} else {0}
-    }
+    fn req_extensions(&self) -> HashSet<&'static str>;
 
     #[inline(always)] fn as_gl10(&self) -> GL10 {GL10 {_private:PhantomData}}
 
@@ -171,8 +207,9 @@ macro_rules! version_struct {
         pub struct $gl { _private: ::std::marker::PhantomData<*const ()> }
 
         unsafe impl GLVersion for $gl {
-            #[inline(always)] fn major_version(&self) -> GLuint {$maj}
-            #[inline(always)] fn minor_version(&self) -> GLuint {$min}
+            fn req_major_version(&self) -> GLuint {$maj}
+            fn req_minor_version(&self) -> GLuint {$min}
+            fn req_extensions(&self) -> HashSet<&'static str> { HashSet::new() }
         }
 
         $(unsafe impl<G:GLVersion> Supports<G> for $gl where $prev:Supports<G> {})*
@@ -183,8 +220,9 @@ macro_rules! version_struct {
 }
 
 unsafe impl GLVersion for ! {
-    fn major_version(&self) -> GLuint {!0}
-    fn minor_version(&self) -> GLuint {!0}
+    fn req_major_version(&self) -> GLuint {!0}
+    fn req_minor_version(&self) -> GLuint {!0}
+    fn req_extensions(&self) -> HashSet<&'static str> { HashSet::new() }
 }
 
 version_struct!{ {}
