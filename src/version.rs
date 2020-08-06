@@ -38,6 +38,10 @@ fn get_minor_version() -> GLuint {
     }
 }
 
+fn get_version() -> (GLuint, GLuint) {
+    (get_major_version(), get_minor_version())
+}
+
 enum ExtensionsIter {
     String(SplitWhitespace<'static>),
     Stringi(usize, usize),
@@ -93,13 +97,51 @@ pub unsafe fn assume_supported<GL:GLVersion>() -> GL {
     MaybeUninit::zeroed().assume_init()
 }
 
-pub fn supported<GL:GLVersion>() -> Result<GL,GLError> {
-    let target: GL = unsafe { ::std::mem::zeroed() };
-    if gl::GetIntegerv::is_loaded() {
-        upgrade_to(unsafe { &GL10::assume_loaded() })
-    } else {
-        Err(GLError::Version(target.req_major_version(), target.req_minor_version()))
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum GLVersionError {
+    Version(GLuint, GLuint),
+    Extension(&'static str)
+}
+
+impl ::std::fmt::Display for GLVersionError {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        match self {
+            Self::Version(maj, min) => write!(
+                f,"The current OpenGL context does not support GL version {}.{}", maj, min
+            ),
+            Self::Extension(ex) => write!(
+                f,"The current OpenGL context does not support the extension {}", ex
+            ),
+        }
     }
+}
+
+
+
+pub fn supported<GL:GLVersion>() -> Result<GL,GLVersionError> {
+
+    //since the version methods take &self, we need to construct an instance
+    let target: GL = unsafe { assume_supported() };
+
+    let req_version = (target.req_major_version(), target.req_minor_version());
+    let mut req_extensions = target.req_extensions();
+
+    //if the required version is satisfied
+    if get_version() >= req_version {
+
+        //make sure that every extra required extension is supported
+        if req_extensions.len() == 0 { return Ok(target); }
+        for e in get_extensions() {
+            req_extensions.remove(e);
+            if req_extensions.len() == 0 { return Ok(target); }
+        }
+
+        Err(GLVersionError::Extension(req_extensions.into_iter().next().unwrap()))
+
+    } else {
+        Err(GLVersionError::Version(req_version.0, req_version.1))
+    }
+
 }
 
 #[inline]
@@ -118,12 +160,11 @@ pub fn supports<Test:GLVersion+?Sized, Version:GLVersion+Sized>(
 
 }
 
-pub fn upgrade_to<Test:GLVersion+?Sized, Version:GLVersion+Sized>(gl: &Test) -> Result<Version,GLError> {
-    let target: Version = unsafe { ::std::mem::zeroed() };
-    if supports::<Test,Version>(gl){
-        Ok(target)
+pub fn upgrade_to<Test:GLVersion+?Sized, Version:GLVersion+Sized>(gl: &Test) -> Result<Version,GLVersionError> {
+    if supports::<Test,Version>(gl) {
+        Ok(unsafe { assume_supported() } )
     } else {
-        Err(GLError::Version(target.req_major_version(), target.req_minor_version()))
+        supported::<Version>()
     }
 }
 
@@ -136,27 +177,27 @@ pub unsafe trait GLVersion {
 
     #[inline(always)] fn as_gl10(&self) -> GL10 {GL10 {_private:PhantomData}}
 
-    #[inline(always)] fn try_as_gl11(&self) -> Result<GL11,GLError> {upgrade_to(self)}
-    #[inline(always)] fn try_as_gl12(&self) -> Result<GL12,GLError> {upgrade_to(self)}
-    #[inline(always)] fn try_as_gl13(&self) -> Result<GL13,GLError> {upgrade_to(self)}
-    #[inline(always)] fn try_as_gl14(&self) -> Result<GL14,GLError> {upgrade_to(self)}
-    #[inline(always)] fn try_as_gl15(&self) -> Result<GL15,GLError> {upgrade_to(self)}
+    #[inline(always)] fn try_as_gl11(&self) -> Result<GL11,GLVersionError> {upgrade_to(self)}
+    #[inline(always)] fn try_as_gl12(&self) -> Result<GL12,GLVersionError> {upgrade_to(self)}
+    #[inline(always)] fn try_as_gl13(&self) -> Result<GL13,GLVersionError> {upgrade_to(self)}
+    #[inline(always)] fn try_as_gl14(&self) -> Result<GL14,GLVersionError> {upgrade_to(self)}
+    #[inline(always)] fn try_as_gl15(&self) -> Result<GL15,GLVersionError> {upgrade_to(self)}
 
-    #[inline(always)] fn try_as_gl20(&self) -> Result<GL20,GLError> {upgrade_to(self)}
-    #[inline(always)] fn try_as_gl21(&self) -> Result<GL21,GLError> {upgrade_to(self)}
+    #[inline(always)] fn try_as_gl20(&self) -> Result<GL20,GLVersionError> {upgrade_to(self)}
+    #[inline(always)] fn try_as_gl21(&self) -> Result<GL21,GLVersionError> {upgrade_to(self)}
 
-    #[inline(always)] fn try_as_gl30(&self) -> Result<GL30,GLError> {upgrade_to(self)}
-    #[inline(always)] fn try_as_gl31(&self) -> Result<GL31,GLError> {upgrade_to(self)}
-    #[inline(always)] fn try_as_gl32(&self) -> Result<GL32,GLError> {upgrade_to(self)}
-    #[inline(always)] fn try_as_gl33(&self) -> Result<GL33,GLError> {upgrade_to(self)}
+    #[inline(always)] fn try_as_gl30(&self) -> Result<GL30,GLVersionError> {upgrade_to(self)}
+    #[inline(always)] fn try_as_gl31(&self) -> Result<GL31,GLVersionError> {upgrade_to(self)}
+    #[inline(always)] fn try_as_gl32(&self) -> Result<GL32,GLVersionError> {upgrade_to(self)}
+    #[inline(always)] fn try_as_gl33(&self) -> Result<GL33,GLVersionError> {upgrade_to(self)}
 
-    #[inline(always)] fn try_as_gl40(&self) -> Result<GL40,GLError> {upgrade_to(self)}
-    #[inline(always)] fn try_as_gl41(&self) -> Result<GL41,GLError> {upgrade_to(self)}
-    #[inline(always)] fn try_as_gl42(&self) -> Result<GL42,GLError> {upgrade_to(self)}
-    #[inline(always)] fn try_as_gl43(&self) -> Result<GL43,GLError> {upgrade_to(self)}
-    #[inline(always)] fn try_as_gl44(&self) -> Result<GL44,GLError> {upgrade_to(self)}
-    #[inline(always)] fn try_as_gl45(&self) -> Result<GL45,GLError> {upgrade_to(self)}
-    #[inline(always)] fn try_as_gl46(&self) -> Result<GL46,GLError> {upgrade_to(self)}
+    #[inline(always)] fn try_as_gl40(&self) -> Result<GL40,GLVersionError> {upgrade_to(self)}
+    #[inline(always)] fn try_as_gl41(&self) -> Result<GL41,GLVersionError> {upgrade_to(self)}
+    #[inline(always)] fn try_as_gl42(&self) -> Result<GL42,GLVersionError> {upgrade_to(self)}
+    #[inline(always)] fn try_as_gl43(&self) -> Result<GL43,GLVersionError> {upgrade_to(self)}
+    #[inline(always)] fn try_as_gl44(&self) -> Result<GL44,GLVersionError> {upgrade_to(self)}
+    #[inline(always)] fn try_as_gl45(&self) -> Result<GL45,GLVersionError> {upgrade_to(self)}
+    #[inline(always)] fn try_as_gl46(&self) -> Result<GL46,GLVersionError> {upgrade_to(self)}
 
 }
 

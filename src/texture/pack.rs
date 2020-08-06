@@ -37,7 +37,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImage<'a,F,T> {
         unsafe { I::from_gl(gl, hint, self.dim().into_array(), |s, ptr| self.pack_pixels(s, ptr)) }
     }
 
-    pub fn try_into_image<I:OwnedTexImage<F>>(&self, hint:I::Hint) -> Result<I,GLError> {
+    pub fn try_into_image<I:OwnedTexImage<F>>(&self, hint:I::Hint) -> Result<I,GLVersionError> {
         Ok(self.into_image(&upgrade_to(&self.gl())?, hint))
     }
 
@@ -71,7 +71,7 @@ impl<'a,F:SpecificCompressed,T:CompressedTransferTarget<F>> TexImage<'a,F,T> {
         }
     }
 
-    pub fn try_into_compressed_image<I:OwnedCompressedImage<Format=F>>(&self, hint:I::Hint) -> Result<I,GLError> {
+    pub fn try_into_compressed_image<I:OwnedCompressedImage<Format=F>>(&self, hint:I::Hint) -> Result<I,GLVersionError> {
         Ok(self.into_compressed_image(&upgrade_to(&self.gl())?, hint))
     }
 

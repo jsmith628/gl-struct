@@ -147,7 +147,7 @@ macro_rules! glenum {
             type Error = GLError;
             fn try_from(e: ::gl::types::GLenum) -> Result<$name, GLError>{
                 match e {
-                    $(::gl::$gl => Ok($name::$item $((supported::<$GL>()?))? ),)*
+                    $(::gl::$gl => Ok($name::$item $((supported::<$GL>().unwrap()))? ),)*
                     _ => Err(::GLError::InvalidEnum(e, stringify!($name).to_string()))
                 }
             }
