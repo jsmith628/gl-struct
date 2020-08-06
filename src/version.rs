@@ -125,7 +125,7 @@ pub unsafe trait GLVersion {
 }
 
 ///Signifies that a given [GLVersion] object is a superset of another
-pub unsafe trait Supports<V:GLVersion>: GLVersion{}
+#[marker] pub unsafe trait Supports<V:GLVersion>: GLVersion {}
 unsafe impl<G:GLVersion> Supports<G> for G {}
 
 ///Signifies that a given [GLVersion] object supports all versions before [2.1](GL21)
@@ -175,8 +175,8 @@ macro_rules! version_struct {
             #[inline(always)] fn minor_version(&self) -> GLuint {$min}
         }
 
-        $(unsafe impl Supports<$prev> for $gl {})*
-        version_struct!({$($prev)* $gl} $($rest)*);
+        $(unsafe impl<G:GLVersion> Supports<G> for $gl where $prev:Supports<G> {})*
+        version_struct!({$gl} $($rest)*);
     };
 
     ({$($prev:ident)*} ) => {}
