@@ -241,12 +241,12 @@ unsafe impl<V> GL4 for V where V: GL3 + Supports<GL31> + Supports<GL32> + Suppor
 
 macro_rules! version_struct {
 
-    ({$($prev:ident)*} $gl:ident $maj:literal $min:literal, $($rest:tt)*) => {
+    ({$($prev:ty),*} $gl:ident $maj:literal $min:literal, $($rest:tt)*) => {
         version_struct!({$($prev)*} $gl $maj $min {}, $($rest)*);
     };
 
     (
-        {$($prev:ident)*}
+        {$($prev:ty),*}
         $gl:ident $maj:literal $min:literal
         {$($ex:ident {$($ex_deps:ident),*}),*},
         $($rest:tt)*
@@ -310,7 +310,7 @@ macro_rules! extension_struct {
 //the 'dependecies' section of each extension spec where effort was taken to mirror notes from the
 //specs in comments whenever potentially relevant
 
-version_struct!{ {}
+version_struct!{ {()}
 
     GL10 1 0,
 
@@ -602,11 +602,83 @@ version_struct!{ {}
 }
 
 
+macro_rules! impl_tuple_versions {
+
+    ({$($T:ident:$t:ident)*} $Last:ident:$l:ident) => {
+
+        unsafe impl<$($T:GLVersion,)* $Last:GLVersion+?Sized> GLVersion for ($($T,)* $Last,) {
+
+            fn req_major_version(&self) -> GLuint {
+                //split into the separate vars
+                let ($($t,)* $l,) = self;
+
+                //find the maximum version
+                $l.req_major_version()$(.max($t.req_major_version()))*
+            }
+
+            fn req_minor_version(&self) -> GLuint {
+                //split into the separate vars
+                let ($($t,)* $l,) = self;
+
+                //find the max version **including the major version**
+                #[allow(unused_mut)]
+                let mut max_version = ($l.req_major_version(), $l.req_minor_version());
+                $(max_version = max_version.max(($t.req_major_version(), $t.req_minor_version()));)*
+
+                //select the minor version
+                max_version.1
+            }
+
+            fn req_extensions(&self) -> HashSet<&'static str> {
+                //split into the separate vars
+                let ($($t,)* $l, ) = self;
+
+                //merge all of the extension sets into one
+                #[allow(unused_mut)]
+                let mut ex = $l.req_extensions();
+                $(ex = ex.union(&$t.req_extensions()).copied().collect();)*
+                ex
+            }
+
+        }
+
+        //a tuple version supports another version if any of its members do
+
+        //implement Supports if the last member does
+        unsafe impl<GL:GLVersion, $($T:GLVersion,)* $Last:GLVersion+?Sized> Supports<GL> for ($($T,)* $Last,)
+        where $Last:Supports<GL> {}
+
+        //recurse the Support implementation on the tuple containing the rest of the members
+        unsafe impl<GL:GLVersion, $($T:GLVersion,)* $Last:GLVersion+?Sized> Supports<GL> for ($($T,)* $Last,)
+        where ($($T,)*):Supports<GL> {}
+
+
+    }
+
+}
+
+impl_tuple!(impl_tuple_versions @with_last);
+
+
+//represents a context state where NO OpenGL is supported
+unsafe impl GLVersion for () {
+    fn req_major_version(&self) -> GLuint {0}
+    fn req_minor_version(&self) -> GLuint {0}
+    fn req_extensions(&self) -> HashSet<&'static str> { HashSet::new() }
+}
+
+//Everything supports ()
+unsafe impl<GL:GLVersion> Supports<()> for GL {}
+
+//represents the hypothetical maximum OpenGL version that supports ALL versions and extensions
 unsafe impl GLVersion for ! {
     fn req_major_version(&self) -> GLuint {!0}
     fn req_minor_version(&self) -> GLuint {!0}
     fn req_extensions(&self) -> HashSet<&'static str> { HashSet::new() }
 }
+
+//! supports everything
+unsafe impl<GL:GLVersion> Supports<GL> for ! {}
 
 //TODO: add actual checking of if functions are loaded
 
