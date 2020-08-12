@@ -436,7 +436,27 @@ version_struct!{ {()}
 
         //brought in by GL_EXT_packed_float and GL_ARB_color_buffer_float
         WGL_ARB_extensions_string {GL10},
-        WGL_ARB_pixel_format {WGL_ARB_extensions_string}
+        WGL_ARB_pixel_format {WGL_ARB_extensions_string},
+
+        //Technically, the spec does NOT say that this extension has been incorperated into GL30,
+        //as GL_ARB_framebuffer_object was created after OpenGL version 3.0. However, the
+        //extension is designed _specfically_ as an encapsulation of the GL30 framebuffer
+        //functionality, and thus, and context supporting GL30 should also support all of the
+        //features of this extension
+        GL_ARB_framebuffer_object {
+
+            GL11,
+
+            //Technically, the spec for this extension does not say that GL_ARB_framebuffer_object
+            //_requires_ these extensions, but since it GL_ARB_framebuffer_object is _specfically_
+            //designed to merge together these extensions, is very clear that any context supporting
+            //GL_ARB_framebuffer_object supports these as well
+            GL_EXT_framebuffer_object,
+            GL_EXT_framebuffer_blit,
+            GL_EXT_framebuffer_multisample,
+            GL_EXT_packed_depth_stencil
+
+        }
 
     },
 
@@ -518,11 +538,7 @@ version_struct!{ {()}
         GL_ARB_conservative_depth {GL30},
         GL_ARB_shading_language_420pack {GL10}, //also requires GLSL 130
         GL_ARB_internalformat_query {GL_ARB_framebuffer_object},
-        GL_ARB_map_buffer_alignment {GL21},
-
-        //brought in by GL_ARB_internalformat_query. in the future, more research needs to be done
-        //to see if the requirement can be lower to an earlier version
-        GL_ARB_framebuffer_object {GL11}  //maybe supports the EXT_framebuffer extensions?
+        GL_ARB_map_buffer_alignment {GL21}
 
     },
 
@@ -644,6 +660,8 @@ macro_rules! impl_tuple_versions {
 
         //a tuple version supports another version if any of its members do
 
+        //TODO: fix so that tuple subsets work.
+
         //implement Supports if the last member does
         unsafe impl<GL:GLVersion, $($T:GLVersion,)* $Last:GLVersion+?Sized> Supports<GL> for ($($T,)* $Last,)
         where $Last:Supports<GL> {}
@@ -677,7 +695,7 @@ unsafe impl GLVersion for ! {
     fn req_extensions(&self) -> HashSet<&'static str> { HashSet::new() }
 }
 
-//! supports everything
+//`!` supports everything
 unsafe impl<GL:GLVersion> Supports<GL> for ! {}
 
 //TODO: add actual checking of if functions are loaded
