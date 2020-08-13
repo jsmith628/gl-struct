@@ -658,9 +658,9 @@ macro_rules! impl_tuple_versions {
 
         }
 
+        //
         //a tuple version supports another version if any of its members do
-
-        //TODO: fix so that tuple subsets work.
+        //
 
         //implement Supports if the last member does
         unsafe impl<GL:GLVersion, $($T:GLVersion,)* $Last:GLVersion+?Sized> Supports<GL> for ($($T,)* $Last,)
@@ -669,6 +669,14 @@ macro_rules! impl_tuple_versions {
         //recurse the Support implementation on the tuple containing the rest of the members
         unsafe impl<GL:GLVersion, $($T:GLVersion,)* $Last:GLVersion+?Sized> Supports<GL> for ($($T,)* $Last,)
         where ($($T,)*):Supports<GL> {}
+
+        //
+        //A version supports a tuple version if it supports all of its members
+        //
+
+        unsafe impl<GL:GLVersion, $($T:GLVersion,)* $Last:GLVersion> Supports<GL> for ($($T,)* $Last,)
+        where $(GL:Supports<$T>,)* GL:Supports<$Last> {}
+
 
 
     }
