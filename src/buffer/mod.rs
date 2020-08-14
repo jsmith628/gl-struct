@@ -39,7 +39,7 @@ pub(self) static mut COPY_WRITE_BUFFER: BindingLocation<BufferTarget> = unsafe {
     BindingLocation::new(BufferTarget::CopyReadBuffer)
 };
 
-pub struct Buffer<T:?Sized, A:BufferStorage> {
+pub struct Buffer<T:?Sized, A:BufferStorage=ReadWrite> {
     ptr: BufPtr<T>,
     access: PhantomData<A>
 }

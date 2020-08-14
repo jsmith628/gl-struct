@@ -134,7 +134,7 @@ impl UninitBuf {
         unsafe { self.storage_raw(gl, slice_from_raw_parts(null(), count), hint) }
     }
 
-    pub unsafe fn data_raw<T:?Sized>(self, data: *const T, hint:DataHint) -> Buffer<T,ReadWrite> {
+    pub unsafe fn data_raw<T:?Sized>(self, data: *const T, hint:DataHint) -> Buffer<T> {
 
         //get the size and pointer of the object
         let size = size_of_val(&*data) as GLsizeiptr;
@@ -169,11 +169,11 @@ impl UninitBuf {
 
     }
 
-    pub fn data_box<T:?Sized>(self, data: Box<T>, usage: DataHint) -> Buffer<T,ReadWrite> {
+    pub fn data_box<T:?Sized>(self, data: Box<T>, usage: DataHint) -> Buffer<T> {
         map_dealloc(data, |ptr| unsafe{self.data_raw(ptr, usage)})
     }
 
-    pub fn data<T:Sized>(self, data: T, usage: DataHint) -> Buffer<T,ReadWrite> {
+    pub fn data<T:Sized>(self, data: T, usage: DataHint) -> Buffer<T> {
         unsafe {
             let buf = self.data_raw(&data, usage);
             forget(data);
@@ -181,11 +181,11 @@ impl UninitBuf {
         }
     }
 
-    pub fn data_uninit<T:Sized>(self, usage: DataHint) -> Buffer<MaybeUninit<T>,ReadWrite> {
+    pub fn data_uninit<T:Sized>(self, usage: DataHint) -> Buffer<MaybeUninit<T>> {
         unsafe { self.data_raw(null(), usage) }
     }
 
-    pub fn data_uninit_slice<T:Sized>(self, count: usize, usage: DataHint) -> Buffer<[MaybeUninit<T>],ReadWrite> {
+    pub fn data_uninit_slice<T:Sized>(self, count: usize, usage: DataHint) -> Buffer<[MaybeUninit<T>]> {
         unsafe { self.data_raw(slice_from_raw_parts(null(), count), usage) }
     }
 
