@@ -48,7 +48,7 @@ impl<U:?Sized, T:?Sized+Unsize<U>, A:Initialized> CoerceUnsized<Buffer<U,A>> for
 
 impl<T:?Sized, A:BufferStorage> Buffer<T,A> {
     #[inline] pub fn id(&self) -> GLuint { self.ptr.id() }
-    #[inline] pub fn gl(&self) -> GL15 { unsafe { assume_supported::<GL15>() } }
+    #[inline] pub fn gl(&self) -> GL_ARB_vertex_buffer_object { unsafe { assume_supported() } }
 
     #[inline] pub fn is(id: GLuint) -> bool { unsafe { gl::IsBuffer(id) != 0 } }
 
@@ -298,7 +298,9 @@ impl<T:?Sized+GPUCopy,A:Initialized> Clone for Buffer<T,A> {
                 let ptr = self.ptr.swap_ptr_unchecked(null());
 
                 if <A as BufferStorage>::MapPersistent::VALUE || self.immutable_storage() {
-                    raw.storage_raw(&assume_supported(), ptr, Some(self.storage_flags()))
+                    raw.storage_raw(
+                        &assume_supported::<GL_ARB_buffer_storage>(), ptr, Some(self.storage_flags())
+                    )
                 } else {
                     raw.data_raw(ptr, Some(self.usage())).downgrade_unchecked()
                 }

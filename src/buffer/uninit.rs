@@ -7,7 +7,8 @@ impl UninitBuf {
 
     unsafe fn from_id(id:GLuint) -> Self { Buffer { ptr: BufPtr::new(id, null_mut()), access: PhantomData } }
 
-    pub fn gen(#[allow(unused_variables)] gl: &GL15) -> GLuint {
+    #[allow(unused_variables)]
+    pub fn gen<GL:Supports<GL_ARB_vertex_buffer_object>>(gl: &GL) -> GLuint {
         unsafe {
             let mut id = MaybeUninit::uninit();
             gl::GenBuffers(1, id.as_mut_ptr());
@@ -15,7 +16,8 @@ impl UninitBuf {
         }
     }
 
-    pub fn gen_buffers(#[allow(unused_variables)] gl: &GL15, n:GLuint) -> Box<[GLuint]> {
+    #[allow(unused_variables)]
+    pub fn gen_buffers<GL:Supports<GL_ARB_vertex_buffer_object>>(gl: &GL, n:GLuint) -> Box<[GLuint]> {
         if n==0 { return Box::new([]); }
         unsafe {
             let mut ids = Box::new_uninit_slice(n as usize);
@@ -24,10 +26,10 @@ impl UninitBuf {
         }
     }
 
-    pub fn create(#[allow(unused_variables)] gl: &GL15) -> UninitBuf {
+    pub fn create<GL:Supports<GL_ARB_vertex_buffer_object>>(gl: &GL) -> UninitBuf {
         let mut id = MaybeUninit::uninit();
         unsafe {
-            if gl::CreateBuffers::is_loaded() {
+            if gl.supports_extension("GL_ARB_direct_state_access") {
                 gl::CreateBuffers(1, id.as_mut_ptr());
             } else {
                 gl::GenBuffers(1, id.as_mut_ptr());
@@ -38,11 +40,11 @@ impl UninitBuf {
         }
     }
 
-    pub fn create_buffers(gl: &GL15, n:GLuint) -> Box<[UninitBuf]> {
+    pub fn create_buffers<GL:Supports<GL_ARB_vertex_buffer_object>>(gl: &GL, n:GLuint) -> Box<[UninitBuf]> {
         if n==0 { return Box::new([]); }
         let mut ids = Box::new_uninit_slice(n as usize);
         unsafe {
-            if gl::CreateBuffers::is_loaded() {
+            if gl.supports_extension("GL_ARB_direct_state_access") {
                 gl::CreateBuffers(n.try_into().unwrap(), ids[0].as_mut_ptr());
                 ids.into_iter().map(|id| Self::from_id(id.assume_init())).collect()
             } else {
@@ -58,9 +60,9 @@ impl UninitBuf {
         }
     }
 
-    pub unsafe fn storage_raw<T:?Sized,A:Initialized>(
+    pub unsafe fn storage_raw<T:?Sized, A:Initialized, GL:Supports<GL_ARB_buffer_storage>>(
         self,
-        #[allow(unused_variables)] gl: &GL44,
+        gl: &GL,
         data: *const T,
         hint:StorageHint
     ) -> Buffer<T,A> {
@@ -81,7 +83,7 @@ impl UninitBuf {
 
         //upload the data
         if size!=0 {
-            if gl::NamedBufferStorage::is_loaded() {
+            if gl.supports_extension("GL_ARB_direct_state_access") {
                 gl::NamedBufferStorage(self.id(), size, ptr, flags)
             } else {
                 COPY_WRITE_BUFFER.map_bind(&self,
@@ -104,11 +106,15 @@ impl UninitBuf {
         }
     }
 
-    pub fn storage_box<T:?Sized,A:Initialized>(self, gl: &GL44, data: Box<T>, hint: StorageHint) -> Buffer<T,A> {
+    pub fn storage_box<T:?Sized, A:Initialized, GL:Supports<GL_ARB_buffer_storage>>(
+        self, gl: &GL, data: Box<T>, hint: StorageHint
+    ) -> Buffer<T,A> {
         map_dealloc(data, |ptr| unsafe{self.storage_raw(gl, ptr, hint)})
     }
 
-    pub fn storage<T:Sized,A:Initialized>(self, gl: &GL44, data: T, hint: StorageHint) -> Buffer<T,A> {
+    pub fn storage<T:Sized, A:Initialized, GL:Supports<GL_ARB_buffer_storage>>(
+        self, gl: &GL, data: T, hint: StorageHint
+    ) -> Buffer<T,A> {
         unsafe {
             let buf = self.storage_raw(gl, &data, hint);
             forget(data);
@@ -116,12 +122,14 @@ impl UninitBuf {
         }
     }
 
-    pub fn storage_uninit<T:Sized,A:Initialized>(self, gl: &GL44, hint: StorageHint) -> Buffer<MaybeUninit<T>,A> {
+    pub fn storage_uninit<T:Sized, A:Initialized, GL:Supports<GL_ARB_buffer_storage>>(
+        self, gl: &GL, hint: StorageHint
+    ) -> Buffer<MaybeUninit<T>,A> {
         unsafe { self.storage_raw(gl, null(), hint) }
     }
 
-    pub fn storage_uninit_slice<T:Sized,A:Initialized>(
-        self, gl: &GL44, count: usize, hint: StorageHint
+    pub fn storage_uninit_slice<T:Sized, A:Initialized, GL:Supports<GL_ARB_buffer_storage>>(
+        self, gl: &GL, count: usize, hint: StorageHint
     ) -> Buffer<[MaybeUninit<T>],A> {
         unsafe { self.storage_raw(gl, slice_from_raw_parts(null(), count), hint) }
     }
@@ -184,7 +192,7 @@ impl UninitBuf {
     pub unsafe fn with_raw<T:?Sized,A:NonPersistent>(
         self, data: *const T, hint:CreationHint
     ) -> Buffer<T,A> {
-        if let Ok(gl) = self.gl().try_as_gl44() {
+        if let Ok(gl) = upgrade_to::<_,GL_ARB_buffer_storage>(&self.gl()) {
             self.storage_raw(&gl, data, hint.map(|h| h.1))
         } else {
             self.data_raw(data, hint.map(|h| h.0)).downgrade::<A>()

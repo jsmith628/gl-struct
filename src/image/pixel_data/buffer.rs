@@ -80,8 +80,8 @@ impl<P,A:Initialized> FromPixels for Buffer<[P],A> {
     ) -> Self {
         //For persistent Buffers:
         //we assume the GLs are supported as if A is NonPersistent, the specialization covers it
-        let mut buf = Buffer::create(&assume_supported())
-            .storage_uninit_slice(&assume_supported(), count, hint.map(|c| c.1));
+        let mut buf = Buffer::create(&assume_supported::<GL_ARB_vertex_buffer_object>())
+            .storage_uninit_slice(&assume_supported::<GL_ARB_buffer_storage>(), count, hint.map(|c| c.1));
 
         get(PixelPtrMut::Buffer((&mut buf).id(), slice_from_raw_parts_mut(null_mut(), count)));
         buf.assume_init()
