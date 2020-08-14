@@ -44,10 +44,6 @@ pub(self) static mut VERTEX_ARRAY: BindingLocation<VertexArrayTarget> = unsafe {
     BindingLocation::new(VertexArrayTarget)
 };
 
-pub(self) static mut ARRAY_BUFFER: BindingLocation<BufferTarget> = unsafe {
-    BindingLocation::new(BufferTarget::ArrayBuffer)
-};
-
 #[repr(transparent)]
 pub struct VertexArray<'a,E:Copy,V:Vertex<'a>> {
     id: GLuint,

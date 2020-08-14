@@ -15,6 +15,7 @@ use std::ptr::*;
 use std::mem::*;
 
 pub use self::raw::*;
+pub use self::target::*;
 pub use self::hint::*;
 pub use self::storage::*;
 pub use self::uninit::*;
@@ -26,18 +27,11 @@ pub mod storage;
 pub mod hint;
 
 mod raw;
+mod target;
 mod uninit;
 mod map;
 mod slice;
 mod any;
-
-pub(self) static mut COPY_READ_BUFFER: BindingLocation<BufferTarget> = unsafe {
-    BindingLocation::new(BufferTarget::CopyReadBuffer)
-};
-
-pub(self) static mut COPY_WRITE_BUFFER: BindingLocation<BufferTarget> = unsafe {
-    BindingLocation::new(BufferTarget::CopyReadBuffer)
-};
 
 pub struct Buffer<T:?Sized, A=ReadWrite> {
     ptr: BufPtr<T>,
