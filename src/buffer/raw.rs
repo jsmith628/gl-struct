@@ -76,7 +76,7 @@ impl<T:?Sized> BufPtr<T> {
         if gl::GetNamedBufferParameteriv::is_loaded() {
             gl::GetNamedBufferParameteriv(self.id(), value, dest.as_mut_ptr());
         } else {
-            COPY_READ_BUFFER.map_bind(self,
+            ARRAY_BUFFER.map_bind(self,
                 |binding| gl::GetBufferParameteriv(binding.target_id(), value, dest.as_mut_ptr())
             );
         }
@@ -88,7 +88,7 @@ impl<T:?Sized> BufPtr<T> {
         if gl::GetNamedBufferParameteri64v::is_loaded() {
             gl::GetNamedBufferParameteri64v(self.id(), value, dest.as_mut_ptr());
         } else {
-            COPY_READ_BUFFER.map_bind(self,
+            ARRAY_BUFFER.map_bind(self,
                 |binding| gl::GetBufferParameteri64v(binding.target_id(), value, dest.as_mut_ptr())
             );
         }

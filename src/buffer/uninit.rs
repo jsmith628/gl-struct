@@ -33,8 +33,8 @@ impl UninitBuf {
                 gl::CreateBuffers(1, id.as_mut_ptr());
             } else {
                 gl::GenBuffers(1, id.as_mut_ptr());
-                gl::BindBuffer(gl::COPY_WRITE_BUFFER, id.assume_init());
-                gl::BindBuffer(gl::COPY_WRITE_BUFFER, 0);
+                gl::BindBuffer(gl::ARRAY_BUFFER, id.assume_init());
+                gl::BindBuffer(gl::ARRAY_BUFFER, 0);
             }
             Self::from_id(id.assume_init())
         }
@@ -50,11 +50,11 @@ impl UninitBuf {
             } else {
                 let bufs = Self::gen_buffers(gl, n).into_iter().map(
                     |b| {
-                        gl::BindBuffer(gl::COPY_WRITE_BUFFER, *b);
+                        gl::BindBuffer(gl::ARRAY_BUFFER, *b);
                         Self::from_id(*b)
                     }
                 ).collect();
-                gl::BindBuffer(gl::COPY_WRITE_BUFFER, 0);
+                gl::BindBuffer(gl::ARRAY_BUFFER, 0);
                 bufs
             }
         }
@@ -86,7 +86,7 @@ impl UninitBuf {
             if gl.supports_extension("GL_ARB_direct_state_access") {
                 gl::NamedBufferStorage(self.id(), size, ptr, flags)
             } else {
-                COPY_WRITE_BUFFER.map_bind(&self,
+                ARRAY_BUFFER.map_bind(&self,
                     |b| gl::BufferStorage(b.target_id(), size, ptr, flags)
                 );
             }
@@ -148,7 +148,7 @@ impl UninitBuf {
             if gl::NamedBufferData::is_loaded() {
                 gl::NamedBufferData(self.id(), size, ptr, usage)
             } else {
-                COPY_WRITE_BUFFER.map_bind(&self,
+                ARRAY_BUFFER.map_bind(&self,
                     |b| gl::BufferData(b.target_id(), size, ptr, usage)
                 );
             }

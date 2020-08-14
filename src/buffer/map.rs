@@ -68,7 +68,7 @@ impl<'a,T:?Sized,A:BufferStorage> Drop for Map<'a,T,A> {
                 if gl::UnmapNamedBuffer::is_loaded() {
                     status = gl::UnmapNamedBuffer(self.id);
                 } else {
-                    status = COPY_WRITE_BUFFER.map_bind(&ptr, |b| gl::UnmapBuffer(b.target_id()));
+                    status = ARRAY_BUFFER.map_bind(&ptr, |b| gl::UnmapBuffer(b.target_id()));
                 }
             } else {
                 //else, we need to flush any writes that happened in this range
@@ -81,7 +81,7 @@ impl<'a,T:?Sized,A:BufferStorage> Drop for Map<'a,T,A> {
                             size_of_val(&*self.ptr) as GLsizeiptr
                         );
                     } else {
-                        COPY_WRITE_BUFFER.map_bind(&ptr, |b|
+                        ARRAY_BUFFER.map_bind(&ptr, |b|
                             gl::FlushMappedBufferRange(
                                 b.target_id(), self.offset as GLintptr, Self::size(&self) as GLsizeiptr
                             )
@@ -156,7 +156,7 @@ impl<T:?Sized, A:BufferStorage> Buffer<T,A> {
             } else if gl::MapNamedBuffer::is_loaded() {
                 gl::MapNamedBuffer(self.id(), map_access::<B>())
             } else {
-                COPY_WRITE_BUFFER.map_bind(self,
+                ARRAY_BUFFER.map_bind(self,
                     |b| gl::MapBuffer(b.target_id(), map_access::<B>())
                 )
             }
@@ -223,7 +223,7 @@ impl<'a,T:?Sized,A:BufferStorage> SliceMut<'a,T,A> {
                         self.id(), self.offset() as GLintptr, self.size() as GLsizeiptr, flags
                     )
                 } else {
-                    COPY_WRITE_BUFFER.map_bind(&self, |b|
+                    ARRAY_BUFFER.map_bind(&self, |b|
                         gl::MapBufferRange(
                             b.target_id(), self.offset() as GLintptr, self.size() as GLsizeiptr, flags
                         )
@@ -234,7 +234,7 @@ impl<'a,T:?Sized,A:BufferStorage> SliceMut<'a,T,A> {
                 if gl::MapNamedBuffer::is_loaded() {
                     gl::MapNamedBuffer(self.id(), map_access::<B>())
                 } else {
-                    COPY_WRITE_BUFFER.map_bind(&self, |b|
+                    ARRAY_BUFFER.map_bind(&self, |b|
                         gl::MapBuffer(b.target_id(), map_access::<B>())
                     )
                 }.offset(self.offset() as isize)
@@ -299,7 +299,7 @@ impl<'a,T:?Sized,A:Persistent> Slice<'a,T,A> {
         } else if gl::GetNamedBufferPointerv::is_loaded() {
             gl::GetNamedBufferPointerv((&*this).id(), gl::BUFFER_MAP_POINTER, ptr.as_mut_ptr());
         } else {
-            COPY_READ_BUFFER.map_bind(&*this, |b|
+            ARRAY_BUFFER.map_bind(&*this, |b|
                 gl::GetBufferPointerv(b.target_id(), gl::BUFFER_MAP_POINTER, ptr.as_mut_ptr())
             );
         }
@@ -315,7 +315,7 @@ impl<'a,T:?Sized,A:Persistent> Slice<'a,T,A> {
                 if gl::GetNamedBufferParameteriv::is_loaded() && gl::MapNamedBufferRange::is_loaded() {
                     gl::MapNamedBufferRange((&*this).id(), 0, buf_size as GLsizeiptr, flags)
                 } else {
-                    COPY_READ_BUFFER.map_bind(&*this,
+                    ARRAY_BUFFER.map_bind(&*this,
                         |b| gl::MapBufferRange(b.target_id(), 0, buf_size as GLsizeiptr, flags)
                     )
                 }

@@ -153,7 +153,7 @@ impl<T:?Sized, A:BufferStorage> Buffer<T,A> {
             gl::InvalidateBufferData(self.id())
         } else if !self.immutable_storage() {
             let (size, usage) = (self.size() as GLsizeiptr, self.usage() as GLenum);
-            COPY_WRITE_BUFFER.map_bind(self,
+            ARRAY_BUFFER.map_bind(self,
                 |b| gl::BufferData(b.target_id(), size, null(), usage)
             );
         }

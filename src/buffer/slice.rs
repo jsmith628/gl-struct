@@ -82,7 +82,7 @@ impl<'a,T:?Sized,A:BufferStorage> Slice<'a,T,A> {
                 self.id(), self.offset() as GLintptr, self.size() as GLintptr, data as *mut GLvoid
             );
         } else {
-            COPY_READ_BUFFER.map_bind(self, |b|
+            ARRAY_BUFFER.map_bind(self, |b|
                 gl::GetBufferSubData(
                     b.target_id(),
                     self.offset() as GLintptr,
@@ -353,7 +353,7 @@ impl<'a, T:?Sized, A:Dynamic> SliceMut<'a,T,A> {
         if gl::NamedBufferSubData::is_loaded() {
             gl::NamedBufferSubData(self.id(), self.offset as GLintptr, size, void);
         } else {
-            COPY_WRITE_BUFFER.map_bind(self,
+            ARRAY_BUFFER.map_bind(self,
                 |b| gl::BufferSubData( b.target_id(), self.offset as GLintptr, size, void)
             );
         }
