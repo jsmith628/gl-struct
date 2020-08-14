@@ -1,5 +1,7 @@
 use super::*;
 
+use crate::pixel::*;
+
 glenum!{
     ///Binding targets for [glBindBuffer()](gl::BindBuffer()) and OpenGL calls
     ///acting on those targets
@@ -224,6 +226,9 @@ unsafe impl<T:?Sized> NeedsDropVal for T { #[inline] default fn needs_drop_val(&
 unsafe impl<T:Sized> NeedsDropVal for T { #[inline] fn needs_drop_val(&self) -> bool {needs_drop::<T>()} }
 unsafe impl<T:Sized> NeedsDropVal for [T] {
     #[inline] fn needs_drop_val(&self) -> bool {self.len()>0 && needs_drop::<T>()}
+}
+unsafe impl<F:SpecificCompressed> NeedsDropVal for CompressedPixels<F> {
+    #[inline] fn needs_drop_val(&self) -> bool {self.pixel_count()>0 && needs_drop::<F>()}
 }
 
 macro_rules! impl_tuple_needs_drop {
