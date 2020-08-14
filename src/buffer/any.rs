@@ -2,7 +2,7 @@ use super::*;
 
 use std::any::*;
 
-impl<A:Initialized> Buffer<dyn Any, A> {
+impl<A:BufferStorage> Buffer<dyn Any, A> {
     pub fn downcast<T:Any>(self) -> Result<Buffer<T,A>, Self> {
         unsafe {
             if let Some(cast) = (&mut *self.ptr.dangling_mut()).downcast_mut() {
@@ -16,7 +16,7 @@ impl<A:Initialized> Buffer<dyn Any, A> {
     }
 }
 
-impl<'a, A:Initialized> Slice<'a, dyn Any, A> {
+impl<'a, A:BufferStorage> Slice<'a, dyn Any, A> {
     pub fn downcast<T:Any>(self) -> Result<Slice<'a,T,A>, Self> {
         unsafe {
             if let Some(cast) = (&mut *self.ptr.dangling_mut()).downcast_mut() {
@@ -31,7 +31,7 @@ impl<'a, A:Initialized> Slice<'a, dyn Any, A> {
     }
 }
 
-impl<'a, A:Initialized> SliceMut<'a, dyn Any, A> {
+impl<'a, A:BufferStorage> SliceMut<'a, dyn Any, A> {
     pub fn downcast<T:Any>(self) -> Result<SliceMut<'a,T,A>, Self> {
         unsafe {
             if let Some(cast) = (&mut *self.ptr.dangling_mut()).downcast_mut() {
@@ -46,7 +46,7 @@ impl<'a, A:Initialized> SliceMut<'a, dyn Any, A> {
     }
 }
 
-impl<'a, A:Initialized> Map<'a, dyn Any + 'static, A> {
+impl<'a, A:BufferStorage> Map<'a, dyn Any + 'static, A> {
     pub fn downcast<T:Any>(self) -> Result<Map<'a,T,A>, Self> {
         unsafe {
             if let Some(cast) = (&mut *self.ptr).downcast_mut() {

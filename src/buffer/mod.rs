@@ -39,14 +39,14 @@ pub(self) static mut COPY_WRITE_BUFFER: BindingLocation<BufferTarget> = unsafe {
     BindingLocation::new(BufferTarget::CopyReadBuffer)
 };
 
-pub struct Buffer<T:?Sized, A:BufferStorage=ReadWrite> {
+pub struct Buffer<T:?Sized, A=ReadWrite> {
     ptr: BufPtr<T>,
     access: PhantomData<A>
 }
 
-impl<U:?Sized, T:?Sized+Unsize<U>, A:Initialized> CoerceUnsized<Buffer<U,A>> for Buffer<T,A> {}
+impl<U:?Sized, T:?Sized+Unsize<U>, A:BufferStorage> CoerceUnsized<Buffer<U,A>> for Buffer<T,A> {}
 
-impl<T:?Sized, A:BufferStorage> Buffer<T,A> {
+impl<T:?Sized, A> Buffer<T,A> {
     #[inline] pub fn id(&self) -> GLuint { self.ptr.id() }
     #[inline] pub fn gl(&self) -> GL_ARB_vertex_buffer_object { unsafe { assume_supported() } }
 
@@ -57,7 +57,7 @@ impl<T:?Sized, A:BufferStorage> Buffer<T,A> {
 
 }
 
-impl<T:?Sized, A:Initialized> Buffer<T,A> {
+impl<T:?Sized, A:BufferStorage> Buffer<T,A> {
 
     //
     //basic memory information
@@ -79,22 +79,22 @@ impl<T:?Sized, A:Initialized> Buffer<T,A> {
     //Conversion between access types
     //
 
-    #[inline] pub unsafe fn downgrade_unchecked<B:Initialized>(self) -> Buffer<T,B> { transmute(self) }
-    #[inline] pub unsafe fn downgrade_ref_unchecked<B:Initialized>(&self) -> &Buffer<T,B> { transmute(self) }
-    #[inline] pub unsafe fn downgrade_mut_unchecked<B:Initialized>(&mut self) -> &mut Buffer<T,B> { transmute(self) }
+    #[inline] pub unsafe fn downgrade_unchecked<B:BufferStorage>(self) -> Buffer<T,B> { transmute(self) }
+    #[inline] pub unsafe fn downgrade_ref_unchecked<B:BufferStorage>(&self) -> &Buffer<T,B> { transmute(self) }
+    #[inline] pub unsafe fn downgrade_mut_unchecked<B:BufferStorage>(&mut self) -> &mut Buffer<T,B> { transmute(self) }
 
     #[inline]
-    pub fn downgrade<B:Initialized>(self) -> Buffer<T,B> where A:DowngradesTo<B> {
+    pub fn downgrade<B:BufferStorage>(self) -> Buffer<T,B> where A:DowngradesTo<B> {
         unsafe { transmute(self) }
     }
 
     #[inline]
-    pub fn downgrade_ref<B:Initialized>(&self) -> &Buffer<T,B> where A:DowngradesTo<B> {
+    pub fn downgrade_ref<B:BufferStorage>(&self) -> &Buffer<T,B> where A:DowngradesTo<B> {
         unsafe { transmute(self) }
     }
 
     #[inline]
-    pub fn downgrade_mut<B:Initialized>(&mut self) -> &mut Buffer<T,B> where A:DowngradesTo<B> {
+    pub fn downgrade_mut<B:BufferStorage>(&mut self) -> &mut Buffer<T,B> where A:DowngradesTo<B> {
         unsafe { transmute(self) }
     }
 
@@ -169,7 +169,7 @@ impl<T:?Sized, A:Initialized> Buffer<T,A> {
 
 }
 
-impl<T:Sized, A:Initialized> Buffer<T,A> {
+impl<T:Sized, A:BufferStorage> Buffer<T,A> {
     pub fn invalidate_data(mut self) -> Buffer<MaybeUninit<T>, A> {
         unsafe {
             self.invalidate_data_raw();
@@ -178,7 +178,7 @@ impl<T:Sized, A:Initialized> Buffer<T,A> {
     }
 }
 
-impl<T:Sized, A:Initialized> Buffer<[T],A> {
+impl<T:Sized, A:BufferStorage> Buffer<[T],A> {
     #[inline] pub fn len(&self) -> usize { self.ptr.len() }
 
     #[inline] pub fn split_at(&self, mid:usize) -> (Slice<[T],A>, Slice<[T],A>) { self.as_slice().split_at(mid) }
@@ -224,7 +224,7 @@ impl<T:Sized, A:Initialized> Buffer<[T],A> {
 //
 //Vertex Attributes
 //
-impl<T:AttribData, A:Initialized> Buffer<[T],A> {
+impl<T:AttribData, A:BufferStorage> Buffer<[T],A> {
 
     #[inline]
     pub fn attrib_array(&self) -> AttribArray<T::GLSL> {
@@ -240,16 +240,16 @@ impl<T:AttribData, A:Initialized> Buffer<[T],A> {
 
 }
 
-impl<F:SpecificCompressed, A:Initialized> Buffer<CompressedPixels<F>,A> {
+impl<F:SpecificCompressed, A:BufferStorage> Buffer<CompressedPixels<F>,A> {
     #[inline] pub fn blocks(&self) -> usize { self.ptr.blocks() }
     #[inline] pub fn pixel_count(&self) -> usize { self.ptr.pixel_count() }
 }
 
-impl<T, A:Initialized> Buffer<MaybeUninit<T>, A> {
+impl<T, A:BufferStorage> Buffer<MaybeUninit<T>, A> {
     #[inline] pub unsafe fn assume_init(self) -> Buffer<T, A> { transmute(self) }
 }
 
-impl<T, A:Initialized> Buffer<[MaybeUninit<T>], A> {
+impl<T, A:BufferStorage> Buffer<[MaybeUninit<T>], A> {
     #[inline] pub unsafe fn assume_init(self) -> Buffer<[T], A> { transmute(self) }
 }
 
@@ -289,7 +289,7 @@ pub(self) fn map_alloc<T:?Sized, F:FnOnce(*mut T)>(buf: BufPtr<T>, f:F) -> Box<T
     }
 }
 
-impl<T:?Sized+GPUCopy,A:Initialized> Clone for Buffer<T,A> {
+impl<T:?Sized+GPUCopy,A:BufferStorage> Clone for Buffer<T,A> {
     fn clone(&self) -> Self {
         unsafe {
             //allocate storage
@@ -315,19 +315,19 @@ impl<T:?Sized+GPUCopy,A:Initialized> Clone for Buffer<T,A> {
     }
 }
 
-impl<T:?Sized, A:BufferStorage> Drop for Buffer<T,A> {
+impl<T:?Sized, A> Drop for Buffer<T,A> {
     fn drop(&mut self) {
 
         trait _Drop { unsafe fn _drop(&mut self); }
 
-        impl<T:?Sized, A:BufferStorage> _Drop for Buffer<T, A> { default unsafe fn _drop(&mut self) {} }
-        impl<T:?Sized, A:Initialized> _Drop for Buffer<T, A> {
+        impl<T:?Sized, A> _Drop for Buffer<T, A> { default unsafe fn _drop(&mut self) {} }
+        impl<T:?Sized, A:BufferStorage> _Drop for Buffer<T, A> {
             default unsafe fn _drop(&mut self) {
                 if self.ptr.needs_drop() { drop(self._read_into_box()); }
             }
         }
 
-        impl<T:Sized, A:Initialized> _Drop for Buffer<T, A> {
+        impl<T:Sized, A:BufferStorage> _Drop for Buffer<T, A> {
             unsafe fn _drop(&mut self) { if self.ptr.needs_drop() { drop(self._read()); } }
         }
 

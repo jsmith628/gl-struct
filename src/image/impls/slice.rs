@@ -42,6 +42,6 @@ impl_img_dst_slice!(for<P> Vec<P>);
 // impl_img_src_slice!(for<'a,P> Cow<'a,[P]>);
 // impl_own_img_slice!(for<'a,P> Cow<'a,[P]>);
 
-impl_img_src_slice!(for<'a,P,A:Initialized> Slice<'a,[P],A>);
-impl_img_dst_slice!(for<'a,P,A:Initialized> SliceMut<'a,[P],A>);
-impl_img_dst_slice!(for<P,A:Initialized> Buffer<[P],A>);
+impl_img_src_slice!(for<'a,P,A:BufferStorage> Slice<'a,[P],A>);
+impl_img_dst_slice!(for<'a,P,A:BufferStorage> SliceMut<'a,[P],A>);
+impl_img_dst_slice!(for<P,A:BufferStorage> Buffer<[P],A>);

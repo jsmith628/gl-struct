@@ -29,4 +29,4 @@ macro_rules! impl_compressed_from_block {
 impl_compressed_from_block!(for<F> Box<CompressedPixels<F>> as Box<[F::Block]>);
 impl_compressed_from_block!(for<F> Rc<CompressedPixels<F>> as Rc<[F::Block]>);
 impl_compressed_from_block!(for<F> Arc<CompressedPixels<F>> as Arc<[F::Block]>);
-impl_compressed_from_block!(for<F,A:Initialized> Buffer<CompressedPixels<F>,A> as Buffer<[F::Block],A>);
+impl_compressed_from_block!(for<F,A:BufferStorage> Buffer<CompressedPixels<F>,A> as Buffer<[F::Block],A>);

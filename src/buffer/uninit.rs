@@ -60,7 +60,7 @@ impl UninitBuf {
         }
     }
 
-    pub unsafe fn storage_raw<T:?Sized, A:Initialized, GL:Supports<GL_ARB_buffer_storage>>(
+    pub unsafe fn storage_raw<T:?Sized, A:BufferStorage, GL:Supports<GL_ARB_buffer_storage>>(
         self,
         gl: &GL,
         data: *const T,
@@ -106,13 +106,13 @@ impl UninitBuf {
         }
     }
 
-    pub fn storage_box<T:?Sized, A:Initialized, GL:Supports<GL_ARB_buffer_storage>>(
+    pub fn storage_box<T:?Sized, A:BufferStorage, GL:Supports<GL_ARB_buffer_storage>>(
         self, gl: &GL, data: Box<T>, hint: StorageHint
     ) -> Buffer<T,A> {
         map_dealloc(data, |ptr| unsafe{self.storage_raw(gl, ptr, hint)})
     }
 
-    pub fn storage<T:Sized, A:Initialized, GL:Supports<GL_ARB_buffer_storage>>(
+    pub fn storage<T:Sized, A:BufferStorage, GL:Supports<GL_ARB_buffer_storage>>(
         self, gl: &GL, data: T, hint: StorageHint
     ) -> Buffer<T,A> {
         unsafe {
@@ -122,13 +122,13 @@ impl UninitBuf {
         }
     }
 
-    pub fn storage_uninit<T:Sized, A:Initialized, GL:Supports<GL_ARB_buffer_storage>>(
+    pub fn storage_uninit<T:Sized, A:BufferStorage, GL:Supports<GL_ARB_buffer_storage>>(
         self, gl: &GL, hint: StorageHint
     ) -> Buffer<MaybeUninit<T>,A> {
         unsafe { self.storage_raw(gl, null(), hint) }
     }
 
-    pub fn storage_uninit_slice<T:Sized, A:Initialized, GL:Supports<GL_ARB_buffer_storage>>(
+    pub fn storage_uninit_slice<T:Sized, A:BufferStorage, GL:Supports<GL_ARB_buffer_storage>>(
         self, gl: &GL, count: usize, hint: StorageHint
     ) -> Buffer<[MaybeUninit<T>],A> {
         unsafe { self.storage_raw(gl, slice_from_raw_parts(null(), count), hint) }

@@ -30,8 +30,8 @@ impl_own_img!(for<F:SpecificCompressed> Rc<CompressedPixels<F>>);
 impl_own_img!(for<P> Arc<[P]>);
 impl_own_img!(for<F:SpecificCompressed> Arc<CompressedPixels<F>>);
 
-impl_own_img!(for<P,A:Initialized> Buffer<[P],A>);
-impl_own_img!(for<F:SpecificCompressed,A:Initialized> Buffer<CompressedPixels<F>,A>);
+impl_own_img!(for<P,A:BufferStorage> Buffer<[P],A>);
+impl_own_img!(for<F:SpecificCompressed,A:BufferStorage> Buffer<CompressedPixels<F>,A>);
 
 unsafe impl<'a,P:ImageSrc+ToOwned+?Sized> OwnedImage for Cow<'a,P> where P::Owned: OwnedImage<Pixels=P::Pixels> {
     type GL = <P::Owned as OwnedImage>::GL;

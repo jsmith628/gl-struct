@@ -7,14 +7,14 @@ use std::ops::{Deref, DerefMut, CoerceUnsized};
 use std::fmt::{Pointer, Debug, Display, Formatter};
 use std::cmp::*;
 
-pub struct Map<'a, T:?Sized, A:Initialized> {
+pub struct Map<'a, T:?Sized, A:BufferStorage> {
     pub(super) ptr: *mut T,
     pub(super) offset: usize,
     pub(super) id: GLuint,
     pub(super) buf: PhantomData<&'a mut Buffer<T,A>>
 }
 
-impl<'a,U:?Sized,T:?Sized+Unsize<U>,A:Initialized> CoerceUnsized<Map<'a,U,A>> for Map<'a,T,A> {}
+impl<'a,U:?Sized,T:?Sized+Unsize<U>,A:BufferStorage> CoerceUnsized<Map<'a,U,A>> for Map<'a,T,A> {}
 
 //
 //Formatting traits
@@ -26,7 +26,7 @@ impl<'a, T:?Sized+Debug, A:ReadMappable> Debug for Map<'a,T,A> {
 impl<'a, T:?Sized+Display, A:ReadMappable> Display for Map<'a,T,A> {
     fn fmt(&self, f:&mut Formatter) -> ::std::fmt::Result { Display::fmt(&**self, f) }
 }
-impl<'a, T:?Sized, A:Initialized> Pointer for Map<'a,T,A> {
+impl<'a, T:?Sized, A:BufferStorage> Pointer for Map<'a,T,A> {
     fn fmt(&self, f:&mut Formatter) -> ::std::fmt::Result { Pointer::fmt(&self.ptr, f) }
 }
 
@@ -56,7 +56,7 @@ impl<'a,T:?Sized+Ord,A:ReadMappable> Ord for Map<'a,T,A> {
 //Map-destruction
 //
 
-impl<'a,T:?Sized,A:Initialized> Drop for Map<'a,T,A> {
+impl<'a,T:?Sized,A:BufferStorage> Drop for Map<'a,T,A> {
     fn drop(&mut self) {
         if Self::size(self)==0 { return; }
         unsafe {
@@ -100,7 +100,7 @@ impl<'a,T:?Sized,A:Initialized> Drop for Map<'a,T,A> {
     }
 }
 
-impl<'a,T:?Sized,A:Initialized> Map<'a,T,A> {
+impl<'a,T:?Sized,A:BufferStorage> Map<'a,T,A> {
     pub fn id(this: &Self) -> GLuint { this.id }
     pub fn size(this: &Self) -> usize { unsafe {size_of_val(&*this.ptr)} }
     pub fn align(this: &Self) -> usize { unsafe {align_of_val(&*this.ptr)} }
@@ -139,7 +139,7 @@ impl<'a,T:Sized,A:WriteMappable> Map<'a,[T],A> {
 //MapBuffer
 //
 
-unsafe fn map_access<B:Initialized>() -> GLenum {
+unsafe fn map_access<B:BufferStorage>() -> GLenum {
     match (<B::MapRead as Bit>::VALUE, <B::MapWrite as Bit>::VALUE) {
         (true, false) => gl::READ_ONLY,
         (false, true) => gl::WRITE_ONLY,
@@ -148,8 +148,8 @@ unsafe fn map_access<B:Initialized>() -> GLenum {
     }
 }
 
-impl<T:?Sized, A:Initialized> Buffer<T,A> {
-    unsafe fn map_raw<'a,B:Initialized>(&'a mut self) -> Map<'a,T,B> {
+impl<T:?Sized, A:BufferStorage> Buffer<T,A> {
+    unsafe fn map_raw<'a,B:BufferStorage>(&'a mut self) -> Map<'a,T,B> {
         let ptr = self.ptr.swap_mut_ptr(
             if self.size()==0 {
                 NonNull::dangling().as_mut()
@@ -192,7 +192,7 @@ impl<T:?Sized,A:NonPersistent> Buffer<T,A> {
 //MapBufferRange
 //
 
-unsafe fn map_range_flags<B:Initialized>() -> GLbitfield {
+unsafe fn map_range_flags<B:BufferStorage>() -> GLbitfield {
     let mut flags = 0;
     if <B::MapRead as Bit>::VALUE {flags |= gl::MAP_READ_BIT;}
     if <B::MapWrite as Bit>::VALUE {flags |= gl::MAP_WRITE_BIT;}
@@ -207,8 +207,8 @@ unsafe fn map_range_flags<B:Initialized>() -> GLbitfield {
 //Note: we cannot simply implement a public map_range method on Slice or SliceMut, as then, we could
 //split the buffer and then map it multiple times, which is not allowed, even for persistent mapping.
 
-impl<'a,T:?Sized,A:Initialized> SliceMut<'a,T,A> {
-    unsafe fn map_range_raw<'b,B:Initialized>(self) -> Map<'b,T,B> {
+impl<'a,T:?Sized,A:BufferStorage> SliceMut<'a,T,A> {
+    unsafe fn map_range_raw<'b,B:BufferStorage>(self) -> Map<'b,T,B> {
         let ptr = self.ptr.swap_mut_ptr(
             if self.size()==0 {
                 NonNull::dangling().as_mut()

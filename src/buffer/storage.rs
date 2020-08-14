@@ -7,7 +7,7 @@ pub unsafe trait BufferStorage {
     type MapPersistent: Bit;
 }
 
-#[marker] pub unsafe trait DowngradesTo<B:Initialized>: Initialized {}
+#[marker] pub unsafe trait DowngradesTo<B:BufferStorage>: BufferStorage {}
 
 unsafe impl<A:NonPersistent, B:NonPersistent> DowngradesTo<B> for A where
     <A as BufferStorage>::MapRead:        BitMasks<<B as BufferStorage>::MapRead>,
@@ -15,7 +15,7 @@ unsafe impl<A:NonPersistent, B:NonPersistent> DowngradesTo<B> for A where
     <A as BufferStorage>::DynamicStorage: BitMasks<<B as BufferStorage>::DynamicStorage>
 {}
 
-unsafe impl<A:Initialized> DowngradesTo<ReadOnly> for A {}
+unsafe impl<A:BufferStorage> DowngradesTo<ReadOnly> for A {}
 unsafe impl<A:Dynamic> DowngradesTo<DynWrite> for A {}
 unsafe impl DowngradesTo<PersistMapRead> for PersistMapReadWrite {}
 unsafe impl DowngradesTo<PersistMapWrite> for PersistMapReadWrite {}
@@ -24,15 +24,12 @@ unsafe impl DowngradesTo<PersistMapRead> for PersistReadWrite {}
 unsafe impl DowngradesTo<PersistMapWrite> for PersistReadWrite {}
 unsafe impl DowngradesTo<PersistWrite> for PersistReadWrite {}
 
-
-#[marker] pub unsafe trait Initialized: BufferStorage {}
-
-pub trait ReadMappable = Initialized + BufferStorage<MapRead=High>;
-pub trait WriteMappable = Initialized + BufferStorage<MapWrite=High>;
-pub trait ReadWriteMappable = Initialized + ReadMappable + WriteMappable;
-pub trait Dynamic = Initialized + BufferStorage<DynamicStorage=High>;
-pub trait Persistent = Initialized + BufferStorage<MapPersistent=High>;
-pub trait NonPersistent = Initialized + BufferStorage<MapPersistent=Low>;
+pub trait ReadMappable = BufferStorage<MapRead=High>;
+pub trait WriteMappable = BufferStorage<MapWrite=High>;
+pub trait ReadWriteMappable = ReadMappable + WriteMappable;
+pub trait Dynamic = BufferStorage<DynamicStorage=High>;
+pub trait Persistent = BufferStorage<MapPersistent=High>;
+pub trait NonPersistent = BufferStorage<MapPersistent=Low>;
 
 macro_rules! access {
     ($( $(#[$attr:meta])* $ty:ident = [$($flag:ident = $bit:ident),*];)*) => {
@@ -40,17 +37,9 @@ macro_rules! access {
             $(#[$attr])*
             pub struct $ty(!);
 
-            unsafe impl Initialized for $ty {}
             unsafe impl BufferStorage for $ty { $(type $flag = $bit;)* }
         )*
     }
-}
-
-unsafe impl BufferStorage for ! {
-    type MapRead=Low;
-    type MapWrite=Low;
-    type DynamicStorage=Low;
-    type MapPersistent=Low;
 }
 
 access! {

@@ -3,54 +3,54 @@ use crate::gl;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound=""), Copy(bound=""))]
-pub struct Slice<'a, T:?Sized, A:Initialized> {
+pub struct Slice<'a, T:?Sized, A:BufferStorage> {
     pub(super) ptr: BufPtr<T>,
     pub(super) offset: usize,
     pub(super) buf: PhantomData<&'a Buffer<T, A>>
 }
 
-pub struct SliceMut<'a, T:?Sized, A:Initialized> {
+pub struct SliceMut<'a, T:?Sized, A:BufferStorage> {
     pub(super) ptr: BufPtr<T>,
     pub(super) offset: usize,
     pub(super) buf: PhantomData<&'a mut Buffer<T, A>>
 }
 
-impl<'a,U:?Sized,T:?Sized+Unsize<U>,A:Initialized> CoerceUnsized<Slice<'a,U,A>> for Slice<'a,T,A> {}
-impl<'a,U:?Sized,T:?Sized+Unsize<U>,A:Initialized> CoerceUnsized<SliceMut<'a,U,A>> for SliceMut<'a,T,A> {}
+impl<'a,U:?Sized,T:?Sized+Unsize<U>,A:BufferStorage> CoerceUnsized<Slice<'a,U,A>> for Slice<'a,T,A> {}
+impl<'a,U:?Sized,T:?Sized+Unsize<U>,A:BufferStorage> CoerceUnsized<SliceMut<'a,U,A>> for SliceMut<'a,T,A> {}
 
 //
 //Constructing slices
 //
 
-impl<'a, 'b:'a, T:?Sized, A:Initialized> From<&'a Slice<'b,T,A>> for Slice<'b,T,A> {
+impl<'a, 'b:'a, T:?Sized, A:BufferStorage> From<&'a Slice<'b,T,A>> for Slice<'b,T,A> {
     #[inline] fn from(bmut: &'a Slice<'b,T,A>) -> Self { *bmut }
 }
 
-impl<'a, T:?Sized, A:Initialized> From<SliceMut<'a,T,A>> for Slice<'a,T,A> {
+impl<'a, T:?Sized, A:BufferStorage> From<SliceMut<'a,T,A>> for Slice<'a,T,A> {
     #[inline] fn from(bmut: SliceMut<'a,T,A>) -> Self {Slice{ptr: bmut.ptr, offset: bmut.offset, buf:PhantomData}}
 }
 
-impl<'a, 'b:'a, T:?Sized, A:Initialized> From<&'a SliceMut<'b,T,A>> for Slice<'a,T,A> {
+impl<'a, 'b:'a, T:?Sized, A:BufferStorage> From<&'a SliceMut<'b,T,A>> for Slice<'a,T,A> {
     #[inline] fn from(bmut: &'a SliceMut<'b,T,A>) -> Self {
         Slice{ptr: bmut.ptr, offset: bmut.offset, buf:PhantomData}
     }
 }
 
-impl<'a, 'b:'a, T:?Sized, A:Initialized> From<&'a mut SliceMut<'b,T,A>> for SliceMut<'a,T,A> {
+impl<'a, 'b:'a, T:?Sized, A:BufferStorage> From<&'a mut SliceMut<'b,T,A>> for SliceMut<'a,T,A> {
     #[inline] fn from(bmut: &'a mut SliceMut<'b,T,A>) -> Self {
         SliceMut{ptr: bmut.ptr, offset: bmut.offset, buf:PhantomData}
     }
 }
 
-impl<'a, T:?Sized, A:Initialized> From<&'a Buffer<T,A>> for Slice<'a,T,A> {
+impl<'a, T:?Sized, A:BufferStorage> From<&'a Buffer<T,A>> for Slice<'a,T,A> {
     #[inline] fn from(bref: &'a Buffer<T,A>) -> Self {Slice{ptr: bref.ptr, offset: 0, buf:PhantomData}}
 }
 
-impl<'a, T:?Sized, A:Initialized> From<&'a mut Buffer<T,A>> for SliceMut<'a,T,A> {
+impl<'a, T:?Sized, A:BufferStorage> From<&'a mut Buffer<T,A>> for SliceMut<'a,T,A> {
     #[inline] fn from(bref: &'a mut Buffer<T,A>) -> Self {SliceMut{ptr: bref.ptr, offset: 0, buf:PhantomData}}
 }
 
-impl<'a,T:?Sized,A:Initialized> Slice<'a,T,A> {
+impl<'a,T:?Sized,A:BufferStorage> Slice<'a,T,A> {
 
     #[inline]
     unsafe fn into_mut(self) -> SliceMut<'a,T,A> {
@@ -62,12 +62,12 @@ impl<'a,T:?Sized,A:Initialized> Slice<'a,T,A> {
     #[inline] pub fn align(&self) -> usize {self.ptr.align()}
     #[inline] pub fn offset(&self) -> usize {self.offset}
 
-    #[inline] pub unsafe fn downgrade_unchecked<B:Initialized>(self) -> Slice<'a,T,B> {
+    #[inline] pub unsafe fn downgrade_unchecked<B:BufferStorage>(self) -> Slice<'a,T,B> {
         Slice{ptr: self.ptr, offset: self.offset, buf: PhantomData}
     }
 
     #[inline]
-    pub fn downgrade<B:Initialized>(self) -> Slice<'a,T,B> where A:DowngradesTo<B> {
+    pub fn downgrade<B:BufferStorage>(self) -> Slice<'a,T,B> where A:DowngradesTo<B> {
         unsafe { self.downgrade_unchecked() }
     }
 
@@ -120,14 +120,14 @@ impl<'a,T:?Sized,A:Initialized> Slice<'a,T,A> {
 
 }
 
-impl<'a,T:Copy+Sized,A:Initialized> Slice<'a,T,A> {
+impl<'a,T:Copy+Sized,A:BufferStorage> Slice<'a,T,A> {
     #[inline]
     pub fn copy_subdata<'b>(&self, dest:&mut SliceMut<'b,T,A>) {
         unsafe{ self.copy_subdata_unchecked(dest) }
     }
 }
 
-impl<'a,T:Copy+Sized,A:Initialized> Slice<'a,[T],A> {
+impl<'a,T:Copy+Sized,A:BufferStorage> Slice<'a,[T],A> {
     #[inline]
     pub fn copy_subdata<'b>(&self, dest:&mut SliceMut<'b,[T],A>) {
         assert_eq!(dest.size(), self.size(), "destination and source buffers have different sizes");
@@ -135,7 +135,7 @@ impl<'a,T:Copy+Sized,A:Initialized> Slice<'a,[T],A> {
     }
 }
 
-impl<'a,T:Sized,A:Initialized> Slice<'a,[T],A> {
+impl<'a,T:Sized,A:BufferStorage> Slice<'a,[T],A> {
     #[inline] pub fn len(&self) -> usize {self.ptr.len()}
 
     #[inline]
@@ -201,7 +201,7 @@ impl<'a,T:Sized,A:Initialized> Slice<'a,[T],A> {
 //
 //Vertex Attributes
 //
-impl<'a,T:AttribData, A:Initialized> Slice<'a,[T],A> {
+impl<'a,T:AttribData, A:BufferStorage> Slice<'a,[T],A> {
 
     pub fn into_attrib_array(self) -> AttribArray<'a,T::GLSL> {
         self.into()
@@ -215,12 +215,12 @@ impl<'a,T:AttribData, A:Initialized> Slice<'a,[T],A> {
 }
 
 
-impl<'a,F:SpecificCompressed, A:Initialized> Slice<'a,CompressedPixels<F>,A> {
+impl<'a,F:SpecificCompressed, A:BufferStorage> Slice<'a,CompressedPixels<F>,A> {
     #[inline] pub fn blocks(&self) -> usize { self.ptr.blocks() }
     #[inline] pub fn pixel_count(&self) -> usize { self.ptr.pixel_count() }
 }
 
-impl<'a,T:?Sized,A:Initialized> SliceMut<'a,T,A> {
+impl<'a,T:?Sized,A:BufferStorage> SliceMut<'a,T,A> {
 
     #[inline] pub fn id(&self) -> GLuint {self.ptr.id()}
     #[inline] pub fn size(&self) -> usize {self.ptr.size()}
@@ -231,12 +231,12 @@ impl<'a,T:?Sized,A:Initialized> SliceMut<'a,T,A> {
 
     #[inline] pub fn as_mut(&mut self) -> SliceMut<T,A> { SliceMut::from(self) }
 
-    #[inline] pub unsafe fn downgrade_unchecked<B:Initialized>(self) -> SliceMut<'a,T,B> {
+    #[inline] pub unsafe fn downgrade_unchecked<B:BufferStorage>(self) -> SliceMut<'a,T,B> {
         SliceMut{ptr: self.ptr, offset: self.offset, buf: PhantomData}
     }
 
     #[inline]
-    pub fn downgrade<B:Initialized>(self) -> SliceMut<'a,T,B> where A:DowngradesTo<B> {
+    pub fn downgrade<B:BufferStorage>(self) -> SliceMut<'a,T,B> where A:DowngradesTo<B> {
         unsafe { self.downgrade_unchecked() }
     }
 
@@ -258,15 +258,15 @@ impl<'a,T:?Sized,A:Initialized> SliceMut<'a,T,A> {
 
 }
 
-impl<'a,T:Copy+Sized,A:Initialized> SliceMut<'a,[T],A> {
+impl<'a,T:Copy+Sized,A:BufferStorage> SliceMut<'a,[T],A> {
     #[inline] pub fn copy_subdata<'b>(&self, dest:&mut SliceMut<'b,[T],A>) { self.as_immut().copy_subdata(dest) }
 }
 
-impl<'a,T:Copy+Sized,A:Initialized> SliceMut<'a,T,A> {
+impl<'a,T:Copy+Sized,A:BufferStorage> SliceMut<'a,T,A> {
     #[inline] pub fn copy_subdata<'b>(&self, dest:&mut SliceMut<'b,T,A>) { self.as_immut().copy_subdata(dest) }
 }
 
-impl<'a,T:Sized,A:Initialized> SliceMut<'a,[T],A> {
+impl<'a,T:Sized,A:BufferStorage> SliceMut<'a,[T],A> {
     #[inline] pub fn len(&self) -> usize {self.as_immut().len()}
 
     #[inline]
@@ -321,7 +321,7 @@ impl<'a,T:Sized,A:Initialized> SliceMut<'a,[T],A> {
 //
 //Vertex Attributes
 //
-impl<'a,T:AttribData, A:Initialized> SliceMut<'a,[T],A> {
+impl<'a,T:AttribData, A:BufferStorage> SliceMut<'a,[T],A> {
 
     pub fn into_attrib_array(self) -> AttribArray<'a,T::GLSL> {
         Slice::from(self).into()
@@ -334,7 +334,7 @@ impl<'a,T:AttribData, A:Initialized> SliceMut<'a,[T],A> {
     }
 }
 
-impl<'a,F:SpecificCompressed, A:Initialized> SliceMut<'a,CompressedPixels<F>,A> {
+impl<'a,F:SpecificCompressed, A:BufferStorage> SliceMut<'a,CompressedPixels<F>,A> {
     #[inline] pub fn blocks(&self) -> usize { self.ptr.blocks() }
     #[inline] pub fn pixel_count(&self) -> usize { self.ptr.pixel_count() }
 }

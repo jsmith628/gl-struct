@@ -54,7 +54,7 @@ impl<'a> AttribArray<'a,()> {
     }
 }
 
-impl<'b, A:GLSLType, T, B:Initialized> From<Slice<'b,[T],B>> for AttribArray<'b,A>
+impl<'b, A:GLSLType, T, B:BufferStorage> From<Slice<'b,[T],B>> for AttribArray<'b,A>
 where T: AttribData<GLSL=A, Format=A::AttribFormat>
 {
     fn from(buf: Slice<'b,[T],B>) -> Self {

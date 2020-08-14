@@ -42,6 +42,6 @@ impl_img_src_compressed!(for<F> CompressedPixels<F>);
 // impl_img_src_slice!(for<'a,P> Cow<'a,[P]>);
 // impl_own_img_slice!(for<'a,P> Cow<'a,[P]>);
 
-impl_img_src_compressed!(for<'a,F,A:Initialized> Slice<'a,CompressedPixels<F>,A>);
-impl_img_dst_compressed!(for<'a,F,A:Initialized> SliceMut<'a,CompressedPixels<F>,A>);
-impl_img_dst_compressed!(for<F,A:Initialized> Buffer<CompressedPixels<F>,A>);
+impl_img_src_compressed!(for<'a,F,A:BufferStorage> Slice<'a,CompressedPixels<F>,A>);
+impl_img_dst_compressed!(for<'a,F,A:BufferStorage> SliceMut<'a,CompressedPixels<F>,A>);
+impl_img_dst_compressed!(for<F,A:BufferStorage> Buffer<CompressedPixels<F>,A>);

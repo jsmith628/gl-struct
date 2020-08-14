@@ -138,7 +138,7 @@ impl<'a,E:Copy,V:Vertex<'a>> VertexArray<'a,E,V> {
 
 impl<'a,V:Vertex<'a>> VertexArray<'a,!,V> {
     #[inline]
-    pub fn bind_element_buffer<E:Element,A:Initialized>(
+    pub fn bind_element_buffer<E:Element,A:BufferStorage>(
         self, elements: &'a Buffer<[E], A>
     ) -> VertexArray<'a,E,V> {
         let mut dest:VertexArray<'a,E,V> = VertexArray { id: self.id(), buffers: PhantomData };
@@ -158,7 +158,7 @@ impl<'a,V:Vertex<'a>> VertexArray<'a,!,V> {
 
 impl<'a,E:Element,V:Vertex<'a>> VertexArray<'a,E,V> {
     #[inline]
-    pub fn bind_element_buffer<A:Initialized>(&mut self, elements: &'a Buffer<[E], A>) {
+    pub fn bind_element_buffer<A:BufferStorage>(&mut self, elements: &'a Buffer<[E], A>) {
         unsafe {
             //we don't use the binding locations for ELEMENT_ARRAY_BUFFER here in order to make sure
             //that we don't accidentally unbind the element buffer
