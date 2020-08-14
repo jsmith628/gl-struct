@@ -206,7 +206,7 @@ pub(self) fn get_object_label(identifier: ResourceIdentifier, name: GLuint) -> O
     }
 }
 
-pub trait Target<R>: Copy + Eq + Hash + Debug + Display {
+pub(crate) trait Target<R>: Copy + Eq + Hash + Debug + Display {
     fn target_id(self) -> GLenum;
     unsafe fn bind(self, obj: &R);
     unsafe fn unbind(self);
@@ -214,10 +214,10 @@ pub trait Target<R>: Copy + Eq + Hash + Debug + Display {
 
 ///An object that owns a [Target] to a glBind* function for a resource `R`
 #[derive(PartialEq, Eq, Hash)]
-pub struct BindingLocation<T>(pub(crate) T, PhantomData<*const ()>);
+pub(crate) struct BindingLocation<T>(pub(crate) T, PhantomData<*const ()>);
 
 ///An object that owns a binding of a [Resource] to a particular [BindingLocation] and unbinds it when leaving scope
-pub struct Binding<'a,R,T:Target<R>>(pub(crate) &'a BindingLocation<T>, pub(crate) &'a R);
+pub(crate) struct Binding<'a,R,T:Target<R>>(pub(crate) &'a BindingLocation<T>, pub(crate) &'a R);
 
 impl<'a,R,T:Target<R>> Binding<'a,R,T> {
     #[inline] pub fn target(&self) -> T { *self.0.target() }
