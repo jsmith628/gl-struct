@@ -119,7 +119,7 @@ impl<'a,T:?Sized,A:BufferStorage> Slice<'a,T,A> {
         unsafe { self.get_subdata_raw(dest.borrow_mut()) }
     }
 
-    pub unsafe fn copy_subdata_unchecked<'b>(&self, dest: &mut SliceMut<'b,T,A>) {
+    pub unsafe fn copy_subdata_raw<'b>(&self, dest: &mut SliceMut<'b,T,A>) {
         if self.size()==0 || dest.size()==0 { return; }
         COPY_READ_BUFFER.map_bind(self, |b1|
             COPY_WRITE_BUFFER.map_bind(dest, |b2|
@@ -132,21 +132,11 @@ impl<'a,T:?Sized,A:BufferStorage> Slice<'a,T,A> {
         )
     }
 
-}
-
-impl<'a,T:Copy+Sized,A:BufferStorage> Slice<'a,T,A> {
-    #[inline]
-    pub fn copy_subdata<'b>(&self, dest:&mut SliceMut<'b,T,A>) {
-        unsafe{ self.copy_subdata_unchecked(dest) }
-    }
-}
-
-impl<'a,T:Copy+Sized,A:BufferStorage> Slice<'a,[T],A> {
-    #[inline]
-    pub fn copy_subdata<'b>(&self, dest:&mut SliceMut<'b,[T],A>) {
+    pub fn copy_subdata<'b>(&self, dest: &mut SliceMut<'b,T,A>) where T: GPUCopy+'a {
         assert_eq!(dest.size(), self.size(), "destination and source buffers have different sizes");
-        unsafe{ self.copy_subdata_unchecked(dest) }
+        unsafe{ self.copy_subdata_raw(dest) }
     }
+
 }
 
 impl<'a,T:Sized,A:BufferStorage> Slice<'a,[T],A> {
@@ -245,13 +235,6 @@ impl<'a,T:?Sized,A:BufferStorage> SliceMut<'a,T,A> {
         unsafe { self.downgrade_unchecked() }
     }
 
-    pub unsafe fn invalidate_subdata_raw(&mut self) {
-        if self.size()==0 { return; }
-        if gl::InvalidateBufferSubData::is_loaded() {
-            gl::InvalidateBufferSubData(self.id(), self.offset() as GLintptr, self.size() as GLsizeiptr)
-        }
-    }
-
     #[inline] pub unsafe fn get_subdata_raw(&self, dest: *mut T) { self.as_immut().get_subdata_raw(dest) }
 
     #[inline] pub fn get_subdata(&self) -> T where T:Copy {self.as_immut().get_subdata()}
@@ -260,18 +243,21 @@ impl<'a,T:?Sized,A:BufferStorage> SliceMut<'a,T,A> {
         self.as_immut().get_subdata_ref(dest)
     }
 
-    #[inline] pub unsafe fn copy_subdata_unchecked<'b>(&self, dest: &mut SliceMut<'b,T,A>) {
-        self.as_immut().copy_subdata_unchecked(dest)
+    #[inline] pub unsafe fn copy_subdata_raw<'b>(&self, dest: &mut SliceMut<'b,T,A>) {
+        self.as_immut().copy_subdata_raw(dest)
     }
 
-}
+    #[inline] pub fn copy_subdata<'b>(&self, dest: &mut SliceMut<'b,T,A>) where T:GPUCopy+'a {
+        self.as_immut().copy_subdata(dest)
+    }
 
-impl<'a,T:Copy+Sized,A:BufferStorage> SliceMut<'a,[T],A> {
-    #[inline] pub fn copy_subdata<'b>(&self, dest:&mut SliceMut<'b,[T],A>) { self.as_immut().copy_subdata(dest) }
-}
+    pub unsafe fn invalidate_subdata_raw(&mut self) {
+        if self.size()==0 { return; }
+        if gl::InvalidateBufferSubData::is_loaded() {
+            gl::InvalidateBufferSubData(self.id(), self.offset() as GLintptr, self.size() as GLsizeiptr)
+        }
+    }
 
-impl<'a,T:Copy+Sized,A:BufferStorage> SliceMut<'a,T,A> {
-    #[inline] pub fn copy_subdata<'b>(&self, dest:&mut SliceMut<'b,T,A>) { self.as_immut().copy_subdata(dest) }
 }
 
 impl<'a,T:Sized,A:BufferStorage> SliceMut<'a,[T],A> {

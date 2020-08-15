@@ -302,7 +302,7 @@ impl<T:?Sized+GPUCopy,A:BufferStorage> Clone for Buffer<T,A> {
             };
 
             //copy the data directly
-            self.as_slice().copy_subdata_unchecked(&mut dest.as_slice_mut());
+            self.as_slice().copy_subdata_raw(&mut dest.as_slice_mut());
 
             //return the buffer
             dest
