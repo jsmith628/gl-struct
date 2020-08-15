@@ -71,26 +71,52 @@ impl<'a,T:?Sized,A:BufferStorage> Slice<'a,T,A> {
         unsafe { self.downgrade_unchecked() }
     }
 
-    #[inline] pub(super) unsafe fn _read_into_box(&self) -> Box<T> {
-        map_alloc(self.ptr, |ptr| self.get_subdata_raw(ptr))
-    }
-
     pub unsafe fn get_subdata_raw(&self, data: *mut T) {
-        if self.size()==0 { return; }
+
+        //for convenience
+        let size = size_of_val(&*data) as GLintptr;
+
+        //if we have a ZST, we can just return
+        //also, since OpenGL buffers can't be zero-sized anyway, GetBufferData could error if we didn't
+        if size==0 { return; }
+
         if gl::GetNamedBufferSubData::is_loaded() {
             gl::GetNamedBufferSubData(
-                self.id(), self.offset() as GLintptr, self.size() as GLintptr, data as *mut GLvoid
+                self.id(), self.offset() as GLintptr, size as GLintptr, data as *mut GLvoid
             );
         } else {
             ARRAY_BUFFER.map_bind(self, |b|
                 gl::GetBufferSubData(
-                    b.target_id(),
-                    self.offset() as GLintptr,
-                    self.size() as GLintptr,
-                    data as *mut GLvoid
+                    b.target_id(), self.offset() as GLintptr, size, data as *mut GLvoid
                 )
             );
         }
+    }
+
+    pub fn get_subdata(&self) -> T where T:Copy {
+        unsafe {
+            let mut data = MaybeUninit::uninit();
+            self.get_subdata_raw(data.as_mut_ptr());
+            data.assume_init()
+        }
+    }
+
+    pub fn get_subdata_box(&self) -> Box<T> where T:GPUCopy  {
+        unsafe {
+            //allocates a box of the proper size and then downloads into its pointer
+            map_alloc(self.ptr, |ptr| self.get_subdata_raw(ptr))
+        }
+    }
+
+    pub fn get_subdata_ref<Q:BorrowMut<T>>(&self, dest: &mut Q) where T:GPUCopy  {
+        //borrow
+        let dest = dest.borrow_mut();
+
+        //check the bounds (get_subdata_raw does NOT do this for us)
+        assert_eq!(size_of_val(dest), self.size(), "destination and source have different sizes");
+
+        //since T is GPUCopy, we can just do a normal direct download
+        unsafe { self.get_subdata_raw(dest.borrow_mut()) }
     }
 
     pub unsafe fn copy_subdata_unchecked<'b>(&self, dest: &mut SliceMut<'b,T,A>) {
@@ -104,18 +130,6 @@ impl<'a,T:?Sized,A:BufferStorage> Slice<'a,T,A> {
                 )
             )
         )
-    }
-
-    pub fn get_subdata_box(&self) -> Box<T> where T:GPUCopy  {
-        unsafe { self._read_into_box() }
-    }
-
-    pub fn get_subdata(&self) -> T where T:Copy {
-        unsafe {
-            let mut data = MaybeUninit::uninit();
-            self.get_subdata_raw(data.as_mut_ptr());
-            data.assume_init()
-        }
     }
 
 }
@@ -188,14 +202,6 @@ impl<'a,T:Sized,A:BufferStorage> Slice<'a,[T],A> {
         }
     }
 
-    #[inline]
-    pub fn get_subdata_slice(&self, data: &mut [T]) where T:Copy {
-        if size_of_val(data) != self.size() {
-            panic!("Destination size not equal to source size: {} != {}", size_of_val(data), self.size())
-        }
-        unsafe {self.get_subdata_raw(data)}
-    }
-
 }
 
 //
@@ -228,7 +234,6 @@ impl<'a,T:?Sized,A:BufferStorage> SliceMut<'a,T,A> {
     #[inline] pub fn offset(&self) -> usize {self.offset}
 
     #[inline] pub fn as_immut(&self) -> Slice<T,A> { Slice::from(self) }
-
     #[inline] pub fn as_mut(&mut self) -> SliceMut<T,A> { SliceMut::from(self) }
 
     #[inline] pub unsafe fn downgrade_unchecked<B:BufferStorage>(self) -> SliceMut<'a,T,B> {
@@ -240,12 +245,6 @@ impl<'a,T:?Sized,A:BufferStorage> SliceMut<'a,T,A> {
         unsafe { self.downgrade_unchecked() }
     }
 
-    #[inline] pub unsafe fn get_subdata_raw(&self, data: *mut T) { self.as_immut().get_subdata_raw(data) }
-
-    #[inline] pub unsafe fn copy_subdata_unchecked<'b>(&self, dest: &mut SliceMut<'b,T,A>) {
-        self.as_immut().copy_subdata_unchecked(dest)
-    }
-
     pub unsafe fn invalidate_subdata_raw(&mut self) {
         if self.size()==0 { return; }
         if gl::InvalidateBufferSubData::is_loaded() {
@@ -253,8 +252,17 @@ impl<'a,T:?Sized,A:BufferStorage> SliceMut<'a,T,A> {
         }
     }
 
+    #[inline] pub unsafe fn get_subdata_raw(&self, dest: *mut T) { self.as_immut().get_subdata_raw(dest) }
+
+    #[inline] pub fn get_subdata(&self) -> T where T:Copy {self.as_immut().get_subdata()}
     #[inline] pub fn get_subdata_box(&self) -> Box<T> where T:GPUCopy {self.as_immut().get_subdata_box()}
-    #[inline] pub fn get_subdata(&self) -> T where T:Copy+Sized {self.as_immut().get_subdata()}
+    #[inline] pub fn get_subdata_ref<Q:BorrowMut<T>>(&self, dest: &mut Q) where T:GPUCopy {
+        self.as_immut().get_subdata_ref(dest)
+    }
+
+    #[inline] pub unsafe fn copy_subdata_unchecked<'b>(&self, dest: &mut SliceMut<'b,T,A>) {
+        self.as_immut().copy_subdata_unchecked(dest)
+    }
 
 }
 
@@ -311,11 +319,6 @@ impl<'a,T:Sized,A:BufferStorage> SliceMut<'a,[T],A> {
         unsafe { Slice::from(self).index(i).into_mut() }
     }
 
-    #[inline]
-    pub fn get_subdata_slice(&self, data: &mut [T]) where T:Copy {
-        self.as_immut().get_subdata_slice(data)
-    }
-
 }
 
 //
@@ -343,12 +346,16 @@ impl<'a,F:SpecificCompressed, A:BufferStorage> SliceMut<'a,CompressedPixels<F>,A
 //Writing subdata: glBufferSubData
 //
 
-impl<'a, T:?Sized, A:Dynamic> SliceMut<'a,T,A> {
-    pub unsafe fn subdata_raw(&mut self, data: *const T) {
-        if self.size()==0 { return; }
+impl<'a,T:?Sized,A:Dynamic> SliceMut<'a,T,A> {
 
+    pub unsafe fn subdata_raw(&mut self, data: *const T) {
+
+        //convenience vars
         let void = data as *const GLvoid;
         let size = self.size().min(size_of_val(&*data)) as GLsizeiptr;
+
+        //if we are copying over nothing, we don't need to call anything (and it might even throw an error)
+        if size==0 { return; }
 
         if gl::NamedBufferSubData::is_loaded() {
             gl::NamedBufferSubData(self.id(), self.offset as GLintptr, size, void);
@@ -358,25 +365,24 @@ impl<'a, T:?Sized, A:Dynamic> SliceMut<'a,T,A> {
             );
         }
     }
-}
 
-impl<'a,T:Sized,A:Dynamic> SliceMut<'a,T,A> {
-
-    pub fn subdata(&mut self, data: T) {
-        unsafe {
-            if needs_drop::<T>() {
-                //we need to make sure that the destructor on the data is run if it is a Drop type
-                drop(self.replace(data));
-            } else {
-                //else, we can just overwrite the data without dropping
-                //in fact, we can even invalidate the buffer region since we don't need the data either
-                self.invalidate_subdata_raw();
-                self.subdata_raw(&data)
-            }
-        }
+    pub fn subdata(&mut self, data: T) where T: Copy {
+        //just use subdata_raw since data implements Copy
+        unsafe { self.subdata_raw(&data) }
     }
 
-    pub fn replace(&mut self, data: T) -> T {
+    pub fn subdata_ref<Q:Borrow<T>>(&mut self, data: &Q) where T: GPUCopy {
+        //borrow
+        let data = data.borrow();
+
+        //check bounds
+        assert_eq!(size_of_val(data), self.size(), "destination and source have different sizes");
+
+        //since T is GPUCopy, we can just directly upload
+        unsafe { self.subdata_raw(data) }
+    }
+
+    pub fn replace(&mut self, data: T) -> T where T:Sized {
         unsafe {
             //read the buffer data into a temporary variable
             let mut old_data = MaybeUninit::<T>::uninit();
@@ -384,43 +390,24 @@ impl<'a,T:Sized,A:Dynamic> SliceMut<'a,T,A> {
 
             //modify the buffer
             self.subdata_raw(&data);
-            forget(data); //note, we need to make sure the destructor of data is NOT run
+            forget(data); //we need to make sure the destructor of data is NOT run
 
             return old_data.assume_init();
         }
     }
 
-}
-
-impl<'a,T:Sized,A:Dynamic> SliceMut<'a,[T],A> {
-
-    pub fn subdata(&mut self, mut data: Box<[T]>) {
+    pub fn replace_ref<Q:BorrowMut<T>>(&mut self, data: &mut Q) where T:Sized {
         unsafe {
-            if needs_drop::<T>() {
-                //we need to make sure that the destructor on the data is run if it is a Drop type
-                drop(self.replace(&mut *data));
-            } else {
-                //else, we can just overwrite the data without dropping
-                //in fact, we can even invalidate the buffer region since we don't need the data either
-                self.invalidate_subdata_raw();
-                self.subdata_raw(&*data)
-            }
+            //read the buffer data into a temporary variable
+            let mut old_data = MaybeUninit::<T>::uninit();
+            self.get_subdata_raw(old_data.as_mut_ptr());
+
+            //swap the memory
+            std::ptr::swap(data.borrow_mut(), old_data.as_mut_ptr());
+
+            //modify the buffer
+            self.subdata_raw(old_data.as_ptr());
         }
     }
 
-    pub fn replace(&mut self, data: &mut [T]) {
-        unsafe {
-            //check bounds
-            assert_eq!(data.len(), self.len(), "destination and source have different lengths");
-
-            //read the buffer data into a Box
-            let temp_data = self.as_immut()._read_into_box();
-
-            //upload new data to buffer
-            self.subdata_raw(data);
-
-            //deallocate the temp-box and copy to the destination slice
-            map_dealloc(temp_data, |ptr| copy_nonoverlapping((&*ptr).as_ptr(), data.as_mut_ptr(), data.len()))
-        }
-    }
 }
