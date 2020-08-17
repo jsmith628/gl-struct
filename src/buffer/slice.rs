@@ -119,7 +119,9 @@ impl<'a,T:?Sized,A:BufferStorage> Slice<'a,T,A> {
         unsafe { self.get_subdata_raw(dest.borrow_mut()) }
     }
 
-    pub unsafe fn copy_subdata_raw<'b>(&self, dest: &mut SliceMut<'b,T,A>) {
+    pub unsafe fn copy_subdata_raw<'b, GL:Supports<GL_ARB_copy_buffer>, B:BufferStorage>(
+        &self, #[allow(unused_variables)] gl: &GL, dest: &mut SliceMut<'b,T,B>
+    ) {
         if self.size()==0 || dest.size()==0 { return; }
         COPY_READ_BUFFER.map_bind(self, |b1|
             COPY_WRITE_BUFFER.map_bind(dest, |b2|
@@ -132,9 +134,11 @@ impl<'a,T:?Sized,A:BufferStorage> Slice<'a,T,A> {
         )
     }
 
-    pub fn copy_subdata<'b>(&self, dest: &mut SliceMut<'b,T,A>) where T: GPUCopy+'a {
+    pub fn copy_subdata<'b, GL:Supports<GL_ARB_copy_buffer>, B:BufferStorage>(
+        &self, gl: &GL, dest: &mut SliceMut<'b,T,B>
+    ) where T: GPUCopy+'a {
         assert_eq!(dest.size(), self.size(), "destination and source buffers have different sizes");
-        unsafe{ self.copy_subdata_raw(dest) }
+        unsafe{ self.copy_subdata_raw(gl, dest) }
     }
 
 }
@@ -243,12 +247,18 @@ impl<'a,T:?Sized,A:BufferStorage> SliceMut<'a,T,A> {
         self.as_immut().get_subdata_ref(dest)
     }
 
-    #[inline] pub unsafe fn copy_subdata_raw<'b>(&self, dest: &mut SliceMut<'b,T,A>) {
-        self.as_immut().copy_subdata_raw(dest)
+    #[inline]
+    pub unsafe fn copy_subdata_raw<'b, GL:Supports<GL_ARB_copy_buffer>, B:BufferStorage>(
+        &self, gl: &GL, dest: &mut SliceMut<'b,T,B>
+    ) {
+        self.as_immut().copy_subdata_raw(gl, dest)
     }
 
-    #[inline] pub fn copy_subdata<'b>(&self, dest: &mut SliceMut<'b,T,A>) where T:GPUCopy+'a {
-        self.as_immut().copy_subdata(dest)
+    #[inline]
+    pub fn copy_subdata<'b, GL:Supports<GL_ARB_copy_buffer>, B:BufferStorage>(
+        &self, gl: &GL, dest: &mut SliceMut<'b,T,B>
+    ) where T: GPUCopy+'a {
+        self.as_immut().copy_subdata(gl, dest)
     }
 
     pub unsafe fn invalidate_subdata_raw(&mut self) {

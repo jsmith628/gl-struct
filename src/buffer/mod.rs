@@ -286,27 +286,90 @@ pub(self) fn map_alloc<T:?Sized, F:FnOnce(*mut T)>(buf: BufPtr<T>, f:F) -> Box<T
 
 impl<T:?Sized+GPUCopy,A:BufferStorage> Clone for Buffer<T,A> {
     fn clone(&self) -> Self {
-        unsafe {
-            //allocate storage
-            let mut dest = {
-                let raw = UninitBuf::create(&self.gl());
+
+        //gen the buffer
+        let raw = Buffer::create(&self.gl());
+
+        //check if we have immutable storage. Note that if A is persistent, the that is guarranteed
+        let persist_bit = <A as BufferStorage>::MapPersistent::VALUE;
+        let is_immut = persist_bit || self.immutable_storage();
+
+        //for convenience
+        let gl_storage = unsafe { assume_supported::<GL_ARB_buffer_storage>() };
+
+        //check if we have GL_ARB_copy_buffer
+        if gl::CopyBufferSubData::is_loaded() {
+            unsafe {
+                //carry over any internal pointer metadata
                 let ptr = self.ptr.swap_ptr_unchecked(null());
 
-                if <A as BufferStorage>::MapPersistent::VALUE || self.immutable_storage() {
-                    raw.storage_raw(
-                        &assume_supported::<GL_ARB_buffer_storage>(), ptr, Some(self.storage_flags())
-                    )
+                //allocate with the same storage type as self
+                let mut dest = if is_immut {
+                    raw.storage_raw(&gl_storage, ptr, Some(self.storage_flags()))
                 } else {
                     raw.data_raw(ptr, Some(self.usage())).downgrade_unchecked()
+                };
+
+                //copy using CopyBufferSubData
+                self.as_slice().copy_subdata_raw(
+                    &assume_supported::<GL_ARB_copy_buffer>(), &mut dest.as_slice_mut()
+                );
+
+                //return
+                dest
+            }
+        } else if is_immut {
+
+            //get the storage flags
+            let flags = self.storage_flags();
+
+            //check if we can map since could avoid a heap allocation (unless done in the backend)
+            if <A as BufferStorage>::MapRead::VALUE || flags.contains(StorageFlags::MAP_READ_BIT) {
+
+                //determine which map function to use
+                if persist_bit || flags.contains(StorageFlags::MAP_PERSISTENT_BIT) {
+
+                    //if persistent, we need to use get_map_raw, as otherwise, we may
+                    //accidentally make a second mapping
+                    let map = unsafe {
+                        Slice::get_map_raw::<PersistMapRead>(
+                            &self.as_slice().downgrade_unchecked::<PersistMapRead>()
+                        )
+                    };
+
+                    //get the data from the map
+                    raw.storage_ref(&gl_storage, &*map, Some(flags))
+                } else {
+
+                    //else, we can just use map_buffer
+                    let map = unsafe {
+                        self.downgrade_ref_unchecked::<MapRead>().map_raw::<MapRead>()
+                    };
+
+                    //get the data from the map
+                    raw.storage_ref(&gl_storage, &*map, Some(flags))
+
                 }
-            };
 
-            //copy the data directly
-            self.as_slice().copy_subdata_raw(&mut dest.as_slice_mut());
+            } else {
 
-            //return the buffer
-            dest
+                //if we can't map, clone by reading into a box
+                raw.storage_box(&gl_storage, self.as_slice().get_subdata_box(), Some(flags))
+
+            }
+        } else {
+
+            unsafe {
+                //since we are useing glBufferData storage, just do teh maps
+                let map = self.downgrade_ref_unchecked::<MapRead>().map_raw::<MapRead>();
+
+                //get the data from the map
+                raw.data_ref(&*map, Some(self.usage())).downgrade_unchecked()
+            }
+
         }
+
+
     }
 }
 
