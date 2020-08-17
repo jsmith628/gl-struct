@@ -18,12 +18,13 @@ impl<A:BufferStorage> Buffer<dyn Any, A> {
 
 impl<'a, A:BufferStorage> Slice<'a, dyn Any, A> {
     pub fn downcast<T:Any>(self) -> Result<Slice<'a,T,A>, Self> {
+        #[allow(clippy::forget_copy)]
         unsafe {
             if let Some(cast) = (&mut *self.ptr.dangling_mut()).downcast_mut() {
-                let new = BufPtr::new(self.id(), cast);
+                let ptr = BufPtr::new(self.id(), cast);
                 let offset = self.offset();
                 forget(self);
-                Ok(Slice{ptr: new, offset: offset, buf: PhantomData})
+                Ok(Slice{ptr, offset, buf: PhantomData})
             } else {
                 Err(self)
             }

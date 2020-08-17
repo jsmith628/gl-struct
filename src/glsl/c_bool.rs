@@ -21,8 +21,8 @@ macro_rules! impl_c_bool_assign {
     )*}
 }
 
-impl_c_bool!(BitAnd.bitand &, BitOr.bitor |, BitXor.bitxor &);
-impl_c_bool_assign!(BitAndAssign.bitand_assign &=, BitOrAssign.bitor_assign |=, BitXorAssign.bitxor_assign &=);
+impl_c_bool!(BitAnd.bitand &, BitOr.bitor |, BitXor.bitxor ^);
+impl_c_bool_assign!(BitAndAssign.bitand_assign &=, BitOrAssign.bitor_assign |=, BitXorAssign.bitxor_assign ^=);
 
 impl Not for c_bool { type Output = Self; #[inline] fn not(self) -> Self { c_bool(!self.0) } }
 

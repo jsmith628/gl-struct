@@ -161,7 +161,7 @@ impl<V:Supports<GL43>+Supports<GL20>> GLState<V> {
 
     pub fn debug_message_callback_null(&mut self) {
         unsafe {
-            gl::DebugMessageCallback(::std::mem::transmute(null::<GLvoid>()), null());
+            gl::DebugMessageCallback(None, null());
             self.debug_callback = DebugCallback::Null;
         }
     }
