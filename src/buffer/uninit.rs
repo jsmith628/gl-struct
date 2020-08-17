@@ -122,6 +122,12 @@ impl UninitBuf {
         }
     }
 
+    pub fn storage_ref<T:?Sized+GPUCopy, A:BufferStorage, GL:Supports<GL_ARB_buffer_storage>>(
+        self, gl: &GL, data: &T, hint: StorageHint
+    ) -> Buffer<T,A> {
+        unsafe { self.storage_raw(gl, data, hint) }
+    }
+
     pub fn storage_uninit<T:Sized, A:BufferStorage, GL:Supports<GL_ARB_buffer_storage>>(
         self, gl: &GL, hint: StorageHint
     ) -> Buffer<MaybeUninit<T>,A> {
@@ -179,6 +185,10 @@ impl UninitBuf {
             forget(data);
             buf
         }
+    }
+
+    pub fn data_ref<T:?Sized+GPUCopy>(self, data: &T, usage: DataHint) -> Buffer<T> {
+        unsafe { self.data_raw(data, usage) }
     }
 
     pub fn data_uninit<T:Sized>(self, usage: DataHint) -> Buffer<MaybeUninit<T>> {
