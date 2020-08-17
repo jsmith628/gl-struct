@@ -149,7 +149,7 @@ unsafe fn map_access<B:BufferStorage>() -> GLenum {
 }
 
 impl<T:?Sized, A:BufferStorage> Buffer<T,A> {
-    unsafe fn map_raw<'a,B:BufferStorage>(&'a mut self) -> Map<'a,T,B> {
+    pub(super) unsafe fn map_raw<'a,B:BufferStorage>(&'a self) -> Map<'a,T,B> {
         let ptr = self.ptr.swap_mut_ptr(
             if self.size()==0 {
                 NonNull::dangling().as_mut()
@@ -288,7 +288,7 @@ impl<T:Sized,A:NonPersistent> Buffer<[T],A> {
 //
 
 impl<'a,T:?Sized,A:Persistent> Slice<'a,T,A> {
-    unsafe fn get_map_raw<'b,B:Persistent>(this:*const Self) -> Map<'b,T,B> {
+    pub(super) unsafe fn get_map_raw<'b,B:Persistent>(this:*const Self) -> Map<'b,T,B> {
         let mut ptr = MaybeUninit::uninit();
 
         //get the size of the full buffer
