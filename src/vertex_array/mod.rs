@@ -108,7 +108,7 @@ impl<'a,E:Copy,V:Vertex<'a>> VertexArray<'a,E,V> {
 
     #[inline] pub fn delete(self) { drop(self); }
     #[inline] pub fn delete_vertex_arrays(arrays: Box<[Self]>) {
-        if arrays.len()==0 { return; }
+        if arrays.is_empty() { return; }
         unsafe {
             let ids: Box<[GLuint]> = transmute(arrays);
             gl::DeleteVertexArrays(ids.len() as GLsizei, &ids[0]);

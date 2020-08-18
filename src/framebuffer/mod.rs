@@ -113,7 +113,7 @@ impl<'a, DS, F:'a> Framebuffer<'a,DS,F> {
 
     pub fn delete(self) { drop(self); }
     pub fn delete_framebuffers(rb: Box<[Self]>) {
-        if rb.len()==0 {return;}
+        if rb.is_empty() {return;}
         unsafe {
             let ids: Box<[GLuint]> = transmute(rb);
             gl::DeleteFramebuffers(ids.len() as GLsizei, &ids[0])

@@ -74,7 +74,7 @@ impl<F, T:TextureTarget<F>> Texture<F,T> {
 
     pub fn delete(self) { drop(self); }
     pub fn delete_textures(tex: Box<[Self]>) {
-        if tex.len()==0 {return;}
+        if tex.is_empty() {return;}
         unsafe {
             let ids: Box<[GLuint]> = transmute(tex);
             gl::DeleteTextures(ids.len() as GLsizei, &ids[0])
@@ -199,12 +199,12 @@ impl<F:InternalFormat, T:TextureTarget<F>> Texture<F,T> {
 
     fn _level(&self, layer:GLuint, face:<T as ImageSelector>::Selection) -> TexImage<F,T> {
         if layer!=0 && layer>=self.max_levels() { panic!("Mipmap level out of range"); }
-        TexImage{id:self.id(), level:0, face:face, tex:PhantomData}
+        TexImage{id:self.id(), level:0, face, tex:PhantomData}
     }
 
     fn _level_mut(&mut self, layer:GLuint, face:<T as ImageSelector>::Selection) -> TexImageMut<F,T> {
         if layer!=0 && layer>=self.max_levels() { panic!("Mipmap level out of range"); }
-        TexImageMut{id:self.id(), level:0, face:face, tex:PhantomData}
+        TexImageMut{id:self.id(), level:0, face, tex:PhantomData}
     }
 
     pub fn width(&self) -> usize { self._base_image().width() }

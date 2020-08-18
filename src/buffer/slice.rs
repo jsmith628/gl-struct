@@ -145,10 +145,11 @@ impl<'a,T:?Sized,A:BufferStorage> Slice<'a,T,A> {
 
 impl<'a,T:Sized,A:BufferStorage> Slice<'a,[T],A> {
     #[inline] pub fn len(&self) -> usize {self.ptr.len()}
+    #[inline] pub fn is_empty(&self) -> bool { self.len()==0 }
 
     #[inline]
     pub unsafe fn from_raw_parts(id:GLuint, len:usize, offset:usize) -> Self {
-        Slice{ptr: BufPtr::from_raw_parts(id, len), offset: offset, buf:PhantomData}
+        Slice{ptr: BufPtr::from_raw_parts(id, len), offset, buf:PhantomData}
     }
 
     pub fn split_at(self, mid:usize) -> (Slice<'a,[T],A>, Slice<'a,[T],A>) {
@@ -162,7 +163,7 @@ impl<'a,T:Sized,A:BufferStorage> Slice<'a,[T],A> {
     }
 
     pub fn split_first(self) -> Option<(Slice<'a,T,A>, Slice<'a,[T],A>)> {
-        match self.len()==0 {
+        match self.is_empty() {
             true => None,
             _ => {
                 let (first, rest) = self.split_at(1);
@@ -172,7 +173,7 @@ impl<'a,T:Sized,A:BufferStorage> Slice<'a,[T],A> {
     }
 
     pub fn split_last(self) -> Option<(Slice<'a,T,A>, Slice<'a,[T],A>)> {
-        match self.len()==0 {
+        match self.is_empty() {
             true => None,
             _ => {
                 let (rest, last) = self.split_at(self.len()-1);
@@ -272,10 +273,11 @@ impl<'a,T:?Sized,A:BufferStorage> SliceMut<'a,T,A> {
 
 impl<'a,T:Sized,A:BufferStorage> SliceMut<'a,[T],A> {
     #[inline] pub fn len(&self) -> usize {self.as_immut().len()}
+    #[inline] pub fn is_empty(&self) -> bool { self.len()==0 }
 
     #[inline]
     pub unsafe fn from_raw_parts(id:GLuint, len:usize, offset:usize) -> Self {
-        SliceMut{ptr: BufPtr::from_raw_parts(id, len), offset: offset, buf:PhantomData}
+        SliceMut{ptr: BufPtr::from_raw_parts(id, len), offset, buf:PhantomData}
     }
 
     #[inline] pub fn split_at(self, mid:usize) -> (Slice<'a,[T],A>, Slice<'a,[T],A>) {
@@ -388,7 +390,7 @@ impl<'a,T:?Sized,A:Dynamic> SliceMut<'a,T,A> {
             self.subdata_raw(&data);
             forget(data); //we need to make sure the destructor of data is NOT run
 
-            return old_data.assume_init();
+            old_data.assume_init()
         }
     }
 

@@ -97,6 +97,7 @@ macro_rules! impl_vertex {
             type Attribs = ($(VertexAttrib<'a,'b,$T>,)*);
             type AttribsMut = ($(VertexAttribMut<'a,'b,$T>,)*);
 
+            #[allow(clippy::eval_order_dependence)]
             #[allow(unused_variables, unused_assignments)]
             fn attribs<El:Copy>(vaobj: &'a VertexArray<'b,El,Self>) -> Self::Attribs {
                 let mut i = 0;
@@ -114,6 +115,7 @@ macro_rules! impl_vertex {
 
             }
 
+            #[allow(clippy::eval_order_dependence)]
             #[allow(unused_variables, unused_assignments)]
             fn attribs_mut<El:Copy>(vaobj: &'a mut VertexArray<'b,El,Self>) -> Self::AttribsMut {
                 let mut i = 0;
@@ -140,6 +142,7 @@ macro_rules! impl_vertex {
 
 impl_tuple!(impl_vertex);
 
+#[allow(clippy::unused_unit)]
 impl<'a> Vertex<'a> for () {
     type Arrays = ();
     fn num_indices() -> usize { 0 }
@@ -147,6 +150,7 @@ impl<'a> Vertex<'a> for () {
     fn attrib_arrays<'r,El:Copy>(_: &'r mut VertexArray<'a,El,Self>, _: ()) {}
 }
 
+#[allow(clippy::unused_unit)]
 impl<'a,'b:'a> VertexRef<'a,'b> for () {
     type Attribs = ();
     type AttribsMut = ();

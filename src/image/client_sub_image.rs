@@ -15,8 +15,8 @@ pub enum SubImageError {
 
 impl<I:ImageSrc> ClientSubImage<I> {
 
-    pub unsafe fn new_unchecked(offset:[usize;3], dim:[usize;3], img: I) -> Self {
-        ClientSubImage { offset: offset, dim: dim, image: img }
+    pub unsafe fn new_unchecked(offset:[usize;3], dim:[usize;3], image: I) -> Self {
+        ClientSubImage { offset, dim, image }
     }
 
     pub fn try_new(offset:[usize;3], dim:[usize;3], img: I) -> Result<Self, SubImageError> {

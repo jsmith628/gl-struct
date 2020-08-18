@@ -16,9 +16,9 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImageMut<'a,F,T> {
             PixelPtr::Buffer(buf, offset) => (Some(buf), offset as *const GLvoid),
         };
 
-        id.map(|i| gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, i));
+        if let Some(i) = id { gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, i) };
         TEXTURE0.map_bind(self, |_| gl(self.face.into(), self.level() as GLint, dim, ptr));
-        id.map(|_| gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, 0));
+        if id.is_some() { gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, 0) };
     }
 
     unsafe fn unpack_pixels<

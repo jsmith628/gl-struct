@@ -38,8 +38,8 @@ impl<'a,A:GLSLType> AttribArray<'a,A> {
         }
     }
 
-    pub unsafe fn from_raw_parts(buf:GLuint, fmt:A::AttribFormat, stride:usize, ptr:usize) -> Self {
-        AttribArray { id:buf, format:fmt, stride:stride, pointer:ptr, buf:PhantomData }
+    pub unsafe fn from_raw_parts(id:GLuint, format:A::AttribFormat, stride:usize, pointer:usize) -> Self {
+        AttribArray { id, format, stride, pointer, buf:PhantomData }
     }
 
 }
@@ -141,7 +141,7 @@ macro_rules! impl_tuple_attrib {
                 (
                     $(
                         AttribArray {
-                            id: id, stride: stride,
+                            id, stride,
                             format: $t.fmt, pointer: base_offset+$t.offset,
                             buf: PhantomData
                         },
@@ -187,7 +187,7 @@ macro_rules! impl_split_array {
                     arr![
                         for i in 0..$n {
                             AttribArray {
-                                id: id, stride: stride,
+                                id, stride,
                                 format: format[i].fmt,
                                 pointer: base_offset + format[i].offset,
                                 buf: PhantomData

@@ -75,9 +75,9 @@ extern "system" fn debug_callback_sync(
 
             (&mut **callback)(
                 DebugMessage {
+                    id,
                     source: source.try_into().unwrap(),
                     ty: ty.try_into().unwrap(),
-                    id: id,
                     severity: severity.try_into().unwrap(),
                     message: msg.to_string()
                 }
@@ -102,9 +102,9 @@ extern "system" fn debug_callback_async(
             if let Ok(mut c) = lock {
                 (&mut *c)(
                     DebugMessage {
+                        id,
                         source: source.try_into().unwrap(),
                         ty: ty.try_into().unwrap(),
-                        id: id,
                         severity: severity.try_into().unwrap(),
                         message: msg.to_string()
                     }
@@ -213,7 +213,7 @@ impl<V:Supports<GL43>+Supports<GL20>> GLState<V> {
     }
 
     pub fn get_debug_message_log(&mut self) -> DebugMessageLog {
-        unsafe { DebugMessageLog(transmute(self)) }
+        unsafe { DebugMessageLog(&mut *(self as *mut Self as *mut _)) }
     }
 
     pub fn get_debug_message(&mut self) -> Option<DebugMessage> {
@@ -238,7 +238,7 @@ impl<V:Supports<GL43>+Supports<GL20>> GLState<V> {
                     DebugMessage{
                         source: source.assume_init().try_into().unwrap(),
                         ty: ty.assume_init().try_into().unwrap(),
-                        id: id.assume_init().try_into().unwrap(),
+                        id: id.assume_init(),
                         severity: severity.assume_init().try_into().unwrap(),
                         message: String::from_utf8(message).unwrap(),
                     }

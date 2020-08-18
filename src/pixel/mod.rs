@@ -32,6 +32,7 @@ impl<P:?Sized> PixelPtr<P> {
     }
 }
 
+#[allow(clippy::len_without_is_empty)]
 impl<P> PixelPtr<[P]> {
     pub fn len(self) -> usize {
         match self {
@@ -56,6 +57,7 @@ impl<P:?Sized> PixelPtrMut<P> {
     }
 }
 
+#[allow(clippy::len_without_is_empty)]
 impl<P> PixelPtrMut<[P]> {
     pub fn len(self) -> usize {
         match self {

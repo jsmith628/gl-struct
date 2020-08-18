@@ -97,10 +97,7 @@ pub unsafe trait TextureType: GLEnum + Default {
 
     #[inline]
     fn multisampled() -> bool {
-        match Self::glenum() {
-            gl::TEXTURE_2D_MULTISAMPLE | gl::TEXTURE_2D_MULTISAMPLE_ARRAY => true,
-            _ => false
-        }
+        matches!(Self::glenum(), gl::TEXTURE_2D_MULTISAMPLE | gl::TEXTURE_2D_MULTISAMPLE_ARRAY)
     }
 
     #[inline]
@@ -114,10 +111,7 @@ pub unsafe trait TextureType: GLEnum + Default {
 
     #[inline]
     fn cube_mapped() -> bool {
-        match Self::glenum() {
-            gl::TEXTURE_CUBE_MAP | gl::TEXTURE_CUBE_MAP_ARRAY => true,
-            _ => false
-        }
+        matches!(Self::glenum(), gl::TEXTURE_CUBE_MAP | gl::TEXTURE_CUBE_MAP_ARRAY)
     }
 
 }

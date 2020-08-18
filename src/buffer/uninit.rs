@@ -46,9 +46,9 @@ impl UninitBuf {
         unsafe {
             if gl.supports_extension("GL_ARB_direct_state_access") {
                 gl::CreateBuffers(n.try_into().unwrap(), ids[0].as_mut_ptr());
-                ids.into_iter().map(|id| Self::from_id(id.assume_init())).collect()
+                ids.iter().map(|id| Self::from_id(id.assume_init())).collect()
             } else {
-                let bufs = Self::gen_buffers(gl, n).into_iter().map(
+                let bufs = Self::gen_buffers(gl, n).iter().map(
                     |b| {
                         gl::BindBuffer(gl::ARRAY_BUFFER, *b);
                         Self::from_id(*b)
@@ -147,7 +147,7 @@ impl UninitBuf {
         let ptr = data as *const GLvoid;
 
         //get the usage
-        let usage = hint.unwrap_or(Default::default()) as GLenum;
+        let usage = hint.unwrap_or_default() as GLenum;
 
         //upload the data
         if size!=0 {

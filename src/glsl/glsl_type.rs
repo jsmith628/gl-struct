@@ -1,5 +1,6 @@
 use super::*;
 
+#[allow(clippy::unused_unit)]
 unsafe impl GLSLType for void {
     type AttribFormat = ();
     unsafe fn load_uniforms(_: GLint, _: &[Self]){}
@@ -22,7 +23,7 @@ macro_rules! impl_glsl_type {
 
             unsafe fn get_uniform(p: GLuint, id:GLint) -> Self {
                 let mut data = MaybeUninit::<Self>::uninit();
-                $get(p, id, transmute(data.as_mut_ptr()));
+                $get(p, id, data.as_mut_ptr() as *mut _);
                 data.assume_init()
             }
         }
@@ -41,7 +42,7 @@ macro_rules! impl_glsl_type {
 
             unsafe fn get_uniform(p: GLuint, id:GLint) -> Self {
                 let mut data = MaybeUninit::<Self>::uninit();
-                $get(p, id, transmute(data.as_mut_ptr()));
+                $get(p, id, data.as_mut_ptr() as *mut _);
                 data.assume_init()
             }
         }
@@ -115,6 +116,7 @@ macro_rules! impl_tuple_type {
             }
 
             #[allow(unused_assignments)]
+            #[allow(clippy::eval_order_dependence)]
             unsafe fn get_uniform(p: GLuint, id:GLint) -> Self {
                 let mut i = id;
                 (
@@ -140,6 +142,8 @@ macro_rules! impl_array_type {
 
     ($attrib_support:tt $($num:tt)*) => {
         $(
+
+            #[allow(clippy::zero_prefixed_literal)] //The 0s are for formatting reeee >:[
             unsafe impl<T:GLSLType> GLSLType for [T; $num] {
                 type AttribFormat = impl_array_type!(
                     @attrib $attrib_support [OffsetFormat<T::AttribFormat>; $num]
@@ -178,6 +182,7 @@ impl_array_type!{ true
 //Of course, at some point, the user *could* (and should) just use
 //arrays of arrays to get more indices (though that needs GL 4)
 #[cfg(any(feature = "large_uniform_arrays", feature = "extra_large_uniform_arrays"))]
+#[allow(clippy::zero_prefixed_literal)] //The 0s are for formatting reeee >:[
 impl_array_type!{ false
     033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050 051 052 053 054 055 056 057 058 059 060 061 062 063 064
     065 066 067 068 069 070 071 072 073 074 075 076 077 078 079 080 081 082 083 084 085 086 087 088 089 090 091 092 093 094 095 096

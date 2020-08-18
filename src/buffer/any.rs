@@ -39,7 +39,7 @@ impl<'a, A:BufferStorage> SliceMut<'a, dyn Any, A> {
                 let new = BufPtr::new(self.id(), cast);
                 let offset = self.offset();
                 forget(self);
-                Ok(SliceMut{ptr: new, offset: offset, buf: PhantomData})
+                Ok(SliceMut{ptr: new, offset, buf: PhantomData})
             } else {
                 Err(self)
             }
@@ -54,7 +54,7 @@ impl<'a, A:BufferStorage> Map<'a, dyn Any + 'static, A> {
                 let offset = self.offset;
                 let id = self.id;
                 forget(self);
-                Ok(Map{ptr: cast, offset: offset, id: id, buf: PhantomData})
+                Ok(Map{ptr: cast, offset, id, buf: PhantomData})
             } else {
                 Err(self)
             }

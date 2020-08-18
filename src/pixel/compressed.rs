@@ -32,7 +32,7 @@ impl<F:SpecificCompressed> ToOwned for CompressedPixels<F> {
     fn to_owned(&self) -> Box<Self> {
         let mut uninit = Box::<[MaybeUninit<F::Block>]>::new_uninit_slice(self.blocks());
         unsafe {
-            uninit.copy_from_slice(transmute::<&[F::Block],_>(&self.data));
+            self.data.as_ptr().copy_to(uninit.as_mut_ptr() as *mut _, self.blocks());
             transmute(uninit.assume_init())
         }
     }

@@ -149,7 +149,7 @@ unsafe fn map_access<B:BufferStorage>() -> GLenum {
 }
 
 impl<T:?Sized, A:BufferStorage> Buffer<T,A> {
-    pub(super) unsafe fn map_raw<'a,B:BufferStorage>(&'a self) -> Map<'a,T,B> {
+    pub(super) unsafe fn map_raw<B:BufferStorage>(&self) -> Map<T,B> {
         let ptr = self.ptr.swap_mut_ptr(
             if self.size()==0 {
                 NonNull::dangling().as_mut()
@@ -163,7 +163,7 @@ impl<T:?Sized, A:BufferStorage> Buffer<T,A> {
         );
 
         Map {
-            ptr: ptr,
+            ptr,
             id: self.id(),
             offset: 0,
             buf: PhantomData
@@ -173,17 +173,17 @@ impl<T:?Sized, A:BufferStorage> Buffer<T,A> {
 
 impl<T:?Sized,A:NonPersistent> Buffer<T,A> {
     #[inline]
-    pub fn map<'a>(&'a mut self) -> Map<'a,T,MapRead> where A:ReadMappable {
+    pub fn map(&mut self) -> Map<T,MapRead> where A:ReadMappable {
         unsafe{self.map_raw()}
     }
 
     #[inline]
-    pub fn map_write<'a>(&'a mut self) -> Map<'a,T,MapWrite> where A:WriteMappable {
+    pub fn map_write<>(&mut self) -> Map<T,MapWrite> where A:WriteMappable {
         unsafe{self.map_raw()}
     }
 
     #[inline]
-    pub fn map_mut<'a>(&'a mut self) -> Map<'a,T,MapReadWrite> where A:ReadWriteMappable {
+    pub fn map_mut(&mut self) -> Map<T,MapReadWrite> where A:ReadWriteMappable {
         unsafe{self.map_raw()}
     }
 }
@@ -237,12 +237,12 @@ impl<'a,T:?Sized,A:BufferStorage> SliceMut<'a,T,A> {
                     ARRAY_BUFFER.map_bind(&self, |b|
                         gl::MapBuffer(b.target_id(), map_access::<B>())
                     )
-                }.offset(self.offset() as isize)
+                }.add(self.offset())
             }
         );
 
         Map {
-            ptr: ptr,
+            ptr,
             id: self.id(),
             offset: self.offset(),
             buf: PhantomData
@@ -256,7 +256,7 @@ impl<'a,T:?Sized,A:BufferStorage> SliceMut<'a,T,A> {
 impl<T:Sized,A:NonPersistent> Buffer<[T],A> {
 
     #[inline]
-    pub fn map_range<'a,U,I>(&'a mut self, i:I) -> Map<'a,U,MapRead> where
+    pub fn map_range<U,I>(&mut self, i:I) -> Map<U,MapRead> where
         U:?Sized,
         I:SliceIndex<[T],Output=U>,
         A:ReadMappable
@@ -265,7 +265,7 @@ impl<T:Sized,A:NonPersistent> Buffer<[T],A> {
     }
 
     #[inline]
-    pub fn map_range_write<'a,U,I>(&'a mut self, i:I) -> Map<'a,U,MapWrite> where
+    pub fn map_range_write<U,I>(&mut self, i:I) -> Map<U,MapWrite> where
         U:?Sized,
         I:SliceIndex<[T],Output=U>,
         A:WriteMappable
@@ -274,7 +274,7 @@ impl<T:Sized,A:NonPersistent> Buffer<[T],A> {
     }
 
     #[inline]
-    pub fn map_range_mut<'a,U,I>(&'a mut self, i:I) -> Map<'a,U,MapReadWrite> where
+    pub fn map_range_mut<U,I>(&mut self, i:I) -> Map<U,MapReadWrite> where
         U:?Sized,
         I:SliceIndex<[T],Output=U>,
         A:ReadMappable+WriteMappable
@@ -335,7 +335,7 @@ impl<'a,T:?Sized,A:Persistent> Slice<'a,T,A> {
         }
 
         Map {
-            ptr: (&*this).ptr.swap_mut_ptr(ptr.assume_init().offset((&*this).offset() as isize)),
+            ptr: (*this).ptr.swap_mut_ptr(ptr.assume_init().add((&*this).offset())),
             id: (&*this).id(),
             offset: (&*this).offset(),
             buf: PhantomData

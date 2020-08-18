@@ -106,7 +106,7 @@ impl Sampler {
 
     pub fn delete(self) { drop(self) }
     pub fn delete_samplers(s: Box<[Self]>) {
-        if s.len()==0 {return;}
+        if s.is_empty() {return;}
         unsafe {
             let ids: Box<[GLuint]> = transmute(s);
             gl::DeleteSamplers(ids.len() as GLsizei, &ids[0])

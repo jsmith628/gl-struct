@@ -1,7 +1,5 @@
 use super::*;
 
-use crate::pixel::*;
-
 union BufUnion<T:?Sized> {
     gl: *const GLvoid,
     gl_mut: *mut GLvoid,
@@ -169,7 +167,7 @@ unsafe trait NeedsDropVal { fn needs_drop_val(&self) -> bool; }
 unsafe impl<T:?Sized> NeedsDropVal for T { #[inline] default fn needs_drop_val(&self) -> bool {true} }
 unsafe impl<T:Sized> NeedsDropVal for T { #[inline] fn needs_drop_val(&self) -> bool {needs_drop::<T>()} }
 unsafe impl<T:Sized> NeedsDropVal for [T] {
-    #[inline] fn needs_drop_val(&self) -> bool {self.len()>0 && needs_drop::<T>()}
+    #[inline] fn needs_drop_val(&self) -> bool {!self.is_empty() && needs_drop::<T>()}
 }
 unsafe impl<F:SpecificCompressed> NeedsDropVal for CompressedPixels<F> {
     #[inline] fn needs_drop_val(&self) -> bool {self.pixel_count()>0 && needs_drop::<F>()}

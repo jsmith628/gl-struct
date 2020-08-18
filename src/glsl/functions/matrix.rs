@@ -95,6 +95,8 @@ pub fn transpose<M:Mat>(m:M) -> <M as Transpose>::Output { m.transpose() }
 
 pub fn determinant<M:Mat>(m:M) -> Scalar<M> {
 
+    //yes, this is bad
+    #[allow(clippy::many_single_char_names)]
     fn cofactor_det_3d<M:Mat>(m:M, i:usize, j:usize, k:usize, r:usize) -> Scalar<M> {
         m[i][i+r]*m[j][j+r]*m[k][k+r] + m[j][i+r]*m[k][j+r]*m[i][k+r] + m[k][i+r]*m[i][j+r]*m[j][k+r] -
         m[i][k+r]*m[j][j+r]*m[k][i+r] - m[j][k+r]*m[k][j+r]*m[i][i+r] - m[k][k+r]*m[i][j+r]*m[j][i+r]
@@ -173,5 +175,5 @@ pub fn inverse<M:SquareMat>(mut a:M) -> M {
         }
     }
 
-    return b;
+    b
 }

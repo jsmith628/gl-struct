@@ -74,23 +74,24 @@ impl<T:?Sized, A:BufferStorage> Buffer<T,A> {
     //Conversion between access types
     //
 
-    #[inline] pub unsafe fn downgrade_unchecked<B:BufferStorage>(self) -> Buffer<T,B> { transmute(self) }
-    #[inline] pub unsafe fn downgrade_ref_unchecked<B:BufferStorage>(&self) -> &Buffer<T,B> { transmute(self) }
-    #[inline] pub unsafe fn downgrade_mut_unchecked<B:BufferStorage>(&mut self) -> &mut Buffer<T,B> { transmute(self) }
+    pub unsafe fn downgrade_unchecked<B:BufferStorage>(self) -> Buffer<T,B> { transmute(self) }
+    pub unsafe fn downgrade_ref_unchecked<B:BufferStorage>(&self) -> &Buffer<T,B> {
+        &*(self as *const Self as *const Buffer<T,B>)
+    }
+    pub unsafe fn downgrade_mut_unchecked<B:BufferStorage>(&mut self) -> &mut Buffer<T,B> {
+        &mut *(self as *mut Self as *mut Buffer<T,B>)
+    }
 
-    #[inline]
     pub fn downgrade<B:BufferStorage>(self) -> Buffer<T,B> where A:DowngradesTo<B> {
-        unsafe { transmute(self) }
+        unsafe { self.downgrade_unchecked() }
     }
 
-    #[inline]
     pub fn downgrade_ref<B:BufferStorage>(&self) -> &Buffer<T,B> where A:DowngradesTo<B> {
-        unsafe { transmute(self) }
+        unsafe { self.downgrade_ref_unchecked() }
     }
 
-    #[inline]
     pub fn downgrade_mut<B:BufferStorage>(&mut self) -> &mut Buffer<T,B> where A:DowngradesTo<B> {
-        unsafe { transmute(self) }
+        unsafe { self.downgrade_mut_unchecked() }
     }
 
     //
@@ -127,7 +128,7 @@ impl<T:?Sized, A:BufferStorage> Buffer<T,A> {
             self.forget_data();
 
             //finally, return the box
-            return data;
+            data
         }
     }
 
@@ -175,6 +176,7 @@ impl<T:Sized, A:BufferStorage> Buffer<T,A> {
 
 impl<T:Sized, A:BufferStorage> Buffer<[T],A> {
     #[inline] pub fn len(&self) -> usize { self.ptr.len() }
+    #[inline] pub fn is_empty(&self) -> bool { self.len()==0 }
 
     #[inline] pub fn split_at(&self, mid:usize) -> (Slice<[T],A>, Slice<[T],A>) { self.as_slice().split_at(mid) }
     #[inline] pub fn split_at_mut(&mut self, mid:usize) -> (SliceMut<[T],A>, SliceMut<[T],A>) {

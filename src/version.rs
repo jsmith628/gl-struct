@@ -130,10 +130,10 @@ pub fn supported<GL:GLVersion>() -> Result<GL,GLVersionError> {
     if req_version == (0,0) || get_version() >= req_version {
 
         //make sure that every extra required extension is supported
-        if req_extensions.len() == 0 { return Ok(target); }
+        if req_extensions.is_empty() { return Ok(target); }
         for e in get_extensions() {
             req_extensions.remove(e);
-            if req_extensions.len() == 0 { return Ok(target); }
+            if req_extensions.is_empty() { return Ok(target); }
         }
 
         Err(GLVersionError::Extension(req_extensions.into_iter().next().unwrap()))
@@ -168,6 +168,7 @@ pub fn upgrade_to<Test:GLVersion+?Sized, Version:GLVersion+Sized>(gl: &Test) -> 
     }
 }
 
+#[allow(unused_variables)]
 pub fn downgrade_to<Test:Supports<Version>, Version:GLVersion>(gl: &Test) -> Version {
     unsafe { assume_supported() }
 }
@@ -738,7 +739,7 @@ unsafe impl GLVersion for () {
     fn req_version(&self) -> (GLuint, GLuint) {(0,0)}
     fn req_extensions(&self) -> HashSet<&'static str> { HashSet::new() }
     fn version(&self) -> (GLuint, GLuint) {(0,0)}
-    fn supports_extension(&self, ex: &str) -> bool {false}
+    fn supports_extension(&self, _ex: &str) -> bool {false}
 }
 
 //Everything supports ()
@@ -749,7 +750,7 @@ unsafe impl GLVersion for ! {
     fn req_version(&self) -> (GLuint, GLuint) {(!0, !0)}
     fn req_extensions(&self) -> HashSet<&'static str> { HashSet::new() }
     fn version(&self) -> (GLuint, GLuint) {(!0, !0)}
-    fn supports_extension(&self, ex: &str) -> bool {true}
+    fn supports_extension(&self, _ex: &str) -> bool {true}
 }
 
 //`!` supports everything

@@ -13,11 +13,11 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImage<'a,F,T> {
             PixelPtrMut::Buffer(buf, offset) => (Some(buf), offset as *mut GLvoid),
         };
 
-        id.map(|i| gl::BindBuffer(gl::PIXEL_PACK_BUFFER, i));
+        if let Some(i) = id { gl::BindBuffer(gl::PIXEL_PACK_BUFFER, i) };
         TEXTURE0.map_bind(self,
             |_| gl(self.face.into(), self.level() as GLsizei, ptr)
         );
-        id.map(|_| gl::BindBuffer(gl::PIXEL_PACK_BUFFER, 0));
+        if id.is_some() { gl::BindBuffer(gl::PIXEL_PACK_BUFFER, 0) };
 
     }
 

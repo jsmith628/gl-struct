@@ -206,10 +206,7 @@ unsafe impl AttribFormat for VecFormat {
     fn packed(self, index: usize) -> bool {
         use self::VecFormat::*;
         match index {
-            0 => match self {
-                Int_2_10_10_10_Rev(_,_) | UInt_2_10_10_10_Rev(_,_) | UInt_10F_11F_11F_Rev => true,
-                _ => false
-            }
+            0 => matches!(self, Int_2_10_10_10_Rev(_,_) | UInt_2_10_10_10_Rev(_,_) | UInt_10F_11F_11F_Rev),
             _ => false
         }
     }
@@ -323,7 +320,7 @@ unsafe impl<A:AttribFormat> AttribFormat for OffsetFormat<A> {
 
     fn from_layouts(layouts: &[GenAttribFormat]) -> Result<Self,GLError> {
         let fmt = A::from_layouts(layouts)?;
-        Ok(OffsetFormat { offset: layouts[0].offset - fmt.offset(0), fmt: fmt } )
+        Ok(OffsetFormat { offset: layouts[0].offset - fmt.offset(0), fmt } )
     }
 
     fn attrib_count() -> usize { A::attrib_count() }
@@ -354,6 +351,8 @@ macro_rules! array_format {
 
     ($($num:literal)*) => {
         $(
+
+            #[allow(clippy::zero_prefixed_literal)] //The 0s are for formatting reeee >:[
             unsafe impl<A:AttribFormat> AttribFormat for [OffsetFormat<A>; $num] {
                 fn attrib_count() -> usize { $num * A::attrib_count() }
                 array_format!(fn offset<A>() -> usize);
@@ -381,6 +380,7 @@ macro_rules! array_format {
 
             }
 
+            #[allow(clippy::zero_prefixed_literal)] //The 0s are for formatting reeee >:[
             unsafe impl<T:AttribData> AttribData for [T;$num] {
 
                 type Format = [OffsetFormat<T::Format>; $num];
@@ -439,6 +439,7 @@ macro_rules! tuple_format {
             tuple_format!(fn integer<$($A:$a)*>() -> bool {false});
 
             #[allow(unused_assignments)]
+            #[allow(clippy::eval_order_dependence)]
             fn from_layouts(mut layouts: &[GenAttribFormat]) -> Result<Self,GLError> {
                 Ok((
                     $(

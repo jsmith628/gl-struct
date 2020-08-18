@@ -22,15 +22,15 @@ wrap_cmp!(GenEqType; equal == notEqual != );
 
 pub fn any<V:GenBType>(x:V) -> gl_bool {
     for i in 0..V::COUNT { if bool::from(*x.coord(i)) { return true.into(); } }
-    return false.into();
+    false.into()
 }
 
 pub fn all<V:GenBType>(x:V) -> gl_bool {
     for i in 0..V::COUNT { if bool::from(!(*x.coord(i))) { return false.into(); } }
-    return true.into();
+    true.into()
 }
 
 pub fn not<V:GenBType>(mut x:V) -> V {
     for i in 0..V::COUNT { *x.coord_mut(i) = !*x.coord(i); }
-    return x;
+    x
 }

@@ -10,7 +10,7 @@ macro_rules! component_wrapping_fn {
             for i in 0..V::COUNT {
                 *$v.coord_mut(i) = $v.coord(i).$fun($(*$args.coord(i)),*);
             }
-            return $v;
+            $v
         }
 
         component_wrapping_fn!($gen_type; $($rest)*);
@@ -36,7 +36,7 @@ pub fn inversesqrt<V:GenFType>(mut x:V) -> V {
     for i in 0..V::COUNT {
         *x.coord_mut(i) = x.coord(i).sqrt().recip();
     }
-    return x;
+    x
 }
 
 component_wrapping_fn!{GenFloatType;
@@ -57,7 +57,7 @@ pub fn roundEven<V:GenFloatType>(mut x:V) -> V {
             *x.coord_mut(i) = x.coord(i).round();
         }
     }
-    return x;
+    x
 }
 
 component_wrapping_fn!{GenSignType; abs:abs sign:signum}
@@ -87,7 +87,7 @@ pub fn floatBitsToInt<V:GenFType+GenFamily>(x:V) -> V::IVec {
     unsafe {
         let mut dest = MaybeUninit::<V::IVec>::uninit();
         for i in 0..V::COUNT {
-            *dest.get_mut().coord_mut(i) = transmute(*x.coord(i));
+            *dest.get_mut().coord_mut(i) = (*x.coord(i)).to_bits() as i32;
         }
         dest.assume_init()
     }
@@ -98,7 +98,7 @@ pub fn floatBitsToUint<V:GenFType+GenFamily>(x:V) -> V::UVec {
     unsafe {
         let mut dest = MaybeUninit::<V::UVec>::uninit();
         for i in 0..V::COUNT {
-            *dest.get_mut().coord_mut(i) = transmute(*x.coord(i));
+            *dest.get_mut().coord_mut(i) = (*x.coord(i)).to_bits();
         }
         dest.assume_init()
     }
@@ -109,7 +109,7 @@ pub fn intBitsToFloat<V:GenIType+GenFamily>(x:V) -> V::Vec {
     unsafe {
         let mut dest = MaybeUninit::<V::Vec>::uninit();
         for i in 0..V::COUNT {
-            *dest.get_mut().coord_mut(i) = transmute(*x.coord(i));
+            *dest.get_mut().coord_mut(i) = f32::from_bits(*x.coord(i) as u32);
         }
         dest.assume_init()
     }

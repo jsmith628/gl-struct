@@ -1,3 +1,4 @@
+#![allow(clippy::module_inception)]
 
 //TODO add default layout thing for shader storage objects and uniform buffer objects
 //TODO capture the first element name of unnamed structs in order to fix their indexing

@@ -192,7 +192,7 @@ impl<'a,'b,T:GLSLType> VertexAttribMut<'a,'b,T> {
                 let index = va.resource().index + i as GLuint;
                 let (size, ty, norm, ptr) = (
                     fmt.size(i) as GLint, fmt.ty(i) as GLenum,
-                    fmt.normalized(i) as GLboolean, pointer.offset(fmt.offset(i) as isize)
+                    fmt.normalized(i) as GLboolean, pointer.add(fmt.offset(i))
                 );
 
                 match (fmt.integer(i), fmt.long(i)) {

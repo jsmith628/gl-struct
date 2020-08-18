@@ -26,7 +26,7 @@ impl ::std::fmt::Display for ImageError {
 
 impl<B:PixelSrc> ClientImage<B> {
     pub unsafe fn new_unchecked(dim: [usize;3], pixels: B) -> Self {
-        ClientImage { dim: dim, pixels: pixels }
+        ClientImage { dim, pixels }
     }
 }
 
@@ -94,7 +94,7 @@ unsafe impl<B:FromPixels> OwnedImage for ClientImage<B> {
     ) -> Self {
         let settings = Default::default();
         ClientImage {
-            dim: dim, pixels: B::from_pixels(gl, hint, pixel_count(dim), |ptr| get(settings, ptr))
+            dim, pixels: B::from_pixels(gl, hint, pixel_count(dim), |ptr| get(settings, ptr))
         }
     }
 }

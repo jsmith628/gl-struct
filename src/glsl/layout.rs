@@ -73,8 +73,13 @@ impl_tuple!(impl_tuple_layout @with_last);
 macro_rules! impl_array_layout {
     ($($num:literal)*) => {
         $(
+            #[allow(clippy::zero_prefixed_literal)]
             unsafe impl<T:AlignedVec4> AlignedVec4 for [T; $num] {}
+
+            #[allow(clippy::zero_prefixed_literal)]
             unsafe impl<T:AlignedVec4+Layout<std140>> Layout<std140> for [T; $num] {}
+            
+            #[allow(clippy::zero_prefixed_literal)]
             unsafe impl<T:Layout<std430>> Layout<std430> for [T; $num] {}
         )*
     }

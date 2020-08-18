@@ -116,7 +116,7 @@ impl UninitRenderbuffer {
         forget(self);
 
         //return
-        Renderbuffer { id: id, fmt: PhantomData }
+        Renderbuffer { id, fmt: PhantomData }
 
     }
 
@@ -144,7 +144,7 @@ impl UninitRenderbuffer {
         forget(self);
 
         //return
-        Renderbuffer { id: id, fmt: PhantomData }
+        Renderbuffer { id, fmt: PhantomData }
 
     }
 
@@ -187,7 +187,7 @@ impl<F,MS> Renderbuffer<F,MS> {
 
     pub fn delete(self) { drop(self); }
     pub fn delete_renderbuffers(rb: Box<[Self]>) {
-        if rb.len()==0 {return;}
+        if rb.is_empty() {return;}
         unsafe {
             let ids: Box<[GLuint]> = transmute(rb);
             gl::DeleteRenderbuffers(ids.len() as GLsizei, &ids[0])

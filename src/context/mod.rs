@@ -29,9 +29,9 @@ impl<V:GLVersion> GLContext<V> {
     pub fn upgrade_to<V2:Supports<V>>(self) -> Result<GLContext<V2>, (Self, GLError)> {
         let v2 = unsafe { ::std::mem::zeroed::<V2>() };
         if supports::<V,V2>(&self.version) {
-            return Ok(GLContext {version: v2, _private: PhantomData} );
+            Ok(GLContext {version: v2, _private: PhantomData} )
         } else {
-            return Err((self, GLError::Version(v2.req_major_version(), v2.req_minor_version())));
+            Err((self, GLError::Version(v2.req_major_version(), v2.req_minor_version())))
         }
     }
 }

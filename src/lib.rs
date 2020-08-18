@@ -17,6 +17,13 @@
 #![feature(arbitrary_enum_discriminant)]
 #![feature(never_type)]
 #![feature(maybe_uninit_slice)]
+
+//these will probably be removed at some point,
+//but for now, I don't want to be swamped with clippy warnings
+#![allow(clippy::type_complexity)]
+#![allow(clippy::missing_safety_doc)]
+
+//this is probably really bad, but I don't really care
 #![recursion_limit="32768"]
 
 pub extern crate gl;
