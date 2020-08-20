@@ -8,20 +8,18 @@ glenum! {
     pub enum DepthComponents { DEPTH_COMPONENT }
     pub enum StencilComponents { STENCIL_INDEX }
 
-    //all require GL_EXT_packed_depth_stencil, but as that is required to even create an
-    //depth-stencil texture, we do not need to put it in the enum
+    //assumes GL_EXT_packed_depth_stencil as that is required to even create an depth-stencil texture
     pub enum DepthStencilComponents { DEPTH_COMPONENT, STENCIL_INDEX, DEPTH_STENCIL }
 
     //all except BGR and BGRA were present since GL10
     pub enum ColorComponents {
-        RED, GREEN, BLUE, RG, RGB, BGR(GL_EXT_bgra), RGBA, BGRA(GL_EXT_bgra)
+        RED, GREEN, BLUE, RG, RGB, RGBA, BGR(GL_EXT_bgra), BGRA(GL_EXT_bgra)
     }
 
-    //all require GL_EXT_texture_integer, but as that is required to even create an integer
-    //texture, we do not need to put it in the enum
+    //assumes GL_EXT_texture_integer as that is required to even create an integer texture
     pub enum IntColorComponents {
         RED_INTEGER, GREEN_INTEGER, BLUE_INTEGER,
-        RG_INTEGER, RGB_INTEGER, BGR_INTEGER, RGBA_INTEGER, BGRA_INTEGER
+        RG_INTEGER, RGB_INTEGER, RGBA_INTEGER, BGR_INTEGER, BGRA_INTEGER
     }
 
     pub enum PixelFormat {
@@ -30,7 +28,7 @@ glenum! {
         DEPTH_STENCIL,
         RED, GREEN, BLUE, RG, RGB, BGR, RGBA, BGRA,
         RED_INTEGER, GREEN_INTEGER, BLUE_INTEGER,
-        RG_INTEGER, RGB_INTEGER, BGR_INTEGER, RGBA_INTEGER, BGRA_INTEGER
+        RG_INTEGER, RGB_INTEGER, RGBA_INTEGER, BGR_INTEGER, BGRA_INTEGER
     }
 
 }
