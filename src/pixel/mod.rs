@@ -6,7 +6,7 @@ pub use self::compressed::*;
 
 pub mod compressed;
 
-pub unsafe trait Pixel<F: ClientFormat>: Copy+PartialEq {
+pub unsafe trait Pixel<F: PixelLayout>: Copy+PartialEq {
     fn format() -> F;
     fn swap_bytes() -> bool {false}
     fn lsb_first() -> bool {false}
@@ -71,28 +71,28 @@ macro_rules! impl_int {
             impl_int!(@impl [$prim;3]; RGB_INTEGER $ty);
             impl_int!(@impl [$prim;4]; RGBA_INTEGER $ty);
 
-            unsafe impl Pixel<ClientFormatDepth> for $prim {
-                fn format() -> ClientFormatDepth { IntType::$ty.into() }
+            unsafe impl Pixel<DepthLayout> for $prim {
+                fn format() -> DepthLayout { IntType::$ty.into() }
             }
-            unsafe impl Pixel<ClientFormatDepth> for [$prim;1] {
-                fn format() -> ClientFormatDepth { IntType::$ty.into() }
+            unsafe impl Pixel<DepthLayout> for [$prim;1] {
+                fn format() -> DepthLayout { IntType::$ty.into() }
             }
-            unsafe impl Pixel<ClientFormatStencil> for $prim {
-                fn format() -> ClientFormatStencil { IntType::$ty.into() }
+            unsafe impl Pixel<StencilLayout> for $prim {
+                fn format() -> StencilLayout { IntType::$ty.into() }
             }
-            unsafe impl Pixel<ClientFormatStencil> for [$prim;1] {
-                fn format() -> ClientFormatStencil { IntType::$ty.into() }
+            unsafe impl Pixel<StencilLayout> for [$prim;1] {
+                fn format() -> StencilLayout { IntType::$ty.into() }
             }
 
         )*
     };
 
     (@impl $prim:ty; $fmt:ident $ty:ident) => {
-        unsafe impl Pixel<ClientFormatInt> for $prim {
-            fn format() -> ClientFormatInt { ClientFormatInt::Integer(IntColorComponents::$fmt, IntType::$ty) }
+        unsafe impl Pixel<IntLayout> for $prim {
+            fn format() -> IntLayout { IntLayout::Integer(IntColorComponents::$fmt, IntType::$ty) }
         }
-        unsafe impl Pixel<ClientFormatFloat> for $prim {
-            fn format() -> ClientFormatFloat { <Self as Pixel<ClientFormatInt>>::format().into() }
+        unsafe impl Pixel<FloatLayout> for $prim {
+            fn format() -> FloatLayout { <Self as Pixel<IntLayout>>::format().into() }
         }
     };
 
@@ -116,26 +116,26 @@ macro_rules! impl_float {
             impl_float!(@impl [$prim;3]; RGB $ty);
             impl_float!(@impl [$prim;4]; RGBA $ty);
 
-            unsafe impl Pixel<ClientFormatDepth> for $prim {
-                fn format() -> ClientFormatDepth { FloatType::$ty.into() }
+            unsafe impl Pixel<DepthLayout> for $prim {
+                fn format() -> DepthLayout { FloatType::$ty.into() }
             }
-            unsafe impl Pixel<ClientFormatDepth> for [$prim;1] {
-                fn format() -> ClientFormatDepth { FloatType::$ty.into() }
+            unsafe impl Pixel<DepthLayout> for [$prim;1] {
+                fn format() -> DepthLayout { FloatType::$ty.into() }
             }
 
-            unsafe impl Pixel<ClientFormatDepthStencil> for $prim {
-                fn format() -> ClientFormatDepthStencil { FloatType::$ty.into() }
+            unsafe impl Pixel<DepthStencilLayout> for $prim {
+                fn format() -> DepthStencilLayout { FloatType::$ty.into() }
             }
-            unsafe impl Pixel<ClientFormatDepthStencil> for [$prim;1] {
-                fn format() -> ClientFormatDepthStencil { FloatType::$ty.into() }
+            unsafe impl Pixel<DepthStencilLayout> for [$prim;1] {
+                fn format() -> DepthStencilLayout { FloatType::$ty.into() }
             }
 
         )*
     };
 
     (@impl $prim:ty; $fmt:ident $ty:ident) => {
-        unsafe impl Pixel<ClientFormatFloat> for $prim {
-            fn format() -> ClientFormatFloat { ClientFormatFloat::Float(ColorComponents::$fmt, FloatType::$ty) }
+        unsafe impl Pixel<FloatLayout> for $prim {
+            fn format() -> FloatLayout { FloatLayout::Float(ColorComponents::$fmt, FloatType::$ty) }
         }
     };
 
@@ -146,8 +146,8 @@ impl_float!(GLfloat Float);
 macro_rules! impl_ivec {
     ($($vec:ident $inner:ty),*) => {
         $(
-            unsafe impl Pixel<ClientFormatInt> for $vec {
-                fn format() -> ClientFormatInt { <$inner as Pixel<ClientFormatInt>>::format() }
+            unsafe impl Pixel<IntLayout> for $vec {
+                fn format() -> IntLayout { <$inner as Pixel<IntLayout>>::format() }
             }
         )*
     }
@@ -156,8 +156,8 @@ macro_rules! impl_ivec {
 macro_rules! impl_vec {
     ($($vec:ident $inner:ty),*) => {
         $(
-            unsafe impl Pixel<ClientFormatFloat> for $vec {
-                fn format() -> ClientFormatFloat { <$inner as Pixel<ClientFormatFloat>>::format() }
+            unsafe impl Pixel<FloatLayout> for $vec {
+                fn format() -> FloatLayout { <$inner as Pixel<FloatLayout>>::format() }
             }
         )*
     }

@@ -3,7 +3,7 @@ use super::*;
 use crate::version::*;
 
 pub unsafe trait InternalFormat {
-    type ClientFormat: ClientFormat;
+    type PixelLayout: PixelLayout;
     type GL: GLVersion;
     fn glenum() -> GLenum;
 }
@@ -51,15 +51,15 @@ unsafe impl<F:SpecificCompressed> SizedFormat for F {}
 #[marker] pub unsafe trait SignedFormat: InternalFormat {}
 #[marker] pub unsafe trait UnsignedFormat: InternalFormat {}
 
-pub trait FloatFormat = InternalFormat<ClientFormat = ClientFormatFloat> + ColorFormat;
-pub trait IntFormat = InternalFormat<ClientFormat = ClientFormatInt> + ColorFormat + SignedFormat;
-pub trait UIntFormat = InternalFormat<ClientFormat = ClientFormatInt> + ColorFormat + UnsignedFormat;
-pub trait DepthFormat = InternalFormat<ClientFormat = ClientFormatDepth>;
-pub trait StencilFormat = InternalFormat<ClientFormat = ClientFormatStencil>;
-pub trait DepthStencilFormat = InternalFormat<ClientFormat = ClientFormatDepthStencil>;
+pub trait FloatFormat = InternalFormat<PixelLayout = FloatLayout> + ColorFormat;
+pub trait IntFormat = InternalFormat<PixelLayout = IntLayout> + ColorFormat + SignedFormat;
+pub trait UIntFormat = InternalFormat<PixelLayout = IntLayout> + ColorFormat + UnsignedFormat;
+pub trait DepthFormat = InternalFormat<PixelLayout = DepthLayout>;
+pub trait StencilFormat = InternalFormat<PixelLayout = StencilLayout>;
+pub trait DepthStencilFormat = InternalFormat<PixelLayout = DepthStencilLayout>;
 
 pub unsafe trait BufferTextureFormat: ColorFormat {
-    type Pixel: Pixel<Self::ClientFormat>;
+    type Pixel: Pixel<Self::PixelLayout>;
 }
 
 #[marker] pub unsafe trait ViewCompatible<F:SizedFormat>: SizedFormat {}
@@ -71,12 +71,12 @@ pub trait ImageCompatible<F:SizedPixelFormat> = ViewCompatible<F> + ImageLoadSto
 
 macro_rules! internal_format {
 
-    (@fmt_ty FloatFormat) => {ClientFormatFloat};
-    (@fmt_ty IntFormat) => {ClientFormatInt};
-    (@fmt_ty UIntFormat) => {ClientFormatInt};
-    (@fmt_ty DepthFormat) => {ClientFormatDepth};
-    (@fmt_ty StencilFormat) => {ClientFormatStencil};
-    (@fmt_ty DepthStencilFormat) => {ClientFormatDepthStencil};
+    (@fmt_ty FloatFormat) => {FloatLayout};
+    (@fmt_ty IntFormat) => {IntLayout};
+    (@fmt_ty UIntFormat) => {IntLayout};
+    (@fmt_ty DepthFormat) => {DepthLayout};
+    (@fmt_ty StencilFormat) => {StencilLayout};
+    (@fmt_ty DepthStencilFormat) => {DepthStencilLayout};
 
     (@sized $fmt:ident ($D:literal)) => {
         unsafe impl SizedPixelFormat for $fmt {
@@ -193,7 +193,7 @@ macro_rules! internal_format {
         pub struct $fmt(!);
 
         unsafe impl InternalFormat for $fmt {
-            type ClientFormat = internal_format!(@fmt_ty $kind);
+            type PixelLayout = internal_format!(@fmt_ty $kind);
             type GL = $GL;
             #[inline] fn glenum() -> GLenum {gl::$fmt}
         }

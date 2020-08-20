@@ -163,13 +163,13 @@ impl From<IntType> for PixelType {
     #[inline] fn from(f:IntType) -> Self {(f as GLenum).try_into().unwrap()}
 }
 
-pub unsafe trait ClientFormat: Copy+Clone+PartialEq+Eq+Hash+Debug {
+pub unsafe trait PixelLayout: Copy+Clone+PartialEq+Eq+Hash+Debug {
     fn fmt(self) -> PixelFormat;
     fn ty(self) -> PixelType;
 }
 
 #[derive(Copy,Clone,PartialEq,Eq,Hash,Debug)]
-pub enum ClientFormatInt {
+pub enum IntLayout {
     Integer(IntColorComponents, IntType),
     UShort4_4_4_4, UShort4_4_4_4Rev,
     UShort5_5_5_1, UShort1_5_5_5Rev,
@@ -177,9 +177,9 @@ pub enum ClientFormatInt {
     UInt10_10_10_2, UInt10_10_10_2Rev
 }
 
-display_from_debug!(ClientFormatInt);
+display_from_debug!(IntLayout);
 
-unsafe impl ClientFormat for ClientFormatInt {
+unsafe impl PixelLayout for IntLayout {
 
     #[inline]
     fn fmt(self) -> PixelFormat {
@@ -206,20 +206,20 @@ unsafe impl ClientFormat for ClientFormatInt {
 }
 
 #[derive(Copy,Clone,PartialEq,Eq,Hash,Debug)]
-pub enum ClientFormatFloat {
+pub enum FloatLayout {
     Float(ColorComponents, FloatType),
-    Normalized(ClientFormatInt),
+    Normalized(IntLayout),
     UByte3_3_2, UByte2_3_3Rev,
     UShort5_6_5, UShort5_6_5Rev
 }
 
-display_from_debug!(ClientFormatFloat);
+display_from_debug!(FloatLayout);
 
-impl From<ClientFormatInt> for ClientFormatFloat {
-    fn from(fmt: ClientFormatInt) -> Self { ClientFormatFloat::Normalized(fmt) }
+impl From<IntLayout> for FloatLayout {
+    fn from(fmt: IntLayout) -> Self { FloatLayout::Normalized(fmt) }
 }
 
-unsafe impl ClientFormat for ClientFormatFloat {
+unsafe impl PixelLayout for FloatLayout {
 
     #[inline]
     fn fmt(self) -> PixelFormat {
@@ -245,22 +245,22 @@ unsafe impl ClientFormat for ClientFormatFloat {
 }
 
 #[derive(Copy,Clone,PartialEq,Eq,Hash,Debug)]
-pub enum ClientFormatDepth {
+pub enum DepthLayout {
     Float(FloatType),
     Normalized(IntType)
 }
 
-impl From<FloatType> for ClientFormatDepth {
-    fn from(ty:FloatType) -> Self { ClientFormatDepth::Float(ty) }
+impl From<FloatType> for DepthLayout {
+    fn from(ty:FloatType) -> Self { DepthLayout::Float(ty) }
 }
 
-impl From<IntType> for ClientFormatDepth {
-    fn from(ty:IntType) -> Self { ClientFormatDepth::Normalized(ty) }
+impl From<IntType> for DepthLayout {
+    fn from(ty:IntType) -> Self { DepthLayout::Normalized(ty) }
 }
 
-display_from_debug!(ClientFormatDepth);
+display_from_debug!(DepthLayout);
 
-unsafe impl ClientFormat for ClientFormatDepth {
+unsafe impl PixelLayout for DepthLayout {
 
     #[inline] fn fmt(self) -> PixelFormat { PixelFormat::DEPTH_COMPONENT }
 
@@ -275,39 +275,39 @@ unsafe impl ClientFormat for ClientFormatDepth {
 }
 
 #[derive(Copy,Clone,PartialEq,Eq,Hash,Debug)]
-pub struct ClientFormatStencil(pub IntType);
+pub struct StencilLayout(pub IntType);
 
-display_from_debug!(ClientFormatStencil);
+display_from_debug!(StencilLayout);
 
-impl From<IntType> for ClientFormatStencil {
-    fn from(ty:IntType) -> Self { ClientFormatStencil(ty) }
+impl From<IntType> for StencilLayout {
+    fn from(ty:IntType) -> Self { StencilLayout(ty) }
 }
 
-unsafe impl ClientFormat for ClientFormatStencil {
+unsafe impl PixelLayout for StencilLayout {
     #[inline] fn fmt(self) -> PixelFormat { PixelFormat::STENCIL_INDEX }
     #[inline] fn ty(self) -> PixelType { self.0.into() }
 }
 
 #[derive(Copy,Clone,PartialEq,Eq,Hash,Debug)]
-pub enum ClientFormatDepthStencil {
-    DepthComponent(ClientFormatDepth),
-    StencilIndex(ClientFormatStencil),
+pub enum DepthStencilLayout {
+    DepthComponent(DepthLayout),
+    StencilIndex(StencilLayout),
     UInt24_8
 }
 
-impl From<FloatType> for ClientFormatDepthStencil {
-    fn from(fmt:FloatType) -> Self { ClientFormatDepth::from(fmt).into() }
+impl From<FloatType> for DepthStencilLayout {
+    fn from(fmt:FloatType) -> Self { DepthLayout::from(fmt).into() }
 }
 
-impl From<ClientFormatDepth> for ClientFormatDepthStencil {
-    fn from(fmt:ClientFormatDepth) -> Self { ClientFormatDepthStencil::DepthComponent(fmt) }
+impl From<DepthLayout> for DepthStencilLayout {
+    fn from(fmt:DepthLayout) -> Self { DepthStencilLayout::DepthComponent(fmt) }
 }
 
-impl From<ClientFormatStencil> for ClientFormatDepthStencil {
-    fn from(fmt:ClientFormatStencil) -> Self { ClientFormatDepthStencil::StencilIndex(fmt) }
+impl From<StencilLayout> for DepthStencilLayout {
+    fn from(fmt:StencilLayout) -> Self { DepthStencilLayout::StencilIndex(fmt) }
 }
 
-unsafe impl ClientFormat for ClientFormatDepthStencil {
+unsafe impl PixelLayout for DepthStencilLayout {
 
     #[inline]
     fn fmt(self) -> PixelFormat {
@@ -321,12 +321,12 @@ unsafe impl ClientFormat for ClientFormatDepthStencil {
     #[inline]
     fn ty(self) -> PixelType {
         match self {
-            Self::DepthComponent(ty) => ty.ty().into(),
-            Self::StencilIndex(ty) => ty.ty().into(),
+            Self::DepthComponent(ty) => ty.ty(),
+            Self::StencilIndex(ty) => ty.ty(),
             Self::UInt24_8 => PixelType::UNSIGNED_INT_24_8,
         }
     }
 
 }
 
-display_from_debug!(ClientFormatDepthStencil);
+display_from_debug!(DepthStencilLayout);
