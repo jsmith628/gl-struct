@@ -46,8 +46,11 @@ use std::marker::PhantomData;
 
 pub mod version;
 pub mod context;
-pub mod image;
+
+pub mod format;
 pub mod pixel;
+pub mod image;
+
 pub mod buffer;
 pub mod texture;
 pub mod renderbuffer;

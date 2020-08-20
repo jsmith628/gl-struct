@@ -1,5 +1,5 @@
 use super::*;
-use crate::pixel::*;
+use crate::format::*;
 use crate::version::*;
 
 use std::marker::PhantomData;

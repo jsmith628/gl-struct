@@ -1,15 +1,10 @@
 
 use super::*;
+use crate::format::*;
 
-pub use self::internal_format::*;
-pub use self::client_format::*;
 pub use self::compressed::*;
-pub use self::multisample::*;
 
-pub mod internal_format;
-pub mod client_format;
 pub mod compressed;
-pub mod multisample;
 
 pub unsafe trait Pixel<F: ClientFormat>: Copy+PartialEq {
     fn format() -> F;

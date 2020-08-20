@@ -3,6 +3,7 @@ use super::*;
 
 use crate::gl;
 use crate::version::*;
+use crate::format::*;
 use crate::pixel::*;
 use crate::vertex_array::*;
 

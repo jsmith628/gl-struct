@@ -1,6 +1,6 @@
 use super::*;
 use crate::version::*;
-use crate::pixel::*;
+use crate::format::*;
 use crate::glsl::*;
 use crate::texture::*;
 use crate::renderbuffer::*;
