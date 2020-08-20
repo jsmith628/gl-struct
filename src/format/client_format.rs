@@ -11,7 +11,7 @@ glenum! {
         RG_INTEGER, RGB_INTEGER, BGR_INTEGER, RGBA_INTEGER, BGRA_INTEGER
     }
 
-    pub enum PixelComponents {
+    pub enum PixelFormat {
         DEPTH_COMPONENT,
         STENCIL_INDEX,
         DEPTH_STENCIL,
@@ -26,7 +26,7 @@ impl From<DepthComponents> for DepthStencilComponents {
     #[inline] fn from(_fmt: DepthComponents) -> Self {Self::DEPTH_COMPONENT}
 }
 
-impl From<DepthComponents> for PixelComponents {
+impl From<DepthComponents> for PixelFormat {
     #[inline] fn from(_fmt: DepthComponents) -> Self { Self::DEPTH_COMPONENT }
 }
 
@@ -34,11 +34,11 @@ impl From<StencilComponents> for DepthStencilComponents {
     #[inline] fn from(_fmt: StencilComponents) -> Self {Self::STENCIL_INDEX}
 }
 
-impl From<StencilComponents> for PixelComponents {
+impl From<StencilComponents> for PixelFormat {
     #[inline] fn from(_fmt: StencilComponents) -> Self { Self::STENCIL_INDEX }
 }
 
-impl From<DepthStencilComponents> for PixelComponents {
+impl From<DepthStencilComponents> for PixelFormat {
     fn from(fmt: DepthStencilComponents) -> Self {
         match fmt {
             DepthStencilComponents::DEPTH_COMPONENT => Self::DEPTH_COMPONENT,
@@ -64,7 +64,7 @@ impl ColorComponents {
     }
 }
 
-impl From<ColorComponents> for PixelComponents {
+impl From<ColorComponents> for PixelFormat {
     fn from(fmt: ColorComponents) -> Self {
         match fmt {
             ColorComponents::RED => Self::RED,
@@ -95,7 +95,7 @@ impl IntColorComponents {
     }
 }
 
-impl From<IntColorComponents> for PixelComponents {
+impl From<IntColorComponents> for PixelFormat {
     fn from(fmt: IntColorComponents) -> Self {
         match fmt {
             IntColorComponents::RED_INTEGER => Self::RED_INTEGER,
@@ -164,7 +164,7 @@ impl From<IntType> for PixelType {
 }
 
 pub unsafe trait ClientFormat: Copy+Clone+PartialEq+Eq+Hash+Debug {
-    fn fmt(self) -> PixelComponents;
+    fn fmt(self) -> PixelFormat;
     fn ty(self) -> PixelType;
 }
 
@@ -182,10 +182,10 @@ display_from_debug!(ClientFormatInt);
 unsafe impl ClientFormat for ClientFormatInt {
 
     #[inline]
-    fn fmt(self) -> PixelComponents {
+    fn fmt(self) -> PixelFormat {
         match self {
             Self::Integer(format, _) => format.into(),
-            _ => PixelComponents::RGBA_INTEGER
+            _ => PixelFormat::RGBA_INTEGER
         }
     }
 
@@ -222,12 +222,12 @@ impl From<ClientFormatInt> for ClientFormatFloat {
 unsafe impl ClientFormat for ClientFormatFloat {
 
     #[inline]
-    fn fmt(self) -> PixelComponents {
+    fn fmt(self) -> PixelFormat {
         match self {
             Self::Float(format, _) => format.into(),
             Self::Normalized(int) => int.fmt(),
             Self::UByte3_3_2 | Self::UByte2_3_3Rev |
-            Self::UShort5_6_5 | Self::UShort5_6_5Rev => PixelComponents::RGB,
+            Self::UShort5_6_5 | Self::UShort5_6_5Rev => PixelFormat::RGB,
         }
     }
 
@@ -262,7 +262,7 @@ display_from_debug!(ClientFormatDepth);
 
 unsafe impl ClientFormat for ClientFormatDepth {
 
-    #[inline] fn fmt(self) -> PixelComponents { PixelComponents::DEPTH_COMPONENT }
+    #[inline] fn fmt(self) -> PixelFormat { PixelFormat::DEPTH_COMPONENT }
 
     #[inline]
     fn ty(self) -> PixelType {
@@ -284,7 +284,7 @@ impl From<IntType> for ClientFormatStencil {
 }
 
 unsafe impl ClientFormat for ClientFormatStencil {
-    #[inline] fn fmt(self) -> PixelComponents { PixelComponents::STENCIL_INDEX }
+    #[inline] fn fmt(self) -> PixelFormat { PixelFormat::STENCIL_INDEX }
     #[inline] fn ty(self) -> PixelType { self.0.into() }
 }
 
@@ -310,11 +310,11 @@ impl From<ClientFormatStencil> for ClientFormatDepthStencil {
 unsafe impl ClientFormat for ClientFormatDepthStencil {
 
     #[inline]
-    fn fmt(self) -> PixelComponents {
+    fn fmt(self) -> PixelFormat {
         match self {
-            Self::DepthComponent(_) => PixelComponents::DEPTH_COMPONENT,
-            Self::StencilIndex(_) => PixelComponents::STENCIL_INDEX,
-            Self::UInt24_8 => PixelComponents::DEPTH_STENCIL,
+            Self::DepthComponent(_) => PixelFormat::DEPTH_COMPONENT,
+            Self::StencilIndex(_) => PixelFormat::STENCIL_INDEX,
+            Self::UInt24_8 => PixelFormat::DEPTH_STENCIL,
         }
     }
 
