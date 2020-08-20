@@ -26,22 +26,22 @@ glenum! {
     }
 
     pub enum CompareFunc {
-        [Never(GL15; _gl) NEVER "Never"],
-        [Always(GL15; _gl) ALWAYS "Always"],
-        [Less(GL15; _gl) LESS "Less"],
+        [Never(GL15) NEVER "Never"],
+        [Always(GL15) ALWAYS "Always"],
+        [Less(GL15) LESS "Less"],
         [LEqual LEQUAL "Less or Equal"],
-        [Equal(GL15; _gl) EQUAL "Equal"],
-        [NotEqual(GL15; _gl) NOTEQUAL "Not Equal"],
+        [Equal(GL15) EQUAL "Equal"],
+        [NotEqual(GL15) NOTEQUAL "Not Equal"],
         [GEqual GEQUAL "Greater or Equal"],
-        [Greater(GL15; _gl) GREATER "Greater"]
+        [Greater(GL15) GREATER "Greater"]
     }
 
     pub enum Wrapping {
         [Repeat REPEAT "Repeat"],
-        [ClampToEdge(GL12; _gl) CLAMP_TO_EDGE "Clamp To Edge"],
-        [ClampToBorder(GL13; _gl) CLAMP_TO_BORDER "Clamp To Border"],
-        [MirroredRepeat(GL14; _gl) MIRRORED_REPEAT "Mirrored Repeat"],
-        [MirrorClampToEdge(GL44; _gl) MIRROR_CLAMP_TO_EDGE "Mirror Clamp To Edge"]
+        [ClampToEdge(GL12) CLAMP_TO_EDGE "Clamp To Edge"],
+        [ClampToBorder(GL13) CLAMP_TO_BORDER "Clamp To Border"],
+        [MirroredRepeat(GL14) MIRRORED_REPEAT "Mirrored Repeat"],
+        [MirrorClampToEdge(GL44) MIRROR_CLAMP_TO_EDGE "Mirror Clamp To Edge"]
     }
 
     impl Default for Wrapping {

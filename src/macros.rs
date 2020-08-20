@@ -75,6 +75,7 @@ macro_rules! glenum {
 
     () => {};
 
+    //just the gl constant name
     (
         $(#[$attr0:meta])*
         $vis:vis enum $name:ident {
@@ -87,6 +88,23 @@ macro_rules! glenum {
             #[allow(non_camel_case_types)]
             $vis enum $name {
                 $($(#[$attr])* [$gl $gl stringify!($gl)]),*
+            } $($tt)*
+        }
+    };
+
+    //just the gl constant name with a gl type
+    (
+        $(#[$attr0:meta])*
+        $vis:vis enum $name:ident {
+            $( $(#[$attr:meta])* $gl:ident $(($GL:ty))? ),*
+        }
+        $($tt:tt)*
+    ) => {
+        glenum!{
+            $(#[$attr0])*
+            #[allow(non_camel_case_types)]
+            $vis enum $name {
+                $($(#[$attr])* [$gl $(($GL))? $gl stringify!($gl)]),*
             } $($tt)*
         }
     };
@@ -106,12 +124,14 @@ macro_rules! glenum {
         }
     };
 
+    (@pat $GL:tt) => { _gl };
+
     (
         $(#[$attr0:meta])*
         $vis:vis enum $name:ident {
             $(
                 $(#[$attr:meta])*
-                [$item:ident $(($GL:ty; $pat:ident))?  $gl:ident $pretty:expr]
+                [$item:ident $(($GL:ty))?  $gl:ident $pretty:expr]
             ),*
         }
         $($tt:tt)*
@@ -130,7 +150,7 @@ macro_rules! glenum {
         impl ::std::fmt::Display for $name {
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                 match self {
-                    $($name::$item $(($pat))? => write!(f, $pretty)),*
+                    $($name::$item $((glenum!(@pat $GL)))? => write!(f, $pretty)),*
                 }
             }
         }
@@ -138,7 +158,7 @@ macro_rules! glenum {
         impl From<$name> for gl::types::GLenum {
             fn from(e: $name) -> ::gl::types::GLenum {
                 match e {
-                    $($name::$item $(($pat))? => ::gl::$gl),*
+                    $($name::$item $((glenum!(@pat $GL)))? => ::gl::$gl),*
                 }
             }
         }
@@ -147,7 +167,7 @@ macro_rules! glenum {
             type Error = GLError;
             fn try_from(e: ::gl::types::GLenum) -> Result<$name, GLError>{
                 match e {
-                    $(::gl::$gl => Ok($name::$item $((supported::<$GL>().unwrap()))? ),)*
+                    $(::gl::$gl => Ok($name::$item $((crate::version::supported::<$GL>().unwrap()))? ),)*
                     _ => Err(::GLError::InvalidEnum(e, stringify!($name).to_string()))
                 }
             }
