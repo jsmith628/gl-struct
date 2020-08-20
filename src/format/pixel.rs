@@ -1,11 +1,24 @@
 use super::*;
+use crate::version::*;
 use std::convert::TryInto;
 
 glenum! {
+
+    //all except DEPTH_STENCIL were present since GL10
     pub enum DepthComponents { DEPTH_COMPONENT }
     pub enum StencilComponents { STENCIL_INDEX }
+
+    //all require GL_EXT_packed_depth_stencil, but as that is required to even create an
+    //depth-stencil texture, we do not need to put it in the enum
     pub enum DepthStencilComponents { DEPTH_COMPONENT, STENCIL_INDEX, DEPTH_STENCIL }
-    pub enum ColorComponents { RED, GREEN, BLUE, RG, RGB, BGR, RGBA, BGRA }
+
+    //all except BGR and BGRA were present since GL10
+    pub enum ColorComponents {
+        RED, GREEN, BLUE, RG, RGB, BGR(GL_EXT_bgra), RGBA, BGRA(GL_EXT_bgra)
+    }
+
+    //all require GL_EXT_texture_integer, but as that is required to even create an integer
+    //texture, we do not need to put it in the enum
     pub enum IntColorComponents {
         RED_INTEGER, GREEN_INTEGER, BLUE_INTEGER,
         RG_INTEGER, RGB_INTEGER, BGR_INTEGER, RGBA_INTEGER, BGRA_INTEGER
@@ -48,22 +61,6 @@ impl From<DepthStencilComponents> for PixelFormat {
     }
 }
 
-impl ColorComponents {
-    #[inline]
-    pub fn into_int(self) -> IntColorComponents {
-        match self {
-            Self::RED => IntColorComponents::RED_INTEGER,
-            Self::GREEN => IntColorComponents::GREEN_INTEGER,
-            Self::BLUE => IntColorComponents::BLUE_INTEGER,
-            Self::RG => IntColorComponents::RG_INTEGER,
-            Self::RGB => IntColorComponents::RGB_INTEGER,
-            Self::BGR => IntColorComponents::BGR_INTEGER,
-            Self::RGBA => IntColorComponents::RGBA_INTEGER,
-            Self::BGRA => IntColorComponents::BGRA_INTEGER
-        }
-    }
-}
-
 impl From<ColorComponents> for PixelFormat {
     fn from(fmt: ColorComponents) -> Self {
         match fmt {
@@ -72,25 +69,9 @@ impl From<ColorComponents> for PixelFormat {
             ColorComponents::BLUE => Self::BLUE,
             ColorComponents::RG => Self::RG,
             ColorComponents::RGB => Self::RGB,
-            ColorComponents::BGR => Self::BGR,
+            ColorComponents::BGR(_) => Self::BGR,
             ColorComponents::RGBA => Self::RGBA,
-            ColorComponents::BGRA => Self::BGRA
-        }
-    }
-}
-
-impl IntColorComponents {
-    #[inline]
-    pub fn into_float(self) -> ColorComponents {
-        match self {
-            Self::RED_INTEGER => ColorComponents::RED,
-            Self::GREEN_INTEGER => ColorComponents::GREEN,
-            Self::BLUE_INTEGER => ColorComponents::BLUE,
-            Self::RG_INTEGER => ColorComponents::RG,
-            Self::RGB_INTEGER => ColorComponents::RGB,
-            Self::BGR_INTEGER => ColorComponents::BGR,
-            Self::RGBA_INTEGER => ColorComponents::RGBA,
-            Self::BGRA_INTEGER => ColorComponents::BGRA
+            ColorComponents::BGRA(_) => Self::BGRA
         }
     }
 }
