@@ -152,6 +152,7 @@ pub unsafe trait PixelLayout: Copy+Clone+PartialEq+Eq+Hash+Debug {
 pub enum IntLayout {
     Integer(IntColorComponents, IntType),
     UByte3_3_2(GL_EXT_packed_pixels),           UByte2_3_3Rev(GL12),
+    UShort5_6_5(GL12),                          UShort5_6_5Rev(GL12),
     UShort4_4_4_4(GL_EXT_packed_pixels, bool),  UShort4_4_4_4Rev(GL12, bool),
     UShort5_5_5_1(GL_EXT_packed_pixels, bool),  UShort1_5_5_5Rev(GL12, bool),
     UInt8_8_8_8(GL_EXT_packed_pixels, bool),    UInt8_8_8_8Rev(GL12, bool),
@@ -168,7 +169,8 @@ unsafe impl PixelLayout for IntLayout {
             Self::Integer(format, _) => format.into(),
 
             //MUST be RGB
-            Self::UByte3_3_2(_) | Self::UByte2_3_3Rev(_) => PixelFormat::RGB_INTEGER,
+            Self::UByte3_3_2(_)  | Self::UByte2_3_3Rev(_) |
+            Self::UShort5_6_5(_) | Self::UShort5_6_5Rev(_) => PixelFormat::RGB_INTEGER,
 
             //must be RBGA or BGRA
             Self::UShort4_4_4_4(_, b)  | Self::UShort4_4_4_4Rev(_, b) |
@@ -186,6 +188,8 @@ unsafe impl PixelLayout for IntLayout {
             Self::Integer(_, ty)         => ty.into(),
             Self::UByte3_3_2(_)          => PixelType::UNSIGNED_BYTE_3_3_2,
             Self::UByte2_3_3Rev(_)       => PixelType::UNSIGNED_BYTE_2_3_3_REV,
+            Self::UShort5_6_5(_)         => PixelType::UNSIGNED_SHORT_5_6_5,
+            Self::UShort5_6_5Rev(_)      => PixelType::UNSIGNED_SHORT_5_6_5_REV,
             Self::UShort4_4_4_4(_,_)     => PixelType::UNSIGNED_SHORT_4_4_4_4,
             Self::UShort4_4_4_4Rev(_,_)  => PixelType::UNSIGNED_SHORT_4_4_4_4_REV,
             Self::UShort5_5_5_1(_,_)     => PixelType::UNSIGNED_SHORT_5_5_5_1,
