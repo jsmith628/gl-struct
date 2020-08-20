@@ -147,13 +147,15 @@ pub unsafe trait PixelLayout: Copy+Clone+PartialEq+Eq+Hash+Debug {
     fn ty(self) -> PixelType;
 }
 
+//assumes GL_EXT_texture_integer as that is needed to create integer textures
 #[derive(Copy,Clone,PartialEq,Eq,Hash,Debug)]
 pub enum IntLayout {
     Integer(IntColorComponents, IntType),
-    UShort4_4_4_4, UShort4_4_4_4Rev,
-    UShort5_5_5_1, UShort1_5_5_5Rev,
-    UInt8_8_8_8, UInt8_8_8_8Rev,
-    UInt10_10_10_2, UInt10_10_10_2Rev
+    UByte3_3_2(GL_EXT_packed_pixels),           UByte2_3_3Rev(GL12),
+    UShort4_4_4_4(GL_EXT_packed_pixels, bool),  UShort4_4_4_4Rev(GL12, bool),
+    UShort5_5_5_1(GL_EXT_packed_pixels, bool),  UShort1_5_5_5Rev(GL12, bool),
+    UInt8_8_8_8(GL_EXT_packed_pixels, bool),    UInt8_8_8_8Rev(GL12, bool),
+    UInt10_10_10_2(GL_EXT_packed_pixels, bool), UInt10_10_10_2Rev(GL12, bool)
 }
 
 display_from_debug!(IntLayout);
@@ -164,22 +166,34 @@ unsafe impl PixelLayout for IntLayout {
     fn fmt(self) -> PixelFormat {
         match self {
             Self::Integer(format, _) => format.into(),
-            _ => PixelFormat::RGBA_INTEGER
+
+            //MUST be RGB
+            Self::UByte3_3_2(_) | Self::UByte2_3_3Rev(_) => PixelFormat::RGB_INTEGER,
+
+            //must be RBGA or BGRA
+            Self::UShort4_4_4_4(_, b)  | Self::UShort4_4_4_4Rev(_, b) |
+            Self::UShort5_5_5_1(_, b)  | Self::UShort1_5_5_5Rev(_, b) |
+            Self::UInt8_8_8_8(_, b)    | Self::UInt8_8_8_8Rev(_, b)   |
+            Self::UInt10_10_10_2(_, b) | Self::UInt10_10_10_2Rev(_, b) => {
+                if b { PixelFormat::RGBA_INTEGER } else { PixelFormat::BGRA_INTEGER }
+            }
         }
     }
 
     #[inline]
     fn ty(self) -> PixelType {
         match self {
-            Self::Integer(_, ty) => ty.into(),
-            Self::UShort4_4_4_4 => PixelType::UNSIGNED_SHORT_4_4_4_4,
-            Self::UShort4_4_4_4Rev => PixelType::UNSIGNED_SHORT_4_4_4_4_REV,
-            Self::UShort5_5_5_1 => PixelType::UNSIGNED_SHORT_5_5_5_1,
-            Self::UShort1_5_5_5Rev => PixelType::UNSIGNED_SHORT_1_5_5_5_REV,
-            Self::UInt8_8_8_8 => PixelType::UNSIGNED_INT_8_8_8_8,
-            Self::UInt8_8_8_8Rev => PixelType::UNSIGNED_INT_8_8_8_8_REV,
-            Self::UInt10_10_10_2 => PixelType::UNSIGNED_INT_10_10_10_2,
-            Self::UInt10_10_10_2Rev => PixelType::UNSIGNED_INT_2_10_10_10_REV
+            Self::Integer(_, ty)         => ty.into(),
+            Self::UByte3_3_2(_)          => PixelType::UNSIGNED_BYTE_3_3_2,
+            Self::UByte2_3_3Rev(_)       => PixelType::UNSIGNED_BYTE_2_3_3_REV,
+            Self::UShort4_4_4_4(_,_)     => PixelType::UNSIGNED_SHORT_4_4_4_4,
+            Self::UShort4_4_4_4Rev(_,_)  => PixelType::UNSIGNED_SHORT_4_4_4_4_REV,
+            Self::UShort5_5_5_1(_,_)     => PixelType::UNSIGNED_SHORT_5_5_5_1,
+            Self::UShort1_5_5_5Rev(_,_)  => PixelType::UNSIGNED_SHORT_1_5_5_5_REV,
+            Self::UInt8_8_8_8(_,_)       => PixelType::UNSIGNED_INT_8_8_8_8,
+            Self::UInt8_8_8_8Rev(_,_)    => PixelType::UNSIGNED_INT_8_8_8_8_REV,
+            Self::UInt10_10_10_2(_,_)    => PixelType::UNSIGNED_INT_10_10_10_2,
+            Self::UInt10_10_10_2Rev(_,_) => PixelType::UNSIGNED_INT_2_10_10_10_REV
         }
     }
 }
