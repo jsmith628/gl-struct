@@ -90,6 +90,12 @@ impl From<IntColorComponents> for PixelFormat {
 }
 
 glenum! {
+
+    pub enum FloatType {
+        [Half(GL_ARB_half_float_pixel) HALF_FLOAT "Half"],
+        [Float FLOAT "Float"]
+    }
+
     pub enum PixelType {
         UNSIGNED_BYTE, BYTE, UNSIGNED_SHORT, SHORT, UNSIGNED_INT, INT,
         HALF_FLOAT, FLOAT,
@@ -103,6 +109,16 @@ glenum! {
         UNSIGNED_INT_5_9_9_9_REV,
         UNSIGNED_INT_24_8,
         FLOAT_32_UNSIGNED_INT_24_8_REV
+    }
+}
+
+impl FloatType {
+    #[inline]
+    pub fn size_of(self) -> usize {
+        match self {
+            FloatType::Half(_) => 2,
+            FloatType::Float => 4,
+        }
     }
 }
 
@@ -135,7 +151,7 @@ impl PixelType {
 }
 
 impl From<FloatType> for PixelType {
-    #[inline] fn from(f:FloatType) -> Self {(f as GLenum).try_into().unwrap()}
+    #[inline] fn from(f:FloatType) -> Self {GLenum::from(f).try_into().unwrap()}
 }
 
 impl From<IntType> for PixelType {
@@ -205,38 +221,88 @@ unsafe impl PixelLayout for IntLayout {
 #[derive(Copy,Clone,PartialEq,Eq,Hash,Debug)]
 pub enum FloatLayout {
     Float(ColorComponents, FloatType),
-    Normalized(IntLayout),
-    UByte3_3_2, UByte2_3_3Rev,
-    UShort5_6_5, UShort5_6_5Rev
+    Normalized(ColorComponents, IntType),
+
+    //packed normalized types
+    UByte3_3_2(GL_EXT_packed_pixels),           UByte2_3_3Rev(GL12),
+    UShort5_6_5(GL12),                          UShort5_6_5Rev(GL12),
+    UShort4_4_4_4(GL_EXT_packed_pixels, bool),  UShort4_4_4_4Rev(GL12, bool),
+    UShort5_5_5_1(GL_EXT_packed_pixels, bool),  UShort1_5_5_5Rev(GL12, bool),
+    UInt8_8_8_8(GL_EXT_packed_pixels, bool),    UInt8_8_8_8Rev(GL12, bool),
+    UInt10_10_10_2(GL_EXT_packed_pixels, bool), UInt10_10_10_2Rev(GL12, bool),
+
+    //packed floating point types
+    #[allow(non_camel_case_types)]
+    UInt10F_11F_11F_Rev(GL_EXT_packed_float),
+    UInt5_9_9_9Rev(GL_EXT_texture_shared_exponent)
 }
 
 display_from_debug!(FloatLayout);
 
-impl From<IntLayout> for FloatLayout {
-    fn from(fmt: IntLayout) -> Self { FloatLayout::Normalized(fmt) }
-}
+//TODO: find some way to convert between int and float formats
+
+// impl From<IntLayout> for FloatLayout {
+//     fn from(fmt: IntLayout) -> Self {
+//         match fmt {
+//             IntLayout::Integer(fmt, ty)        => Self::Normalized(fmt, ty.into_float()),
+//             IntLayout::UByte3_3_2(gl)          => Self::UByte3_3_2(gl),
+//             IntLayout::UByte2_3_3Rev(gl)       => Self::UByte2_3_3Rev(gl),
+//             IntLayout::UShort5_6_5(gl)         => Self::UShort5_6_5(gl),
+//             IntLayout::UShort5_6_5Rev(gl)      => Self::UShort5_6_5Rev(gl),
+//             IntLayout::UShort4_4_4_4(gl,b)     => Self::UShort4_4_4_4(gl,b),
+//             IntLayout::UShort4_4_4_4Rev(gl,b)  => Self::UShort4_4_4_4Rev(gl,b),
+//             IntLayout::UShort5_5_5_1(gl,b)     => Self::UShort5_5_5_1(gl,b),
+//             IntLayout::UShort1_5_5_5Rev(gl,b)  => Self::UShort1_5_5_5Rev(gl,b),
+//             IntLayout::UInt8_8_8_8(gl,b)       => Self::UInt8_8_8_8(gl,b),
+//             IntLayout::UInt8_8_8_8Rev(gl,b)    => Self::UInt8_8_8_8Rev(gl,b),
+//             IntLayout::UInt10_10_10_2(gl,b)    => Self::UInt10_10_10_2(gl,b),
+//             IntLayout::UInt10_10_10_2Rev(gl,b) => Self::UInt10_10_10_2Rev(gl,b),
+//         }
+//     }
+// }
 
 unsafe impl PixelLayout for FloatLayout {
 
     #[inline]
     fn fmt(self) -> PixelFormat {
         match self {
-            Self::Float(format, _) => format.into(),
-            Self::Normalized(int) => int.fmt(),
-            Self::UByte3_3_2 | Self::UByte2_3_3Rev |
-            Self::UShort5_6_5 | Self::UShort5_6_5Rev => PixelFormat::RGB,
+            Self::Float(fmt, _) => fmt.into(),
+            Self::Normalized(fmt, _) => fmt.into(),
+
+            //MUST be RGB
+            Self::UByte3_3_2(_)     | Self::UByte2_3_3Rev(_)  |
+            Self::UShort5_6_5(_)    | Self::UShort5_6_5Rev(_) |
+            Self::UInt5_9_9_9Rev(_) | Self::UInt10F_11F_11F_Rev(_) => PixelFormat::RGB,
+
+            //must be RBGA or BGRA
+            Self::UShort4_4_4_4(_, b)  | Self::UShort4_4_4_4Rev(_, b) |
+            Self::UShort5_5_5_1(_, b)  | Self::UShort1_5_5_5Rev(_, b) |
+            Self::UInt8_8_8_8(_, b)    | Self::UInt8_8_8_8Rev(_, b)   |
+            Self::UInt10_10_10_2(_, b) | Self::UInt10_10_10_2Rev(_, b) => {
+                if b { PixelFormat::RGBA } else { PixelFormat::BGRA }
+            },
         }
     }
 
     #[inline]
     fn ty(self) -> PixelType {
         match self {
-            Self::Float(_, ty) => ty.r#into(),
-            Self::Normalized(int) => int.ty(),
-            Self::UByte3_3_2 => PixelType::UNSIGNED_BYTE_3_3_2,
-            Self::UByte2_3_3Rev => PixelType::UNSIGNED_BYTE_2_3_3_REV,
-            Self::UShort5_6_5 => PixelType::UNSIGNED_SHORT_5_6_5,
-            Self::UShort5_6_5Rev => PixelType::UNSIGNED_SHORT_5_6_5_REV
+            Self::Float(_, ty)           => ty.into(),
+            Self::Normalized(_, ty)      => ty.into(),
+            Self::UByte3_3_2(_)          => PixelType::UNSIGNED_BYTE_3_3_2,
+            Self::UByte2_3_3Rev(_)       => PixelType::UNSIGNED_BYTE_2_3_3_REV,
+            Self::UShort5_6_5(_)         => PixelType::UNSIGNED_SHORT_5_6_5,
+            Self::UShort5_6_5Rev(_)      => PixelType::UNSIGNED_SHORT_5_6_5_REV,
+            Self::UShort4_4_4_4(_,_)     => PixelType::UNSIGNED_SHORT_4_4_4_4,
+            Self::UShort4_4_4_4Rev(_,_)  => PixelType::UNSIGNED_SHORT_4_4_4_4_REV,
+            Self::UShort5_5_5_1(_,_)     => PixelType::UNSIGNED_SHORT_5_5_5_1,
+            Self::UShort1_5_5_5Rev(_,_)  => PixelType::UNSIGNED_SHORT_1_5_5_5_REV,
+            Self::UInt8_8_8_8(_,_)       => PixelType::UNSIGNED_INT_8_8_8_8,
+            Self::UInt8_8_8_8Rev(_,_)    => PixelType::UNSIGNED_INT_8_8_8_8_REV,
+            Self::UInt10_10_10_2(_,_)    => PixelType::UNSIGNED_INT_10_10_10_2,
+            Self::UInt10_10_10_2Rev(_,_) => PixelType::UNSIGNED_INT_2_10_10_10_REV,
+            Self::UInt5_9_9_9Rev(_)      => PixelType::UNSIGNED_INT_5_9_9_9_REV,
+            Self::UInt10F_11F_11F_Rev(_) => PixelType::UNSIGNED_INT_10F_11F_11F_REV
         }
     }
 }

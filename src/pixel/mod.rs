@@ -65,11 +65,11 @@ impl<P> PixelPtrMut<[P]> {
 macro_rules! impl_int {
     ($($prim:ident $ty:ident)*) => {
         $(
-            impl_int!(@impl $prim; RED_INTEGER $ty);
-            impl_int!(@impl [$prim;1]; RED_INTEGER $ty);
-            impl_int!(@impl [$prim;2]; RG_INTEGER $ty);
-            impl_int!(@impl [$prim;3]; RGB_INTEGER $ty);
-            impl_int!(@impl [$prim;4]; RGBA_INTEGER $ty);
+            impl_int!(@impl $prim; RED RED_INTEGER $ty);
+            impl_int!(@impl [$prim;1]; RED RED_INTEGER $ty);
+            impl_int!(@impl [$prim;2]; RG RG_INTEGER $ty);
+            impl_int!(@impl [$prim;3]; RGB RGB_INTEGER $ty);
+            impl_int!(@impl [$prim;4]; RGBA RGBA_INTEGER $ty);
 
             unsafe impl Pixel<DepthLayout> for $prim {
                 fn format() -> DepthLayout { IntType::$ty.into() }
@@ -87,12 +87,12 @@ macro_rules! impl_int {
         )*
     };
 
-    (@impl $prim:ty; $fmt:ident $ty:ident) => {
+    (@impl $prim:ty; $fmt1:ident $fmt2:ident $ty:ident) => {
         unsafe impl Pixel<IntLayout> for $prim {
-            fn format() -> IntLayout { IntLayout::Integer(IntColorComponents::$fmt, IntType::$ty) }
+            fn format() -> IntLayout { IntLayout::Integer(IntColorComponents::$fmt2, IntType::$ty) }
         }
         unsafe impl Pixel<FloatLayout> for $prim {
-            fn format() -> FloatLayout { <Self as Pixel<IntLayout>>::format().into() }
+            fn format() -> FloatLayout { FloatLayout::Normalized(ColorComponents::$fmt1, IntType::$ty) }
         }
     };
 

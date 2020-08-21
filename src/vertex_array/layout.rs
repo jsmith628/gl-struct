@@ -14,6 +14,15 @@ glenum! {
 
     //TODO: add GL version checks on the packed attribute types
 
+    #[non_exhaustive]
+    pub enum FloatType {
+        [Half HALF_FLOAT "Half"],
+        [Float FLOAT "Float"],
+        [Double DOUBLE "Double"],
+        [Fixed FIXED "Fixed"]
+    }
+
+
     ///All OpenGL data types that can encode vertex attribute data
     #[non_exhaustive]
     pub enum AttribType {
@@ -36,9 +45,21 @@ glenum! {
         [UInt_2_10_10_10_Rev UNSIGNED_INT_2_10_10_10_REV "UInt-2-10-10-10-Rev"],
 
         #[allow(non_camel_case_types)]
-        [UInt_10F_11F_11F_Rev UNSIGNED_INT_10F_11F_11F_REV "UInt-10F-11F-11F-Rev"]
+        [UInt10F_11F_11F_Rev UNSIGNED_INT_10F_11F_11F_REV "UInt-10F-11F-11F-Rev"]
     }
 
+}
+
+impl FloatType {
+    #[inline]
+    pub fn size_of(self) -> usize {
+        match self {
+            FloatType::Half => 2,
+            FloatType::Float => 4,
+            FloatType::Fixed => 4,
+            FloatType::Double => 8,
+        }
+    }
 }
 
 impl From<ElementType> for IntType {
@@ -107,9 +128,6 @@ impl GenAttribFormat {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum VecFormat {
     Float(FloatType, u32),
-    Fixed(u32),
-    Double(u32),
-
     Int(IntType, u32),
     Normalized(IntType, u32),
 
@@ -122,7 +140,7 @@ pub enum VecFormat {
     UInt_2_10_10_10_Rev(bool, bool),
 
     #[allow(non_camel_case_types)]
-    UInt_10F_11F_11F_Rev
+    UInt10F_11F_11F_Rev
 }
 
 impl From<IVecFormat> for VecFormat {
@@ -130,7 +148,7 @@ impl From<IVecFormat> for VecFormat {
 }
 
 impl From<DVecFormat> for VecFormat {
-    fn from(dvec: DVecFormat) -> VecFormat { VecFormat::Double(dvec.0) }
+    fn from(dvec: DVecFormat) -> VecFormat { VecFormat::Float(FloatType::Double, dvec.0) }
 }
 
 unsafe impl AttribFormat for VecFormat {
@@ -142,9 +160,9 @@ unsafe impl AttribFormat for VecFormat {
         Ok(
             match layout.ty {
 
-                ty @ Half | ty @ Float => Self::Float((ty as GLenum).try_into()?, layout.size),
-                Fixed => Self::Fixed(layout.size),
-                Double => Self::Double(layout.size),
+                ty @ Half | ty @ Float | ty @ Fixed | ty @ Double => Self::Float(
+                    (ty as GLenum).try_into()?, layout.size
+                ),
 
                 ty @ Byte | ty @ UByte | ty @ Short | ty @ UShort | ty @ Int | ty @ UInt => {
                     let ty = (ty as GLenum).try_into()?;
@@ -157,7 +175,7 @@ unsafe impl AttribFormat for VecFormat {
 
                 Int_2_10_10_10_Rev => Self::Int_2_10_10_10_Rev(layout.normalized, layout.size==gl::BGRA),
                 UInt_2_10_10_10_Rev => Self::UInt_2_10_10_10_Rev(layout.normalized, layout.size==gl::BGRA),
-                UInt_10F_11F_11F_Rev => Self::UInt_10F_11F_11F_Rev,
+                UInt10F_11F_11F_Rev => Self::UInt10F_11F_11F_Rev,
 
             }
         )
@@ -171,10 +189,10 @@ unsafe impl AttribFormat for VecFormat {
         use self::VecFormat::*;
         match index {
             0 => match self {
-                Float(_, n) | Fixed(n) | Double(n) | Int(_, n) | Normalized(_, n) => n.min(4),
+                Float(_, n) | Int(_, n) | Normalized(_, n) => n.min(4),
                 Int_2_10_10_10_Rev(_, true) | UInt_2_10_10_10_Rev(_, true) => gl::BGRA,
                 Int_2_10_10_10_Rev(_, false) | UInt_2_10_10_10_Rev(_, false) => 4,
-                UInt_10F_11F_11F_Rev => 3
+                UInt10F_11F_11F_Rev => 3
             }
             _ => 0
         }
@@ -184,13 +202,11 @@ unsafe impl AttribFormat for VecFormat {
         use self::VecFormat::*;
         match self {
             Float(f, _) => f.into(),
-            Fixed(_) => AttribType::Fixed,
-            Double(_) => AttribType::Double,
             Int(f, _) => f.into(),
             Normalized(f, _) => f.into(),
             Int_2_10_10_10_Rev(_,_) => AttribType::Int_2_10_10_10_Rev,
             UInt_2_10_10_10_Rev(_,_) => AttribType::UInt_2_10_10_10_Rev,
-            UInt_10F_11F_11F_Rev => AttribType::UInt_10F_11F_11F_Rev
+            UInt10F_11F_11F_Rev => AttribType::UInt10F_11F_11F_Rev
         }
     }
 
@@ -206,7 +222,7 @@ unsafe impl AttribFormat for VecFormat {
     fn packed(self, index: usize) -> bool {
         use self::VecFormat::*;
         match index {
-            0 => matches!(self, Int_2_10_10_10_Rev(_,_) | UInt_2_10_10_10_Rev(_,_) | UInt_10F_11F_11F_Rev),
+            0 => matches!(self, Int_2_10_10_10_Rev(_,_) | UInt_2_10_10_10_Rev(_,_) | UInt10F_11F_11F_Rev),
             _ => false
         }
     }
