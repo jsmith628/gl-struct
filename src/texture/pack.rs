@@ -24,7 +24,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImage<'a,F,T> {
     unsafe fn pack_pixels<P:Pixel<F::PixelLayout>>(&self, mut settings:PixelStore, pixels: PixelPtrMut<[P]>) {
         settings.swap_bytes ^= P::swap_bytes();
         settings.lsb_first ^= P::lsb_first();
-        let fmt = P::layout(unimplemented!());
+        let fmt = P::layout::<!>(unimplemented!());
         self.pack(
             settings, pixels,
             |f, lvl, ptr| gl::GetTexImage(f,lvl,fmt.fmt().into(),fmt.ty().into(),ptr)

@@ -29,7 +29,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImageMut<'a,F,T> {
         settings.swap_bytes ^= I::Pixel::swap_bytes();
         settings.lsb_first ^= I::Pixel::lsb_first();
 
-        let fmt = I::Pixel::layout(unimplemented!());
+        let fmt = I::Pixel::layout::<!>(unimplemented!());
         self.unpack(settings, data, |f,l,d,p| gl(f,l,d,fmt.fmt().into(),fmt.ty().into(),p))
 
     }
