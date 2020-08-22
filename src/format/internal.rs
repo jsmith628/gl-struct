@@ -453,54 +453,54 @@ compat_with!(COMPRESSED_RG_RGTC2 COMPRESSED_SIGNED_RG_RGTC2; ViewCompatible);
 compat_with!(COMPRESSED_RGBA_BPTC_UNORM COMPRESSED_SRGB_ALPHA_BPTC_UNORM; ViewCompatible);
 compat_with!(COMPRESSED_RGB_BPTC_SIGNED_FLOAT COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT; ViewCompatible);
 
-macro_rules! impl_buffer_tex {
-    ($($fmt:ty = $pixel:ty;)*) => {
-        $(
-            unsafe impl BufferTextureFormat for $fmt { type Pixel = $pixel; }
-        )*
-    }
-}
+// macro_rules! impl_buffer_tex {
+//     ($($fmt:ty = $pixel:ty;)*) => {
+//         $(
+//             unsafe impl BufferTextureFormat for $fmt { type Pixel = $pixel; }
+//         )*
+//     }
+// }
 
-impl_buffer_tex!{
-    //RED
-    R8       = GLubyte;
-    R16      = GLushort;
-//  R16F     = GLhalf;
-    R32F     = GLfloat;
-    R8I      = GLbyte;
-    R16I     = GLshort;
-    R32I     = GLint;
-    R8UI     = GLubyte;
-    R16UI    = GLushort;
-    R32UI    = GLuint;
-
-    //RG
-    RG8      = [GLubyte;  2];
-    RG16     = [GLushort; 2];
-//  RG16F    = [GLhalf;   2];
-    RG32F    = [GLfloat;  2];
-    RG8I     = [GLbyte;   2];
-    RG16I    = [GLshort;  2];
-    RG32I    = [GLint;    2];
-    RG8UI    = [GLubyte;  2];
-    RG16UI   = [GLushort; 2];
-    RG32UI   = [GLuint;   2];
-
-    //RGB
-    RGB32F   = [GLfloat;  3];
-    RGB32I   = [GLint;    3];
-    RGB32UI  = [GLuint;   3];
-
-    //RGBA
-    RGBA8    = [GLubyte;  4];
-    RGBA16   = [GLushort; 4];
-//  RGBA16F  = [GLhalf;   4];
-    RGBA32F  = [GLfloat;  4];
-    RGBA8I   = [GLbyte;   4];
-    RGBA16I  = [GLshort;  4];
-    RGBA32I  = [GLint;    4];
-    RGBA8UI  = [GLubyte;  4];
-    RGBA16UI = [GLushort; 4];
-    RGBA32UI = [GLuint;   4];
-
-}
+// impl_buffer_tex!{
+//     //RED
+//     R8       = GLubyte;
+//     R16      = GLushort;
+// //  R16F     = GLhalf;
+//     R32F     = GLfloat;
+//     R8I      = GLbyte;
+//     R16I     = GLshort;
+//     R32I     = GLint;
+//     R8UI     = GLubyte;
+//     R16UI    = GLushort;
+//     R32UI    = GLuint;
+//
+//     //RG
+//     RG8      = [GLubyte;  2];
+//     RG16     = [GLushort; 2];
+// //  RG16F    = [GLhalf;   2];
+//     RG32F    = [GLfloat;  2];
+//     RG8I     = [GLbyte;   2];
+//     RG16I    = [GLshort;  2];
+//     RG32I    = [GLint;    2];
+//     RG8UI    = [GLubyte;  2];
+//     RG16UI   = [GLushort; 2];
+//     RG32UI   = [GLuint;   2];
+//
+//     //RGB
+//     RGB32F   = [GLfloat;  3];
+//     RGB32I   = [GLint;    3];
+//     RGB32UI  = [GLuint;   3];
+//
+//     //RGBA
+//     RGBA8    = [GLubyte;  4];
+//     RGBA16   = [GLushort; 4];
+// //  RGBA16F  = [GLhalf;   4];
+//     RGBA32F  = [GLfloat;  4];
+//     RGBA8I   = [GLbyte;   4];
+//     RGBA16I  = [GLshort;  4];
+//     RGBA32I  = [GLint;    4];
+//     RGBA8UI  = [GLubyte;  4];
+//     RGBA16UI = [GLushort; 4];
+//     RGBA32UI = [GLuint;   4];
+//
+// }

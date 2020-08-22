@@ -13,7 +13,7 @@ glenum! {
 
     //all except BGR and BGRA were present since GL10
     pub enum ColorComponents {
-        RED, GREEN, BLUE, RG, RGB, RGBA, BGR(GL_EXT_bgra), BGRA(GL_EXT_bgra)
+        RED, GREEN, BLUE, RG(GL30), RGB, RGBA, BGR(GL_EXT_bgra), BGRA(GL_EXT_bgra)
     }
 
     //assumes GL_EXT_texture_integer as that is required to even create an integer texture
@@ -65,7 +65,7 @@ impl From<ColorComponents> for PixelFormat {
             ColorComponents::RED => Self::RED,
             ColorComponents::GREEN => Self::GREEN,
             ColorComponents::BLUE => Self::BLUE,
-            ColorComponents::RG => Self::RG,
+            ColorComponents::RG(_) => Self::RG,
             ColorComponents::RGB => Self::RGB,
             ColorComponents::BGR(_) => Self::BGR,
             ColorComponents::RGBA => Self::RGBA,
@@ -406,7 +406,7 @@ macro_rules! impl_int {
         $(
             impl_int!(@impl $prim; RED RED_INTEGER $ty);
             impl_int!(@impl [$prim;1]; RED RED_INTEGER $ty);
-            impl_int!(@impl [$prim;2]; RG RG_INTEGER $ty);
+            // impl_int!(@impl [$prim;2]; RG RG_INTEGER $ty);
             impl_int!(@impl [$prim;3]; RGB RGB_INTEGER $ty);
             impl_int!(@impl [$prim;4]; RGBA RGBA_INTEGER $ty);
 
@@ -451,7 +451,7 @@ macro_rules! impl_float {
         $(
             impl_float!(@impl $prim; RED $ty);
             impl_float!(@impl [$prim;1]; RED $ty);
-            impl_float!(@impl [$prim;2]; RG $ty);
+            // impl_float!(@impl [$prim;2]; RG $ty);
             impl_float!(@impl [$prim;3]; RGB $ty);
             impl_float!(@impl [$prim;4]; RGBA $ty);
 
@@ -506,9 +506,17 @@ use glsl::*;
 
 //TODO: add the 3D vecs after you revert the alignment requirements
 
-impl_ivec!(ivec2 [GLint;2], ivec4 [GLint;4], uvec2 [GLuint;2], uvec4 [GLuint;4]);
+impl_ivec!(
+    // ivec2 [GLint;2], 
+    ivec4 [GLint;4],
+    // uvec2 [GLuint;2],
+    uvec4 [GLuint;4]
+);
 impl_vec!{
-    ivec2 [GLint;  2], ivec4 [GLint;  4],
-    uvec2 [GLuint; 2], uvec4 [GLuint; 4],
-     vec2 [GLfloat;2],  vec4 [GLfloat;4]
+    // ivec2 [GLint;  2],
+    ivec4 [GLint;  4],
+    // uvec2 [GLuint; 2],
+    uvec4 [GLuint; 4],
+     // vec2 [GLfloat;2],
+     vec4 [GLfloat;4]
 }
