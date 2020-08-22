@@ -5,13 +5,11 @@ use crate::buffer::*;
 use crate::version::*;
 
 pub use self::align::*;
-pub use self::pixel_data::*;
 pub use self::pixel_store::*;
 pub use self::client_image::*;
 pub use self::client_sub_image::*;
 
 mod align;
-mod pixel_data;
 mod pixel_store;
 mod client_image;
 mod client_sub_image;
