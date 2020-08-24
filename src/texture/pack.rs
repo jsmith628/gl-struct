@@ -21,7 +21,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImage<'a,F,T> {
 
     }
 
-    unsafe fn pack_pixels<P:Pixel<F::PixelLayout>>(&self, mut settings:PixelStore, pixels: PixelPtrMut<[P]>) {
+    unsafe fn pack_pixels<P:PixelData<F::PixelLayout>>(&self, mut settings:PixelStore, pixels: PixelPtrMut<[P]>) {
         settings.swap_bytes ^= P::swap_bytes();
         settings.lsb_first ^= P::lsb_first();
         let fmt = P::layout::<!>(unimplemented!());
