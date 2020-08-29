@@ -69,33 +69,35 @@ impl<P> PixelPtrMut<[P]> {
     }
 }
 
-pub trait PixelSrc {
+pub unsafe trait PixelSrc {
     type Pixels: ?Sized;
+    type GL: GLVersion;
     fn pixel_ptr(&self) -> PixelPtr<Self::Pixels>;
 }
-pub trait PixelDst: PixelSrc {
+pub unsafe trait PixelDst: PixelSrc {
     fn pixel_ptr_mut(&mut self) -> PixelPtrMut<Self::Pixels>;
 }
 pub trait FromPixels: PixelSrc {
-    type GL: GLVersion;
     type Hint;
     unsafe fn from_pixels<G:FnOnce(PixelPtrMut<Self::Pixels>)>(
         gl:&Self::GL, hint:Self::Hint, size: usize, get:G
     ) -> Self;
 }
 
-impl<P> PixelSrc for [P] {
+unsafe impl<P:Pixel> PixelSrc for [P] {
     type Pixels = [P];
+    type GL = P::GL;
     fn pixel_ptr(&self) -> PixelPtr<[P]> { PixelPtr::Slice(self) }
 }
-impl<P> PixelDst for [P] {
+unsafe impl<P:Pixel> PixelDst for [P] {
     fn pixel_ptr_mut(&mut self) -> PixelPtrMut<[P]> { PixelPtrMut::Slice(self) }
 }
 
-impl<F:SpecificCompressed> PixelSrc for CompressedPixels<F> {
+unsafe impl<F:SpecificCompressed> PixelSrc for CompressedPixels<F> {
     type Pixels = CompressedPixels<F>;
-    fn pixel_ptr(&self) -> PixelPtr<Self> { PixelPtr::Slice(self) }
+    type GL = F::GL;
+    fn pixel_ptr(&self) -> PixelPtr<CompressedPixels<F>> { PixelPtr::Slice(self) }
 }
-impl<F:SpecificCompressed> PixelDst for CompressedPixels<F> {
-    fn pixel_ptr_mut(&mut self) -> PixelPtrMut<Self> { PixelPtrMut::Slice(self) }
+unsafe impl<F:SpecificCompressed> PixelDst for CompressedPixels<F> {
+    fn pixel_ptr_mut(&mut self) -> PixelPtrMut<CompressedPixels<F>> { PixelPtrMut::Slice(self) }
 }

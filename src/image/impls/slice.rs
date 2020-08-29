@@ -2,7 +2,7 @@ use super::*;
 
 macro_rules! impl_img_src_slice {
     (for<$($a:lifetime,)* $P:ident $(, $A:ident:$bound:ident)* > $ty:ty) => {
-        unsafe impl<$($a,)* $($A:$bound,)* $P> ImageSrc for $ty {
+        unsafe impl<$($a,)* $($A:$bound,)* $P:Pixel> ImageSrc for $ty {
 
             type Pixels = [$P];
 
@@ -30,7 +30,7 @@ macro_rules! impl_img_src_slice {
 macro_rules! impl_img_dst_slice {
     (for<$($a:lifetime,)* $P:ident $(, $A:ident:$bound:ident)* > $ty:ty) => {
         impl_img_src_slice!(for<$($a,)* $P $(, $A:$bound)* > $ty);
-        unsafe impl<$($a,)* $($A:$bound,)* $P> ImageDst for $ty {
+        unsafe impl<$($a,)* $($A:$bound,)* $P: Pixel> ImageDst for $ty {
             fn pixels_mut(&mut self) -> PixelPtrMut<[$P]> { self.pixel_ptr_mut() }
         }
     }

@@ -2,8 +2,9 @@ use super::*;
 
 macro_rules! impl_pixel_src_deref {
     (for<$($a:lifetime,)* $P:ident> $ty:ty $(where $($where:tt)*)?) => {
-        impl<$($a,)* $P:PixelSrc+?Sized> PixelSrc for $ty $(where $($where)*)? {
+        unsafe impl<$($a,)* $P:PixelSrc+?Sized> PixelSrc for $ty $(where $($where)*)? {
             type Pixels = $P::Pixels;
+            type GL = $P::GL;
             fn pixel_ptr(&self) -> PixelPtr<$P::Pixels> { (&**self).pixel_ptr() }
         }
     }
@@ -12,7 +13,7 @@ macro_rules! impl_pixel_src_deref {
 macro_rules! impl_pixel_dst_deref {
     (for<$($a:lifetime,)* $P:ident> $ty:ty $(where $($where:tt)*)?) => {
         impl_pixel_src_deref!(for<$($a,)* $P> $ty $(where $($where)*)?);
-        impl<$($a,)* $P:PixelDst+?Sized> PixelDst for $ty $(where $($where)*)? {
+        unsafe impl<$($a,)* $P:PixelDst+?Sized> PixelDst for $ty $(where $($where)*)? {
             fn pixel_ptr_mut(&mut self) -> PixelPtrMut<$P::Pixels> { (&mut **self).pixel_ptr_mut() }
         }
     }
@@ -25,41 +26,65 @@ impl_pixel_src_deref!(for<'a,P> &'a P);
 impl_pixel_dst_deref!(for<'a,P> &'a mut P);
 impl_pixel_src_deref!(for<'a,P> Cow<'a,P> where P:ToOwned);
 
-impl<P> FromPixels for Box<[P]> {
-    type GL = GL10;
+impl<P:Pixel> FromPixels for Box<[P]> {
     type Hint = ();
-    unsafe fn from_pixels<G:FnOnce(PixelPtrMut<[P]>)>(_:&GL10, _:(), size: usize, get:G) -> Self {
+    unsafe fn from_pixels<G:FnOnce(PixelPtrMut<[P]>)>(_:&Self::GL, _:(), size: usize, get:G) -> Self {
         let mut dest = Box::new_uninit_slice(size);
         get(PixelPtrMut::Slice((&mut *dest) as *mut [MaybeUninit<P>] as *mut [P]));
         dest.assume_init()
     }
 }
 
-impl<P> FromPixels for Rc<[P]> {
-    type GL = GL10;
+impl<P:Pixel> FromPixels for Rc<[P]> {
     type Hint = ();
-    unsafe fn from_pixels<G:FnOnce(PixelPtrMut<[P]>)>(_:&GL10, _:(), count: usize, get:G) -> Self {
+    unsafe fn from_pixels<G:FnOnce(PixelPtrMut<[P]>)>(_:&Self::GL, _:(), count: usize, get:G) -> Self {
         let mut dest = Rc::new_uninit_slice(count);
         get(PixelPtrMut::Slice(Rc::get_mut_unchecked(&mut dest) as *mut [MaybeUninit<P>] as *mut [P]));
         dest.assume_init()
     }
 }
 
-impl<P> FromPixels for Arc<[P]> {
-    type GL = GL10;
+impl<P:Pixel> FromPixels for Arc<[P]> {
     type Hint = ();
-    unsafe fn from_pixels<G:FnOnce(PixelPtrMut<[P]>)>(_:&GL10, _:(), count: usize, get:G) -> Self {
+    unsafe fn from_pixels<G:FnOnce(PixelPtrMut<[P]>)>(_:&Self::GL, _:(), count: usize, get:G) -> Self {
         let mut dest = Arc::new_uninit_slice(count);
         get(PixelPtrMut::Slice(Arc::get_mut_unchecked(&mut dest) as *mut [MaybeUninit<P>] as *mut [P]));
         dest.assume_init()
     }
 }
 
+macro_rules! impl_compressed_from_block {
+    (for<$($a:lifetime, )* $F:ident $(, $A:ident:$bound:ident)*> $ty:ty as $arr:ty) => {
+        impl<$($a, )* $F:SpecificCompressed $(, $A:$bound)*> FromPixels for $ty {
+
+            type Hint = ();
+
+            unsafe fn from_pixels<G:FnOnce(PixelPtrMut<CompressedPixels<$F>>)>(
+                gl:&Self::GL, hint:Self::Hint, count: usize, get:G
+            ) -> Self {
+
+                let block_pixels = F::block_width() as usize * F::block_height() as usize * F::block_depth() as usize;
+                let num_blocks = count / block_pixels + if count%block_pixels==0 {0} else {1};
+
+                let dest = <$arr>::new_uninit_slice(num_blocks);
+                get(PixelPtrMut::Slice(
+                    &*dest as *const [MaybeUninit<F::Block>] as *mut [MaybeUninit<F::Block>] as *mut CompressedPixels<F>
+                ));
+                transmute::<$arr,$ty>(dest.assume_init())
+            }
+
+        }
+    }
+}
+
+impl_compressed_from_block!(for<F> Box<CompressedPixels<F>> as Box<[F::Block]>);
+impl_compressed_from_block!(for<F> Rc<CompressedPixels<F>> as Rc<[F::Block]>);
+impl_compressed_from_block!(for<F> Arc<CompressedPixels<F>> as Arc<[F::Block]>);
+
 impl<'a,P:PixelSrc+ToOwned+?Sized> FromPixels for Cow<'a,P> where
-    P::Owned: PixelSrc<Pixels=P::Pixels> + FromPixels
+    P::Owned: PixelSrc<Pixels=P::Pixels, GL=P::GL> + FromPixels
 {
 
-    type GL = <P::Owned as FromPixels>::GL;
     type Hint = <P::Owned as FromPixels>::Hint;
 
     unsafe fn from_pixels<G:FnOnce(PixelPtrMut<P::Pixels>)>(
