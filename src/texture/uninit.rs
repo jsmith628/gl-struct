@@ -15,7 +15,7 @@ impl<T:TextureType> UninitTex<T> {
         if n==0 { return Box::new([]); }
         unsafe {
             let mut tex = Box::new_uninit_slice(n as usize);
-            gl::GenTextures(tex.len().try_into().unwrap(), MaybeUninit::first_ptr_mut(&mut *tex));
+            gl::GenTextures(tex.len().try_into().unwrap(), MaybeUninit::slice_as_mut_ptr(&mut *tex));
             tex.assume_init()
         }
     }
@@ -27,7 +27,7 @@ impl<T:TextureType> UninitTex<T> {
                 gl::CreateTextures(T::glenum(), 1, tex.as_mut_ptr() as *mut GLuint);
             } else {
                 gl::GenTextures(1, tex.as_mut_ptr() as *mut GLuint);
-                gl::BindTexture(T::glenum(), tex.get_mut().id());
+                gl::BindTexture(T::glenum(), tex.assume_init_mut().id());
                 gl::BindTexture(T::glenum(), 0);
             }
             tex.assume_init()
@@ -42,7 +42,7 @@ impl<T:TextureType> UninitTex<T> {
                 gl::CreateTextures(T::glenum(), tex.len().try_into().unwrap(), tex[0].as_mut_ptr() as *mut GLuint);
             } else {
                 gl::GenTextures(tex.len().try_into().unwrap(), tex[0].as_mut_ptr() as *mut GLuint);
-                for t in tex.iter_mut() { gl::BindTexture(T::glenum(), t.get_mut().id()) }
+                for t in tex.iter_mut() { gl::BindTexture(T::glenum(), t.assume_init_mut().id()) }
                 gl::BindTexture(T::glenum(), 0);
             }
             tex.assume_init()

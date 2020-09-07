@@ -71,7 +71,7 @@ impl<'a> Framebuffer<'a,!,!> {
         if n==0 { return Box::new([]); }
         unsafe {
             let mut fb = Box::new_uninit_slice(n as usize);
-            gl::GenFramebuffers(fb.len().try_into().unwrap(), MaybeUninit::first_ptr_mut(&mut *fb));
+            gl::GenFramebuffers(fb.len().try_into().unwrap(), MaybeUninit::slice_as_mut_ptr(&mut *fb));
             fb.assume_init()
         }
     }
@@ -83,7 +83,7 @@ impl<'a> Framebuffer<'a,!,!> {
                 gl::CreateFramebuffers(1, fb.as_mut_ptr() as *mut GLuint);
             } else {
                 gl::GenFramebuffers(1, fb.as_mut_ptr() as *mut GLuint);
-                gl::BindFramebuffer(gl::FRAMEBUFFER, fb.get_mut().id());
+                gl::BindFramebuffer(gl::FRAMEBUFFER, fb.assume_init_mut().id());
                 gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
             }
             fb.assume_init()
@@ -98,7 +98,7 @@ impl<'a> Framebuffer<'a,!,!> {
                 gl::CreateFramebuffers(fb.len().try_into().unwrap(), fb[0].as_mut_ptr() as *mut GLuint);
             } else {
                 gl::GenFramebuffers(fb.len().try_into().unwrap(), fb[0].as_mut_ptr() as *mut GLuint);
-                for t in fb.iter_mut() { gl::BindFramebuffer(gl::FRAMEBUFFER, t.get_mut().id()) }
+                for t in fb.iter_mut() { gl::BindFramebuffer(gl::FRAMEBUFFER, t.assume_init_mut().id()) }
                 gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
             }
             fb.assume_init()

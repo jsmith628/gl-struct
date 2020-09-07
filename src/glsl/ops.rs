@@ -163,7 +163,7 @@ macro_rules! impl_zero {
                 fn zero() -> Self {
                     unsafe {
                         let mut dest = MaybeUninit::<Self>::uninit();
-                        dest.get_mut().set_zero();
+                        dest.assume_init_mut().set_zero();
                         dest.assume_init()
                     }
                 }
@@ -192,7 +192,7 @@ macro_rules! impl_one {
                 fn one() -> Self {
                     unsafe {
                         let mut dest = MaybeUninit::<Self>::uninit();
-                        dest.get_mut().set_one();
+                        dest.assume_init_mut().set_one();
                         dest.assume_init()
                     }
                 }
@@ -270,9 +270,9 @@ macro_rules! impl_matrix_vector_mul {
                 unsafe {
                     let mut out = MaybeUninit::<$vec1>::uninit();
                     for i in 0..rhs[0].len() {
-                        out.get_mut()[i] = self[0] * rhs[i][0];
+                        out.assume_init_mut()[i] = self[0] * rhs[i][0];
                         for j in 1..rhs.len() {
-                            out.get_mut()[i] += self[j] * rhs[i][j];
+                            out.assume_init_mut()[i] += self[j] * rhs[i][j];
                         }
                     }
                     out.assume_init()
@@ -315,7 +315,7 @@ macro_rules! impl_matrix_mul {
                 unsafe {
                     let mut out = MaybeUninit::<$out>::uninit();
                     for i in 0..rhs.len() {
-                        out.get_mut()[i] = self * rhs[i];
+                        out.assume_init_mut()[i] = self * rhs[i];
                     }
                     out.assume_init()
                 }

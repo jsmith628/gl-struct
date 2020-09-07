@@ -17,7 +17,7 @@ macro_rules! impl_trans {
                     let mut dest = MaybeUninit::<$trans>::uninit();
                     for i in 0..self.len() {
                         for j in 0..self[i].len() {
-                            dest.get_mut()[j][i] = self[j][i];
+                            dest.assume_init_mut()[j][i] = self[j][i];
                         }
                     }
                     dest.assume_init()
@@ -60,7 +60,7 @@ macro_rules! impl_outer_product {
                         let mut dest = MaybeUninit::<$mat>::uninit();
                         for i in 0..self.len() {
                             for j in 0..rhs.len() {
-                                dest.get_mut()[j][i] = self[i] * rhs[j];
+                                dest.assume_init_mut()[j][i] = self[i] * rhs[j];
                             }
                         }
                         dest.assume_init()

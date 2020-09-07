@@ -305,7 +305,7 @@ impl<'a,T:?Sized,A:Persistent> Slice<'a,T,A> {
         }
 
         //if the pointer is null, we need to map the buffer first
-        if buf_size>0 && ptr.get_ref().is_null() {
+        if buf_size>0 && ptr.assume_init_ref().is_null() {
 
             //needs to be the A flags because this map will be used for any other maps in the future
             let flags = map_range_flags::<A>();

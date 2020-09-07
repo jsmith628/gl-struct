@@ -63,7 +63,7 @@ impl<'a> VertexArray<'a,!,()> {
         if n==0 { return Box::new([]); }
         unsafe {
         let mut dest = Box::new_uninit_slice(n as usize);
-            gl::GenVertexArrays(dest.len().try_into().unwrap(), MaybeUninit::first_ptr_mut(&mut *dest));
+            gl::GenVertexArrays(dest.len().try_into().unwrap(), MaybeUninit::slice_as_mut_ptr(&mut *dest));
             dest.assume_init()
         }
     }
@@ -75,7 +75,7 @@ impl<'a> VertexArray<'a,!,()> {
                 gl::CreateVertexArrays(1, dest.as_mut_ptr() as *mut _);
             } else {
                 gl::GenVertexArrays(1, dest.as_mut_ptr() as *mut _);
-                gl::BindVertexArray(dest.get_mut().id());
+                gl::BindVertexArray(dest.assume_init_mut().id());
                 gl::BindVertexArray(0);
             }
             dest.assume_init()
@@ -91,7 +91,7 @@ impl<'a> VertexArray<'a,!,()> {
                 gl::CreateVertexArrays(dest.len().try_into().unwrap(), dest[0].as_mut_ptr() as *mut GLuint);
             } else {
                 gl::GenVertexArrays(dest.len().try_into().unwrap(), dest[0].as_mut_ptr() as *mut GLuint);
-                for arr in dest.iter_mut() { gl::BindVertexArray(arr.get_mut().id()) }
+                for arr in dest.iter_mut() { gl::BindVertexArray(arr.assume_init_mut().id()) }
                 gl::BindVertexArray(0);
             }
             dest.assume_init()

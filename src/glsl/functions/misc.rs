@@ -66,7 +66,7 @@ pub fn isnan<V:GenFloatType+GenFamily>(x:V) -> V::BVec {
     unsafe {
         let mut dest = MaybeUninit::<V::BVec>::uninit();
         for i in 0..V::COUNT {
-            *dest.get_mut().coord_mut(i) = (x.coord(i).is_nan()).into();
+            *dest.assume_init_mut().coord_mut(i) = (x.coord(i).is_nan()).into();
         }
         dest.assume_init()
     }
@@ -76,7 +76,7 @@ pub fn isinf<V:GenFloatType+GenFamily>(x:V) -> V::BVec {
     unsafe {
         let mut dest = MaybeUninit::<V::BVec>::uninit();
         for i in 0..V::COUNT {
-            *dest.get_mut().coord_mut(i) = (x.coord(i).is_infinite()).into();
+            *dest.assume_init_mut().coord_mut(i) = (x.coord(i).is_infinite()).into();
         }
         dest.assume_init()
     }
@@ -87,7 +87,7 @@ pub fn floatBitsToInt<V:GenFType+GenFamily>(x:V) -> V::IVec {
     unsafe {
         let mut dest = MaybeUninit::<V::IVec>::uninit();
         for i in 0..V::COUNT {
-            *dest.get_mut().coord_mut(i) = (*x.coord(i)).to_bits() as i32;
+            *dest.assume_init_mut().coord_mut(i) = (*x.coord(i)).to_bits() as i32;
         }
         dest.assume_init()
     }
@@ -98,7 +98,7 @@ pub fn floatBitsToUint<V:GenFType+GenFamily>(x:V) -> V::UVec {
     unsafe {
         let mut dest = MaybeUninit::<V::UVec>::uninit();
         for i in 0..V::COUNT {
-            *dest.get_mut().coord_mut(i) = (*x.coord(i)).to_bits();
+            *dest.assume_init_mut().coord_mut(i) = (*x.coord(i)).to_bits();
         }
         dest.assume_init()
     }
@@ -109,7 +109,7 @@ pub fn intBitsToFloat<V:GenIType+GenFamily>(x:V) -> V::Vec {
     unsafe {
         let mut dest = MaybeUninit::<V::Vec>::uninit();
         for i in 0..V::COUNT {
-            *dest.get_mut().coord_mut(i) = f32::from_bits(*x.coord(i) as u32);
+            *dest.assume_init_mut().coord_mut(i) = f32::from_bits(*x.coord(i) as u32);
         }
         dest.assume_init()
     }
@@ -120,7 +120,7 @@ pub fn uintBitsToFloat<V:GenUType+GenFamily>(x:V) -> V::UVec {
     unsafe {
         let mut dest = MaybeUninit::<V::UVec>::uninit();
         for i in 0..V::COUNT {
-            *dest.get_mut().coord_mut(i) = transmute(*x.coord(i));
+            *dest.assume_init_mut().coord_mut(i) = transmute(*x.coord(i));
         }
         dest.assume_init()
     }

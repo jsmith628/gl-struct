@@ -164,7 +164,7 @@ impl<V:Supports<GL20>> GLState<V> {
 
     unsafe fn get_float_range(&self, pname:GLenum) -> RangeInclusive<GLfloat> {
         let mut dest = MaybeUninit::<[GLfloat;2]>::uninit();
-        gl::GetFloatv(pname, &mut dest.get_mut()[0] as *mut GLfloat);
+        gl::GetFloatv(pname, &mut dest.assume_init_mut()[0] as *mut GLfloat);
         let dest = dest.assume_init();
         dest[0]..=dest[1]
     }

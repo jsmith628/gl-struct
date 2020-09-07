@@ -116,7 +116,7 @@ impl<T:?Sized, A:BufferStorage> Buffer<T,A> {
 
     unsafe fn _read(&self) -> T where T:Sized {
         let mut data = MaybeUninit::uninit();
-        self.as_slice().get_subdata_raw(data.get_mut() as *mut T);
+        self.as_slice().get_subdata_raw(data.assume_init_mut() as *mut T);
         data.assume_init()
     }
 

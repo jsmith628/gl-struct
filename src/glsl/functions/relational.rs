@@ -8,7 +8,7 @@ macro_rules! wrap_cmp {
                 unsafe {
                     let mut dest = MaybeUninit::<V::BVec>::uninit();
                     for i in 0..V::COUNT {
-                        *dest.get_mut().coord_mut(i) = (x.coord(i) $op y.coord(i)).into();
+                        *dest.assume_init_mut().coord_mut(i) = (x.coord(i) $op y.coord(i)).into();
                     }
                     dest.assume_init()
                 }

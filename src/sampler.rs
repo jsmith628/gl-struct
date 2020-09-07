@@ -67,7 +67,7 @@ impl Sampler {
         if n==0 { return Box::new([]); }
         unsafe {
             let mut s = Box::new_uninit_slice(n as usize);
-            gl::GenSamplers(s.len().try_into().unwrap(), MaybeUninit::first_ptr_mut(&mut *s));
+            gl::GenSamplers(s.len().try_into().unwrap(), MaybeUninit::slice_as_mut_ptr(&mut *s));
             s.assume_init()
         }
     }
@@ -79,7 +79,7 @@ impl Sampler {
                 gl::CreateSamplers(1, s.as_mut_ptr() as *mut GLuint);
             } else {
                 gl::GenSamplers(1, s.as_mut_ptr() as *mut GLuint);
-                gl::BindSampler(0, s.get_mut().id());
+                gl::BindSampler(0, s.assume_init_mut().id());
                 gl::BindSampler(0, 0);
             }
             s.assume_init()
@@ -94,7 +94,7 @@ impl Sampler {
                 gl::CreateSamplers(s.len().try_into().unwrap(), s[0].as_mut_ptr() as *mut GLuint);
             } else {
                 gl::GenSamplers(s.len().try_into().unwrap(), s[0].as_mut_ptr() as *mut GLuint);
-                for t in s.iter_mut() { gl::BindSampler(0, t.get_mut().id()) }
+                for t in s.iter_mut() { gl::BindSampler(0, t.assume_init_mut().id()) }
                 gl::BindSampler(0, 0);
             }
             s.assume_init()

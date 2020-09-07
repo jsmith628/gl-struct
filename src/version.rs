@@ -10,7 +10,7 @@ use std::collections::HashSet;
 
 unsafe fn get_integerv(name: GLenum) -> GLint {
     let mut dest = MaybeUninit::uninit();
-    gl::GetIntegerv(name, dest.get_mut());
+    gl::GetIntegerv(name, dest.assume_init_mut());
     dest.assume_init()
 }
 

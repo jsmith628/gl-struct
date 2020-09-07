@@ -161,7 +161,7 @@ macro_rules! impl_scalar_conv {
                 fn from(x:$scalar) -> $vec {
                     unsafe {
                         let mut dest = MaybeUninit::<$vec>::uninit();
-                        for i in 0..dest.get_ref().len() { dest.get_mut()[i] = x; }
+                        for i in 0..dest.assume_init_ref().len() { dest.assume_init_mut()[i] = x; }
                         dest.assume_init()
                     }
                 }
@@ -173,9 +173,9 @@ macro_rules! impl_scalar_conv {
                 fn from(x:$scalar) -> $mat {
                     unsafe {
                         let mut dest = MaybeUninit::<$mat>::uninit();
-                        for i in 0..dest.get_ref().len() {
-                            for j in 0..dest.get_ref()[i].len() {
-                                dest.get_mut()[i][j] = if i==j { x } else { Zero::zero() };
+                        for i in 0..dest.assume_init_ref().len() {
+                            for j in 0..dest.assume_init_ref()[i].len() {
+                                dest.assume_init_mut()[i][j] = if i==j { x } else { Zero::zero() };
                             }
                         }
                         dest.assume_init()
@@ -320,7 +320,7 @@ impl_scalar_conv!(double; dvec2 dvec3 dvec4; dmat2 dmat3 dmat4);
 //                 fn from(obj:$ty) -> $name {
 //                     unsafe {
 //                         let mut dest = MaybeUninit::<[$v1;$num]>::uninit();
-//                         obj.copy_into_slice(dest.get_mut());
+//                         obj.copy_into_slice(dest.assume_init_mut());
 //                         return dest.assume_init().into();
 //                     }
 //                 }

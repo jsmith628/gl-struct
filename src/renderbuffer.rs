@@ -58,7 +58,7 @@ impl UninitRenderbuffer {
         if n==0 { return Box::new([]); }
         unsafe {
             let mut rb = Box::new_uninit_slice(n as usize);
-            gl::GenRenderbuffers(rb.len().try_into().unwrap(), MaybeUninit::first_ptr_mut(&mut *rb));
+            gl::GenRenderbuffers(rb.len().try_into().unwrap(), MaybeUninit::slice_as_mut_ptr(&mut *rb));
             rb.assume_init()
         }
     }
@@ -70,7 +70,7 @@ impl UninitRenderbuffer {
                 gl::CreateRenderbuffers(1, rb.as_mut_ptr() as *mut GLuint);
             } else {
                 gl::GenRenderbuffers(1, rb.as_mut_ptr() as *mut GLuint);
-                gl::BindRenderbuffer(gl::RENDERBUFFER, rb.get_mut().id());
+                gl::BindRenderbuffer(gl::RENDERBUFFER, rb.assume_init_mut().id());
                 gl::BindRenderbuffer(gl::RENDERBUFFER, 0);
             }
             rb.assume_init()
@@ -85,7 +85,7 @@ impl UninitRenderbuffer {
                 gl::CreateRenderbuffers(rb.len().try_into().unwrap(), rb[0].as_mut_ptr() as *mut GLuint);
             } else {
                 gl::GenRenderbuffers(rb.len().try_into().unwrap(), rb[0].as_mut_ptr() as *mut GLuint);
-                for t in rb.iter_mut() { gl::BindRenderbuffer(gl::RENDERBUFFER, t.get_mut().id()) }
+                for t in rb.iter_mut() { gl::BindRenderbuffer(gl::RENDERBUFFER, t.assume_init_mut().id()) }
                 gl::BindRenderbuffer(gl::RENDERBUFFER, 0);
             }
             rb.assume_init()
