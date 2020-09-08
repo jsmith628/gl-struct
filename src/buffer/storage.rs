@@ -9,26 +9,60 @@ pub unsafe trait BufferStorage {
 
 #[marker] pub unsafe trait DowngradesTo<B:BufferStorage>: BufferStorage {}
 
-unsafe impl<A:NonPersistent, B:NonPersistent> DowngradesTo<B> for A where
-    <A as BufferStorage>::MapRead:        BitMasks<<B as BufferStorage>::MapRead>,
-    <A as BufferStorage>::MapWrite:       BitMasks<<B as BufferStorage>::MapWrite>,
-    <A as BufferStorage>::DynamicStorage: BitMasks<<B as BufferStorage>::DynamicStorage>
-{}
+//
+//Downgrade to a specific variety
+//
 
+//anything can be downgraded to ReadOnly
 unsafe impl<A:BufferStorage> DowngradesTo<ReadOnly> for A {}
+
+//we don't have to worry about the persistent bit since we can't map DynWrite buffers
 unsafe impl<A:Dynamic> DowngradesTo<DynWrite> for A {}
-unsafe impl DowngradesTo<PersistMapRead> for PersistMapReadWrite {}
-unsafe impl DowngradesTo<PersistMapWrite> for PersistMapReadWrite {}
-unsafe impl DowngradesTo<PersistMapRead> for PersistReadDynWrite {}
-unsafe impl DowngradesTo<PersistMapRead> for PersistReadWrite {}
-unsafe impl DowngradesTo<PersistMapWrite> for PersistReadWrite {}
-unsafe impl DowngradesTo<PersistWrite> for PersistReadWrite {}
+
+unsafe impl<A:NonPersistent+ReadMappable>              DowngradesTo<MapRead>         for A {}
+unsafe impl<A:NonPersistent+WriteMappable>             DowngradesTo<MapWrite>        for A {}
+unsafe impl<A:NonPersistent+ReadWriteMappable>         DowngradesTo<MapReadWrite>    for A {}
+unsafe impl<A:NonPersistent+Dynamic+ReadMappable>      DowngradesTo<MapReadDynWrite> for A {}
+unsafe impl<A:NonPersistent+Dynamic+WriteMappable>     DowngradesTo<Write>           for A {}
+unsafe impl<A:NonPersistent+Dynamic+ReadWriteMappable> DowngradesTo<ReadWrite>       for A {}
+
+//we have to keep the persistent and non-persistent types separate
+unsafe impl<A:Persistent+ReadMappable>              DowngradesTo<PersistMapRead>      for A {}
+unsafe impl<A:Persistent+WriteMappable>             DowngradesTo<PersistMapWrite>     for A {}
+unsafe impl<A:Persistent+ReadWriteMappable>         DowngradesTo<PersistMapReadWrite> for A {}
+unsafe impl<A:Persistent+Dynamic+ReadMappable>      DowngradesTo<PersistReadDynWrite> for A {}
+unsafe impl<A:Persistent+Dynamic+WriteMappable>     DowngradesTo<PersistWrite> for A {}
+unsafe impl<A:Persistent+Dynamic+ReadWriteMappable> DowngradesTo<PersistReadWrite> for A {}
+
+//
+//Downgrade from a specific type
+//
+
+unsafe impl<A:NonPersistent+NonDynamic+NonReadMappable+NonWriteMappable> DowngradesTo<A> for ReadOnly {}
+
+unsafe impl<A:NonPersistent>                             DowngradesTo<A> for ReadWrite {}
+unsafe impl<A:NonPersistent+NonReadMappable>             DowngradesTo<A> for Write {}
+unsafe impl<A:NonPersistent+NonWriteMappable>            DowngradesTo<A> for MapReadDynWrite {}
+unsafe impl<A:NonPersistent+NonDynamic>                  DowngradesTo<A> for MapReadWrite {}
+unsafe impl<A:NonPersistent+NonDynamic+NonReadMappable>  DowngradesTo<A> for MapWrite {}
+unsafe impl<A:NonPersistent+NonDynamic+NonWriteMappable> DowngradesTo<A> for MapRead {}
+
+unsafe impl<A:Persistent>                             DowngradesTo<A> for PersistReadWrite {}
+unsafe impl<A:Persistent+NonReadMappable>             DowngradesTo<A> for PersistWrite {}
+unsafe impl<A:Persistent+NonWriteMappable>            DowngradesTo<A> for PersistReadDynWrite {}
+unsafe impl<A:Persistent+NonDynamic>                  DowngradesTo<A> for PersistMapReadWrite {}
+unsafe impl<A:Persistent+NonDynamic+NonReadMappable>  DowngradesTo<A> for PersistMapWrite {}
+unsafe impl<A:Persistent+NonDynamic+NonWriteMappable> DowngradesTo<A> for PersistMapRead {}
 
 pub trait ReadMappable = BufferStorage<MapRead=High>;
 pub trait WriteMappable = BufferStorage<MapWrite=High>;
 pub trait ReadWriteMappable = ReadMappable + WriteMappable;
 pub trait Dynamic = BufferStorage<DynamicStorage=High>;
 pub trait Persistent = BufferStorage<MapPersistent=High>;
+
+pub trait NonReadMappable = BufferStorage<MapRead=Low>;
+pub trait NonWriteMappable = BufferStorage<MapWrite=Low>;
+pub trait NonDynamic = BufferStorage<DynamicStorage=Low>;
 pub trait NonPersistent = BufferStorage<MapPersistent=Low>;
 
 macro_rules! access {
