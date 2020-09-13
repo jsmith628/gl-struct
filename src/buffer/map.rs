@@ -261,7 +261,7 @@ impl<T:Sized,A:NonPersistent> Buffer<[T],A> {
         I:SliceIndex<[T],Output=U>,
         A:ReadMappable
     {
-        unsafe { self.as_slice_mut().index_mut(i).map_range_raw() }
+        unsafe { self.as_mut_slice().index_mut(i).map_range_raw() }
     }
 
     #[inline]
@@ -270,7 +270,7 @@ impl<T:Sized,A:NonPersistent> Buffer<[T],A> {
         I:SliceIndex<[T],Output=U>,
         A:WriteMappable
     {
-        unsafe { self.as_slice_mut().index_mut(i).map_range_raw() }
+        unsafe { self.as_mut_slice().index_mut(i).map_range_raw() }
     }
 
     #[inline]
@@ -279,7 +279,7 @@ impl<T:Sized,A:NonPersistent> Buffer<[T],A> {
         I:SliceIndex<[T],Output=U>,
         A:ReadMappable+WriteMappable
     {
-        unsafe { self.as_slice_mut().index_mut(i).map_range_raw() }
+        unsafe { self.as_mut_slice().index_mut(i).map_range_raw() }
     }
 }
 
@@ -354,17 +354,17 @@ impl<'a,T:?Sized,A:Persistent> SliceMut<'a,T,A> {
 
     #[inline]
     pub fn get_map(&self) -> Map<T,PersistMapRead> where A:ReadMappable {
-        unsafe {Slice::get_map_raw(&self.as_immut())}
+        unsafe {Slice::get_map_raw(&self.as_slice())}
     }
 
     #[inline]
     pub fn get_map_write(&mut self) -> Map<T,PersistMapWrite> where A:WriteMappable {
-        unsafe {Slice::get_map_raw(&self.as_immut())}
+        unsafe {Slice::get_map_raw(&self.as_slice())}
     }
 
     #[inline]
     pub fn get_map_mut(&mut self) -> Map<T,PersistMapReadWrite> where A:ReadWriteMappable {
-        unsafe {Slice::get_map_raw(&self.as_immut())}
+        unsafe {Slice::get_map_raw(&self.as_slice())}
     }
 
 }

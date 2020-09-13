@@ -100,7 +100,7 @@ impl<T:?Sized, A:BufferStorage> Buffer<T,A> {
     //
 
     #[inline] pub fn as_slice(&self) -> Slice<T,A> {Slice::from(self)}
-    #[inline] pub fn as_slice_mut(&mut self) -> SliceMut<T,A> {SliceMut::from(self)}
+    #[inline] pub fn as_mut_slice(&mut self) -> SliceMut<T,A> {SliceMut::from(self)}
 
 
     //
@@ -181,22 +181,22 @@ impl<T:Sized, A:BufferStorage> Buffer<[T],A> {
 
     #[inline] pub fn split_at(&self, mid:usize) -> (Slice<[T],A>, Slice<[T],A>) { self.as_slice().split_at(mid) }
     #[inline] pub fn split_at_mut(&mut self, mid:usize) -> (SliceMut<[T],A>, SliceMut<[T],A>) {
-        self.as_slice_mut().split_at_mut(mid)
+        self.as_mut_slice().split_at_mut(mid)
     }
 
     #[inline] pub fn split_first(&self) -> Option<(Slice<T,A>, Slice<[T],A>)> { self.as_slice().split_first() }
     #[inline] pub fn split_first_mut(&mut self) -> Option<(SliceMut<T,A>, SliceMut<[T],A>)> {
-        self.as_slice_mut().split_first_mut()
+        self.as_mut_slice().split_first_mut()
     }
 
     #[inline] pub fn split_last(&self) -> Option<(Slice<T,A>, Slice<[T],A>)> { self.as_slice().split_last() }
     #[inline] pub fn split_last_mut(&mut self) -> Option<(SliceMut<T,A>, SliceMut<[T],A>)> {
-        self.as_slice_mut().split_last_mut()
+        self.as_mut_slice().split_last_mut()
     }
 
     #[inline] pub fn index<U:?Sized,I:SliceIndex<[T],Output=U>>(&self,i:I) -> Slice<U,A> { self.as_slice().index(i) }
     #[inline] pub fn index_mut<U:?Sized,I:SliceIndex<[T],Output=U>>(&mut self,i:I) -> SliceMut<U,A> {
-        self.as_slice_mut().index_mut(i)
+        self.as_mut_slice().index_mut(i)
     }
 
     //
@@ -315,7 +315,7 @@ impl<T:?Sized+GPUCopy,A:BufferStorage> Clone for Buffer<T,A> {
 
                 //copy using CopyBufferSubData
                 self.as_slice().copy_subdata_raw(
-                    &assume_supported::<GL_ARB_copy_buffer>(), &mut dest.as_slice_mut()
+                    &assume_supported::<GL_ARB_copy_buffer>(), &mut dest.as_mut_slice()
                 );
 
                 //return

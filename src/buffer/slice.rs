@@ -62,6 +62,8 @@ impl<'a,T:?Sized,A:BufferStorage> Slice<'a,T,A> {
     #[inline] pub fn align(&self) -> usize {self.ptr.align()}
     #[inline] pub fn offset(&self) -> usize {self.offset}
 
+    #[inline] pub fn as_slice(&self) -> Slice<T,A> { Slice::from(self) }
+
     #[inline] pub unsafe fn downgrade_unchecked<B:BufferStorage>(self) -> Slice<'a,T,B> {
         Slice{ptr: self.ptr, offset: self.offset, buf: PhantomData}
     }
@@ -228,8 +230,8 @@ impl<'a,T:?Sized,A:BufferStorage> SliceMut<'a,T,A> {
     #[inline] pub fn align(&self) -> usize {self.ptr.align()}
     #[inline] pub fn offset(&self) -> usize {self.offset}
 
-    #[inline] pub fn as_immut(&self) -> Slice<T,A> { Slice::from(self) }
-    #[inline] pub fn as_mut(&mut self) -> SliceMut<T,A> { SliceMut::from(self) }
+    #[inline] pub fn as_slice(&self) -> Slice<T,A> { Slice::from(self) }
+    #[inline] pub fn as_mut_slice(&mut self) -> SliceMut<T,A> { SliceMut::from(self) }
 
     #[inline] pub unsafe fn downgrade_unchecked<B:BufferStorage>(self) -> SliceMut<'a,T,B> {
         SliceMut{ptr: self.ptr, offset: self.offset, buf: PhantomData}
@@ -240,26 +242,26 @@ impl<'a,T:?Sized,A:BufferStorage> SliceMut<'a,T,A> {
         unsafe { self.downgrade_unchecked() }
     }
 
-    #[inline] pub unsafe fn get_subdata_raw(&self, dest: *mut T) { self.as_immut().get_subdata_raw(dest) }
+    #[inline] pub unsafe fn get_subdata_raw(&self, dest: *mut T) { self.as_slice().get_subdata_raw(dest) }
 
-    #[inline] pub fn get_subdata(&self) -> T where T:Copy {self.as_immut().get_subdata()}
-    #[inline] pub fn get_subdata_box(&self) -> Box<T> where T:GPUCopy {self.as_immut().get_subdata_box()}
+    #[inline] pub fn get_subdata(&self) -> T where T:Copy {self.as_slice().get_subdata()}
+    #[inline] pub fn get_subdata_box(&self) -> Box<T> where T:GPUCopy {self.as_slice().get_subdata_box()}
     #[inline] pub fn get_subdata_ref<Q:BorrowMut<T>>(&self, dest: &mut Q) where T:GPUCopy {
-        self.as_immut().get_subdata_ref(dest)
+        self.as_slice().get_subdata_ref(dest)
     }
 
     #[inline]
     pub unsafe fn copy_subdata_raw<'b, GL:Supports<GL_ARB_copy_buffer>, B:BufferStorage>(
         &self, gl: &GL, dest: &mut SliceMut<'b,T,B>
     ) {
-        self.as_immut().copy_subdata_raw(gl, dest)
+        self.as_slice().copy_subdata_raw(gl, dest)
     }
 
     #[inline]
     pub fn copy_subdata<'b, GL:Supports<GL_ARB_copy_buffer>, B:BufferStorage>(
         &self, gl: &GL, dest: &mut SliceMut<'b,T,B>
     ) where T: GPUCopy+'a {
-        self.as_immut().copy_subdata(gl, dest)
+        self.as_slice().copy_subdata(gl, dest)
     }
 
     pub unsafe fn invalidate_subdata_raw(&mut self) {
@@ -272,7 +274,7 @@ impl<'a,T:?Sized,A:BufferStorage> SliceMut<'a,T,A> {
 }
 
 impl<'a,T:Sized,A:BufferStorage> SliceMut<'a,[T],A> {
-    #[inline] pub fn len(&self) -> usize {self.as_immut().len()}
+    #[inline] pub fn len(&self) -> usize {self.as_slice().len()}
     #[inline] pub fn is_empty(&self) -> bool { self.len()==0 }
 
     #[inline]
