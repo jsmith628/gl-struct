@@ -62,6 +62,10 @@ impl<'a,T:?Sized,A:BufferStorage> Slice<'a,T,A> {
     #[inline] pub fn align(&self) -> usize {self.ptr.align()}
     #[inline] pub fn offset(&self) -> usize {self.offset}
 
+    #[inline] pub(crate) fn offset_ptr(&self) -> *const T {
+        self.ptr.swap_offset(self.offset)
+    }
+
     #[inline] pub fn as_slice(&self) -> Slice<T,A> { Slice::from(self) }
 
     #[inline] pub unsafe fn downgrade_unchecked<B:BufferStorage>(self) -> Slice<'a,T,B> {
@@ -229,6 +233,14 @@ impl<'a,T:?Sized,A:BufferStorage> SliceMut<'a,T,A> {
     #[inline] pub fn size(&self) -> usize {self.ptr.size()}
     #[inline] pub fn align(&self) -> usize {self.ptr.align()}
     #[inline] pub fn offset(&self) -> usize {self.offset}
+
+    #[inline] pub(crate) fn offset_ptr(&self) -> *const T {
+        self.ptr.swap_offset(self.offset)
+    }
+
+    #[inline] pub(crate) fn offset_ptr_mut(&mut self) -> *mut T {
+        self.ptr.swap_offset_mut(self.offset)
+    }
 
     #[inline] pub fn as_slice(&self) -> Slice<T,A> { Slice::from(self) }
     #[inline] pub fn as_mut_slice(&mut self) -> SliceMut<T,A> { SliceMut::from(self) }

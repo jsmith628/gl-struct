@@ -43,7 +43,16 @@ impl<T:?Sized> BufPtr<T> {
     pub fn dangling_mut(self) -> *mut T { unsafe {self.swap_mut_ptr_unchecked(NonNull::dangling().as_ptr())} }
 
     #[inline]
-    #[allow(dead_code)]
+    pub fn swap_offset(self, offset: usize) -> *const T {
+        self.swap_ptr(offset as *const GLvoid)
+    }
+
+    #[inline]
+    pub fn swap_offset_mut(self, offset: usize) -> *mut T {
+        self.swap_mut_ptr(offset as *mut GLvoid)
+    }
+
+    #[inline]
     pub fn swap_ptr(self, ptr: *const GLvoid) -> *const T {
         check_alignment(ptr, self.align());
         unsafe { self.swap_ptr_unchecked(ptr) }
