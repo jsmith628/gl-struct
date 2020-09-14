@@ -1,77 +1,37 @@
 use super::*;
 
 macro_rules! impl_pixel_src_buf {
-    (for<$($a:lifetime,)* $P:ident, $A:ident> $ty:ty) => {
-        unsafe impl<$($a,)* $P:Pixel, $A:BufferStorage> PixelSrc for $ty {
-            type Pixels = [$P];
-            type GL = (GL_ARB_pixel_buffer_object, $P::GL);
-            fn pixel_ptr(&self) -> PixelPtr<[$P]> {
-                PixelPtr::Buffer(
-                    self.id(),
-                    slice_from_raw_parts(Slice::from(self).offset() as *const P, self.len())
-                )
+    (for<$($a:lifetime,)* $($T:ident $(:$bound:ident)?),*> $ty:ty; $pixels:ty) => {
+        unsafe impl<$($a,)* $($T $(:$bound)?),*> PixelSrc for $ty {
+            type Pixels = $pixels;
+            type GL = (GL_ARB_pixel_buffer_object, <$pixels as PixelSrc>::GL);
+            fn pixel_ptr(&self) -> PixelPtr<$pixels> {
+                let slice = self.as_slice();
+                PixelPtr::Buffer(slice.id(), slice.offset_ptr())
             }
         }
     }
 }
 
 macro_rules! impl_pixel_dst_buf {
-    (for<$($a:lifetime,)* $P:ident, $A:ident> $ty:ty) => {
-        impl_pixel_src_buf!(for<$($a,)* $P, $A> $ty);
-        unsafe impl<$($a,)* $P:Pixel, $A:BufferStorage> PixelDst for $ty {
-            fn pixel_ptr_mut(&mut self) -> PixelPtrMut<[P]> {
-                let slice = SliceMut::from(self);
-                PixelPtrMut::Buffer(
-                    slice.id(), slice_from_raw_parts_mut(slice.offset() as *mut P, slice.len())
-                )
+    (for<$($a:lifetime,)* $($T:ident $(:$bound:ident)?),*> $ty:ty; $pixels:ty) => {
+        impl_pixel_src_buf!(for<$($a,)* $($T $(:$bound)?),*> $ty; $pixels);
+        unsafe impl<$($a,)* $($T $(:$bound)?),*> PixelDst for $ty {
+            fn pixel_ptr_mut(&mut self) -> PixelPtrMut<$pixels> {
+                let mut slice = self.as_mut_slice();
+                PixelPtrMut::Buffer(slice.id(), slice.offset_ptr_mut())
             }
         }
     }
 }
 
-impl_pixel_dst_buf!(for<P,A> Buffer<[P],A>);
-impl_pixel_src_buf!(for<'a,P,A> Slice<'a,[P],A>);
-impl_pixel_dst_buf!(for<'a,P,A> SliceMut<'a,[P],A>);
+impl_pixel_dst_buf!(for<P:Pixel,A:BufferStorage> Buffer<[P],A>; [P]);
+impl_pixel_src_buf!(for<'a,P:Pixel,A:BufferStorage> Slice<'a,[P],A>; [P]);
+impl_pixel_dst_buf!(for<'a,P:Pixel,A:BufferStorage> SliceMut<'a,[P],A>; [P]);
 
-macro_rules! impl_compressed_src_buf {
-    (for<$($a:lifetime,)* $F:ident, $A:ident> $ty:ty) => {
-        unsafe impl<$($a,)* $F:SpecificCompressed, $A:BufferStorage> PixelSrc for $ty {
-            type Pixels = CompressedPixels<F>;
-            type GL = (GL_ARB_pixel_buffer_object, $F::GL);
-            fn pixel_ptr(&self) -> PixelPtr<CompressedPixels<F>> {
-                PixelPtr::Buffer(
-                    self.id(),
-                    slice_from_raw_parts(
-                        Slice::from(self).offset() as *const F::Block,
-                        self.size() / size_of::<F::Block>()
-                    ) as *const CompressedPixels<F>
-                )
-            }
-        }
-    }
-}
-
-macro_rules! impl_compressed_dst_buf {
-    (for<$($a:lifetime,)* $F:ident, $A:ident> $ty:ty) => {
-        impl_compressed_src_buf!(for<$($a,)* $F, $A> $ty);
-        unsafe impl<$($a,)* $F:SpecificCompressed, $A:BufferStorage> PixelDst for $ty {
-            fn pixel_ptr_mut(&mut self) -> PixelPtrMut<CompressedPixels<F>> {
-                let slice = SliceMut::from(self);
-                PixelPtrMut::Buffer(
-                    slice.id(),
-                    slice_from_raw_parts_mut(
-                        slice.offset() as *mut F::Block,
-                        slice.size() / size_of::<F::Block>()
-                    ) as *mut CompressedPixels<F>
-                )
-            }
-        }
-    }
-}
-
-impl_compressed_dst_buf!(for<F,A> Buffer<CompressedPixels<F>,A>);
-impl_compressed_src_buf!(for<'a,F,A> Slice<'a,CompressedPixels<F>,A>);
-impl_compressed_dst_buf!(for<'a,F,A> SliceMut<'a,CompressedPixels<F>,A>);
+impl_pixel_dst_buf!(for<F:SpecificCompressed,A:BufferStorage> Buffer<CompressedPixels<F>,A>; CompressedPixels<F>);
+impl_pixel_src_buf!(for<'a,F:SpecificCompressed,A:BufferStorage> Slice<'a,CompressedPixels<F>,A>; CompressedPixels<F>);
+impl_pixel_dst_buf!(for<'a,F:SpecificCompressed,A:BufferStorage> SliceMut<'a,CompressedPixels<F>,A>; CompressedPixels<F>);
 
 // impl<P,A:BufferStorage> FromPixels for Buffer<[P],A> {
 //     default type GL = GL44;
