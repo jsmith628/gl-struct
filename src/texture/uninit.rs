@@ -56,7 +56,7 @@ impl<T:TextureType> UninitTex<T> {
         T: PixelTransferTarget<F> + BaseImage
     {
         let mut tex = Texture { id:self.id(), phantom:PhantomData };
-        unsafe { tex.base_image_mut().image_unchecked(data); }
+        // unsafe { tex.base_image_mut().image_unchecked(data); }
         forget(self);
         tex
     }
@@ -68,7 +68,7 @@ impl<T:TextureType> UninitTex<T> {
         T: CompressedTransferTarget<F> + BaseImage
     {
         let mut tex = Texture { id:self.id(), phantom:PhantomData };
-        unsafe { tex.base_image_mut().compressed_image_unchecked(data); }
+        // unsafe { tex.base_image_mut().compressed_image_unchecked(data); }
         forget(self);
         tex
     }

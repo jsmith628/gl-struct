@@ -7,7 +7,7 @@ use super::*;
 //             type GL = <Self as FromPixels>::GL;
 //             type Hint = <Self as FromPixels>::Hint;
 //
-//             unsafe fn from_gl<G:FnOnce(PixelStore, PixelPtrMut<<Self as PixelSrc>::Pixels>)>(
+//             unsafe fn from_gl<G:FnOnce(PixelStore, PixelsMut<<Self as PixelSrc>::Pixels>)>(
 //                 gl:&Self::GL, hint: Self::Hint, dim: [usize;3], get:G
 //             ) -> Self {
 //                 let count = pixel_count(dim);
@@ -37,7 +37,7 @@ unsafe impl<'a,P:ImageSrc+ToOwned+?Sized> OwnedImage for Cow<'a,P> where P::Owne
     type GL = <P::Owned as OwnedImage>::GL;
     type Hint = <P::Owned as OwnedImage>::Hint;
 
-    unsafe fn from_gl<G:FnOnce(PixelStore, PixelPtrMut<<Self as ImageSrc>::Pixels>)>(
+    unsafe fn from_gl<G:FnOnce(PixelStore, PixelsMut<<Self as ImageSrc>::Pixels>)>(
         gl:&Self::GL, hint: Self::Hint, dim: [usize;3], get:G
     ) -> Self {
         Cow::Owned(P::Owned::from_gl(gl,hint,dim,get))

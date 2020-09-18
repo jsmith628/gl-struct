@@ -21,7 +21,7 @@ macro_rules! impl_img_src_deref {
             fn height(&self) -> usize { (&**self).height() }
             fn depth(&self) -> usize { (&**self).depth() }
 
-            fn pixels(&self) -> PixelPtr<Self::Pixels> { (&**self).pixels() }
+            fn pixels(&self) -> Pixels<Self::Pixels> { (&**self).pixels() }
 
         }
     }
@@ -31,7 +31,7 @@ macro_rules! impl_img_dst_deref {
     (for<$($a:lifetime,)* $P:ident> $ty:ty $(where $($where:tt)*)?) => {
         impl_img_src_deref!(for<$($a,)* $P> $ty $(where $($where)*)? );
         unsafe impl<$($a,)* $P:ImageDst+?Sized> ImageDst for $ty $(where $($where)*)? {
-            fn pixels_mut(&mut self) -> PixelPtrMut<Self::Pixels> { (&mut **self).pixels_mut() }
+            fn pixels_mut(&mut self) -> PixelsMut<Self::Pixels> { (&mut **self).pixels_mut() }
         }
     }
 }

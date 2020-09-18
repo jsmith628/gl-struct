@@ -21,7 +21,7 @@ macro_rules! impl_img_src_compressed {
             fn skip_rows(&self) -> usize {0}
             fn skip_images(&self) -> usize {0}
 
-            fn pixels(&self) -> PixelPtr<CompressedPixels<$F>> { self.pixel_ptr() }
+            fn pixels(&self) -> Pixels<CompressedPixels<$F>> { self.pixels() }
 
         }
     }
@@ -31,7 +31,7 @@ macro_rules! impl_img_dst_compressed {
     (for<$($a:lifetime,)* $F:ident $(, $A:ident:$bound:ident)* > $ty:ty) => {
         impl_img_src_compressed!(for<$($a,)* $F $(, $A:$bound)* > $ty);
         unsafe impl<$($a,)* $($A:$bound,)* $F:SpecificCompressed> ImageDst for $ty {
-            fn pixels_mut(&mut self) -> PixelPtrMut<CompressedPixels<$F>> { self.pixel_ptr_mut() }
+            fn pixels_mut(&mut self) -> PixelsMut<CompressedPixels<$F>> { self.pixels_mut() }
         }
     }
 }

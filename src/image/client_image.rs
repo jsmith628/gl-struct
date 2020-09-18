@@ -1,7 +1,7 @@
 use super::*;
 
 #[derive(Clone,Copy)]
-pub struct ClientImage<B:PixelSrc+?Sized> {
+pub struct ClientImage<B:?Sized> {
     dim: [usize;3],
     pixels: B
 }
@@ -17,25 +17,40 @@ impl ::std::fmt::Display for ImageError {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         match self {
             ImageError::SizeOverflow => write!(f, "Overflow in computing buffer size"),
-            ImageError::InvalidDimensions(_,_) => write!(f, "Invalid dimensions for buffer size"),
+            ImageError::InvalidDimensions([x,y,z],s) => write!(
+                f,
+                "Invalid dimensions for buffer size. a {}x{}x{} image requires a
+                 {} byte buffer but a {} byte was given instead",
+                 x, y, z, x*y*z, s
+            ),
             ImageError::NotBlockAligned => write!(f, "Image dimensions not divisible by compressed block dimensions")
         }
     }
 }
 
 
-impl<B:PixelSrc> ClientImage<B> {
+impl<B> ClientImage<B> {
+
     pub unsafe fn new_unchecked(dim: [usize;3], pixels: B) -> Self {
         ClientImage { dim, pixels }
     }
+
+    pub fn dim(&self) -> [usize; 3] { self.dim }
+
+    pub fn width(&self) -> usize { self.dim()[0] }
+    pub fn height(&self) -> usize { self.dim()[1] }
+    pub fn depth(&self) -> usize { self.dim()[2] }
+
 }
 
-impl<P, B:PixelSrc<Pixels=[P]>> ClientImage<B> {
+//TODO: creation methods for compressed data
+//TODO: add support for images with Buffers
+impl<P, B:PixelSrc<Pixels=[P],GL=()>> ClientImage<B> {
 
     pub fn try_new(dim: [usize;3], pixels: B) -> Result<Self,ImageError> {
         let count = dim[0].checked_mul(dim[1]).and_then(|m| m.checked_mul(dim[2]));
         if let Some(n) = count {
-            let len = pixels.pixel_ptr().len();
+            let len = pixels.pixels(()).len();
             if n!=len {
                 Ok( unsafe {Self::new_unchecked(dim, pixels)} )
             } else {
@@ -57,39 +72,20 @@ impl<F:SpecificCompressed,B:PixelSrc<Pixels=CompressedPixels<F>>> CompressedImag
     type Format = F;
 }
 
-unsafe impl<B:PixelSrc> ImageSrc for ClientImage<B> {
-
+impl<B:PixelSrc> ImageSrc for ClientImage<B> {
     type Pixels = B::Pixels;
-
-    fn swap_bytes(&self) -> bool {false}
-    fn lsb_first(&self) -> bool {false}
-    fn row_alignment(&self) -> PixelRowAlignment {PixelRowAlignment(1)}
-
-    fn row_length(&self) -> usize {self.width()}
-    fn image_height(&self) -> usize {self.height()}
-
-    fn width(&self) -> usize {self.dim[0]}
-    fn height(&self) -> usize {self.dim[1]}
-    fn depth(&self) -> usize {self.dim[2]}
-
-    fn skip_pixels(&self) -> usize {0}
-    fn skip_rows(&self) -> usize {0}
-    fn skip_images(&self) -> usize {0}
-
-    fn pixels(&self) -> PixelPtr<Self::Pixels> { self.pixels.pixel_ptr() }
-
+    type GL = B::GL;
+    fn image(&self, gl:&Self::GL) -> ImagePtr<Self::Pixels> { unimplemented!() }
 }
 
-unsafe impl<B:PixelDst> ImageDst for ClientImage<B> {
-    fn pixels_mut(&mut self) -> PixelPtrMut<Self::Pixels> { self.pixels.pixel_ptr_mut() }
+impl<B:PixelDst> ImageDst for ClientImage<B> {
+    fn image_mut(&mut self, gl:&Self::GL) -> ImagePtrMut<Self::Pixels> { unimplemented!() }
 }
 
 unsafe impl<B:FromPixels> OwnedImage for ClientImage<B> {
-
-    type GL = B::GL;
     type Hint = B::Hint;
 
-    unsafe fn from_gl<G:FnOnce(PixelStore, PixelPtrMut<Self::Pixels>)>(
+    unsafe fn from_gl<G:FnOnce(PixelStore, PixelsMut<Self::Pixels>)>(
         gl:&B::GL, hint:B::Hint, dim: [usize;3], get:G
     ) -> Self {
         let settings = Default::default();

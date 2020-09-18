@@ -3,14 +3,14 @@ use super::*;
 impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImage<'a,F,T> {
 
     unsafe fn pack<P:?Sized, GL:FnOnce(GLenum, GLsizei, *mut GLvoid)>(
-        &self, settings:PixelStore, pixels: PixelPtrMut<P>, gl:GL
+        &self, settings:PixelStore, pixels: PixelsMut<P>, gl:GL
     ) {
 
         settings.apply_packing();
 
         let (id, ptr) = match pixels {
-            PixelPtrMut::Slice(slice) => (None, slice as *mut GLvoid),
-            PixelPtrMut::Buffer(buf, offset) => (Some(buf), offset as *mut GLvoid),
+            PixelsMut::Slice(slice) => (None, slice.as_mut_ptr() as *mut GLvoid),
+            PixelsMut::Buffer(_, slice) => (Some(slice.id()), slice.offset() as *mut GLvoid),
         };
 
         if let Some(i) = id { gl::BindBuffer(gl::PIXEL_PACK_BUFFER, i) };
@@ -21,7 +21,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImage<'a,F,T> {
 
     }
 
-    unsafe fn pack_pixels<P:PixelData<F::PixelLayout>>(&self, mut settings:PixelStore, pixels: PixelPtrMut<[P]>) {
+    unsafe fn pack_pixels<P:PixelData<F::PixelLayout>>(&self, mut settings:PixelStore, pixels: PixelsMut<[P]>) {
         settings.swap_bytes ^= P::swap_bytes();
         settings.lsb_first ^= P::lsb_first();
         let fmt = P::layout::<!>(unimplemented!());
@@ -49,7 +49,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImage<'a,F,T> {
 impl<'a,F:SpecificCompressed,T:CompressedTransferTarget<F>> TexImage<'a,F,T> {
 
     unsafe fn pack_compressed_pixels(
-        &self, settings:PixelStore, pixels: PixelPtrMut<CompressedPixels<F>>
+        &self, settings:PixelStore, pixels: PixelsMut<CompressedPixels<F>>
     ) where F:SpecificCompressed {
 
         //since these are specific to the format, these are set independent of PixelStore::apply_packing()

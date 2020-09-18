@@ -21,7 +21,7 @@ macro_rules! impl_img_src_slice {
             fn skip_rows(&self) -> usize {0}
             fn skip_images(&self) -> usize {0}
 
-            fn pixels(&self) -> PixelPtr<[$P]> { self.pixel_ptr() }
+            fn pixels(&self) -> Pixels<[$P]> { self.pixels() }
 
         }
     }
@@ -31,7 +31,7 @@ macro_rules! impl_img_dst_slice {
     (for<$($a:lifetime,)* $P:ident $(, $A:ident:$bound:ident)* > $ty:ty) => {
         impl_img_src_slice!(for<$($a,)* $P $(, $A:$bound)* > $ty);
         unsafe impl<$($a,)* $($A:$bound,)* $P: Pixel> ImageDst for $ty {
-            fn pixels_mut(&mut self) -> PixelPtrMut<[$P]> { self.pixel_ptr_mut() }
+            fn pixels_mut(&mut self) -> PixelsMut<[$P]> { self.pixels_mut() }
         }
     }
 }

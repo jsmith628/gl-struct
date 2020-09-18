@@ -12,8 +12,8 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImageMut<'a,F,T> {
         let dim = [w.try_into().unwrap(), h.try_into().unwrap(), d.try_into().unwrap()];
 
         let (id, ptr) = match data.pixels() {
-            PixelPtr::Slice(slice) => (None, slice as *const GLvoid),
-            PixelPtr::Buffer(buf, offset) => (Some(buf), offset as *const GLvoid),
+            Pixels::Slice(slice) => (None, slice as *const GLvoid),
+            Pixels::Buffer(buf, offset) => (Some(buf), offset as *const GLvoid),
         };
 
         if let Some(i) = id { gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, i) };

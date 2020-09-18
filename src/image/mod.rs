@@ -13,44 +13,29 @@ mod align;
 mod pixel_store;
 mod client_image;
 mod client_sub_image;
-mod impls;
+// mod impls;
 
 use std::borrow::Cow;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::convert::TryInto;
 
-pub unsafe trait ImageSrc {
+pub type ImagePtr<'a,P> = ClientSubImage<ClientImage<Pixels<'a,P>>>;
+pub type ImagePtrMut<'a,P> = ClientSubImage<ClientImage<PixelsMut<'a,P>>>;
 
+pub trait ImageSrc {
     type Pixels: ?Sized;
-
-    fn swap_bytes(&self) -> bool;
-    fn lsb_first(&self) -> bool;
-    fn row_alignment(&self) -> PixelRowAlignment;
-
-    fn row_length(&self) -> usize;
-    fn image_height(&self) -> usize;
-
-    fn width(&self) -> usize;
-    fn height(&self) -> usize;
-    fn depth(&self) -> usize;
-
-    fn skip_pixels(&self) -> usize;
-    fn skip_rows(&self) -> usize;
-    fn skip_images(&self) -> usize;
-
-    fn pixels(&self) -> PixelPtr<Self::Pixels>;
-
+    type GL: GLVersion;
+    fn image(&self, gl:&Self::GL) -> ImagePtr<Self::Pixels>;
 }
 
-pub unsafe trait ImageDst: ImageSrc {
-    fn pixels_mut(&mut self) -> PixelPtrMut<Self::Pixels>;
+pub trait ImageDst: ImageSrc {
+    fn image_mut(&mut self, gl:&Self::GL) -> ImagePtrMut<Self::Pixels>;
 }
 
 pub unsafe trait OwnedImage: ImageSrc {
-    type GL: GLVersion;
     type Hint;
-    unsafe fn from_gl<G:FnOnce(PixelStore, PixelPtrMut<Self::Pixels>)>(
+    unsafe fn from_gl<G:FnOnce(PixelStore, PixelsMut<Self::Pixels>)>(
         gl:&Self::GL, hint:Self::Hint, dim: [usize;3], get:G
     ) -> Self;
 }

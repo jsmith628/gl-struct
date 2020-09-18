@@ -2,12 +2,11 @@ use super::*;
 
 macro_rules! impl_pixel_src_buf {
     (for<$($a:lifetime,)* $($T:ident $(:$bound:ident)?),*> $ty:ty; $pixels:ty) => {
-        unsafe impl<$($a,)* $($T $(:$bound)?),*> PixelSrc for $ty {
+        impl<$($a,)* $($T $(:$bound)?),*> PixelSrc for $ty {
             type Pixels = $pixels;
-            type GL = (GL_ARB_pixel_buffer_object, <$pixels as PixelSrc>::GL);
-            fn pixel_ptr(&self) -> PixelPtr<$pixels> {
-                let slice = self.as_slice();
-                PixelPtr::Buffer(slice.id(), slice.offset_ptr())
+            type GL = GL_ARB_pixel_buffer_object;
+            fn pixels(&self, gl: Self::GL) -> Pixels<$pixels> {
+                Pixels::Buffer(gl, self.as_slice().downgrade())
             }
         }
     }
@@ -16,10 +15,9 @@ macro_rules! impl_pixel_src_buf {
 macro_rules! impl_pixel_dst_buf {
     (for<$($a:lifetime,)* $($T:ident $(:$bound:ident)?),*> $ty:ty; $pixels:ty) => {
         impl_pixel_src_buf!(for<$($a,)* $($T $(:$bound)?),*> $ty; $pixels);
-        unsafe impl<$($a,)* $($T $(:$bound)?),*> PixelDst for $ty {
-            fn pixel_ptr_mut(&mut self) -> PixelPtrMut<$pixels> {
-                let mut slice = self.as_mut_slice();
-                PixelPtrMut::Buffer(slice.id(), slice.offset_ptr_mut())
+        impl<$($a,)* $($T $(:$bound)?),*> PixelDst for $ty {
+            fn pixels_mut(&mut self, gl: Self::GL) -> PixelsMut<$pixels> {
+                PixelsMut::Buffer(gl, self.as_mut_slice().downgrade())
             }
         }
     }

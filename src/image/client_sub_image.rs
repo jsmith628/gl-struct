@@ -1,7 +1,7 @@
 use super::*;
 
 #[derive(Clone,Copy)]
-pub struct ClientSubImage<I:ImageSrc> {
+pub struct ClientSubImage<I:?Sized> {
     offset: [usize;3],
     dim: [usize;3],
     image: I
@@ -11,6 +11,15 @@ pub struct ClientSubImage<I:ImageSrc> {
 pub enum SubImageError {
     OutOfBounds,
     NotBlockAligned
+}
+
+impl<I:?Sized> ClientSubImage<I> {
+    pub fn dim(&self) -> [usize; 3] { self.dim }
+
+    pub fn width(&self) -> usize { self.dim()[0] }
+    pub fn height(&self) -> usize { self.dim()[1] }
+    pub fn depth(&self) -> usize { self.dim()[2] }
+
 }
 
 impl<I:ImageSrc> ClientSubImage<I> {
@@ -29,8 +38,10 @@ impl<I:ImageSrc> ClientSubImage<I> {
             }
         }
 
+        let img_dim = img.image(unimplemented!()).dim();
+
         let corner = [offset[0]+dim[0], offset[1]+dim[1], offset[2]+dim[2]];
-        if corner[0]<img.width() && corner[1]<img.height() && corner[2]<img.depth() {
+        if corner < img_dim {
             let block = I::_block_dim();
             if dim[0]%block[0] == 0 && dim[1]%block[1] == 0 && dim[2]%block[2] == 0 &&
                 offset[0]%block[0] == 0 && offset[1]%block[1] == 0 && offset[2]%block[2] == 0
@@ -53,32 +64,15 @@ impl<I:ImageSrc> ClientSubImage<I> {
 }
 
 
-impl<I:UncompressedImage> UncompressedImage for ClientSubImage<I> { type Pixel = I::Pixel; }
-impl<I:CompressedImage> CompressedImage for ClientSubImage<I> { type Format = I::Format; }
+impl<I:UncompressedImage+?Sized> UncompressedImage for ClientSubImage<I> { type Pixel = I::Pixel; }
+impl<I:CompressedImage+?Sized> CompressedImage for ClientSubImage<I> { type Format = I::Format; }
 
-unsafe impl<I:ImageSrc> ImageSrc for ClientSubImage<I> {
-
+impl<I:ImageSrc+?Sized> ImageSrc for ClientSubImage<I> {
     type Pixels = I::Pixels;
-
-    fn swap_bytes(&self) -> bool { self.image.swap_bytes() }
-    fn lsb_first(&self) -> bool { self.image.lsb_first() }
-    fn row_alignment(&self) -> PixelRowAlignment { self.image.row_alignment() }
-
-    fn skip_pixels(&self) -> usize { self.offset[0] }
-    fn skip_rows(&self) -> usize { self.offset[1] }
-    fn skip_images(&self) -> usize { self.offset[2] }
-
-    fn row_length(&self) -> usize { if self.image.row_length()==0 {self.width()} else {self.image.row_length()} }
-    fn image_height(&self) -> usize { if self.image.image_height()==0 {self.height()} else {self.image.image_height()} }
-
-    fn width(&self) -> usize { self.dim[0] }
-    fn height(&self) -> usize {  self.dim[1] }
-    fn depth(&self) -> usize {  self.dim[2] }
-
-    fn pixels(&self) -> PixelPtr<Self::Pixels> { self.image.pixels() }
-
+    type GL = I::GL;
+    fn image(&self, gl:&Self::GL) -> ImagePtr<Self::Pixels> { unimplemented!() }
 }
 
-unsafe impl<I:ImageDst> ImageDst for ClientSubImage<I> {
-    fn pixels_mut(&mut self) -> PixelPtrMut<Self::Pixels> { self.image.pixels_mut() }
+impl<I:ImageDst+?Sized> ImageDst for ClientSubImage<I> {
+    fn image_mut(&mut self, gl:&Self::GL) -> ImagePtrMut<Self::Pixels> { unimplemented!() }
 }
