@@ -8,22 +8,29 @@ pub struct ClientImage<B:?Sized> {
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum ImageError {
-    SizeOverflow,
+    SizeOverflow([usize;3]),
     InvalidDimensions([usize;3], usize),
-    NotBlockAligned,
+    NotBlockAligned([usize;3], [usize;3]),
+    GLVersion(GLVersionError)
 }
 
 impl ::std::fmt::Display for ImageError {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         match self {
-            ImageError::SizeOverflow => write!(f, "Overflow in computing buffer size"),
-            ImageError::InvalidDimensions([x,y,z],s) => write!(
+            ImageError::SizeOverflow([x,y,z]) => write!(
+                f, "Overflow in computing buffer size for a {}x{}x{} image", x, y, z
+            ),
+            ImageError::InvalidDimensions([x,y,z], buffer_size) => write!(
                 f,
                 "Invalid dimensions for buffer size. a {}x{}x{} image requires a
                  {} byte buffer but a {} byte was given instead",
-                 x, y, z, x*y*z, s
+                 x, y, z, x*y*z, buffer_size
             ),
-            ImageError::NotBlockAligned => write!(f, "Image dimensions not divisible by compressed block dimensions")
+            ImageError::NotBlockAligned([x,y,z], [b_x,b_y,b_z]) => write!(
+                f, "Image dimensions {}x{}x{} not divisible by compressed block dimensions {}x{}x{}",
+                x,y,z, b_x,b_y,b_z
+            ),
+            ImageError::GLVersion(e) => write!(f, "{}", e)
         }
     }
 }
@@ -43,21 +50,82 @@ impl<B> ClientImage<B> {
 
 }
 
+//Use specialization to try to get the OpenGL version necessary to create a ClientImage
+//
+//This is kinda an ugly system, but it's sort of necessary for a complicated set of reasons:
+//Basically, in order for the PixelSrc trait to be a safe, we need the PixelSrc trait to
+//guarantee that a given GL version is supported when accessing its pixels, thus requiring a GLVersion
+//object whenever calling pixels() or pixels_mut(). However, in order to do length/bounds checks
+//we _also_ need to get the length of the backing buffer from the reference returned by those methods,
+//but because of the aforementioned problem, we need a GLVersion object in order to do that.
+//Additionally, this is made worse by the fact that we don't even ultimately _need_ a GL version
+//to be loaded to check the length of a Buffer or Buffer slice.
+//
+//Now, one possible solution to this would be to simple add a len() or count() method to PixelSrc
+//and be done with it. However, this opens up the possibility of the len/count method conflicting
+//with the _actual_ length provided by the pixel reference.
+//
+//Another possible solution is instead to, in effect, just assume that GL version is loaded,
+//since we ultimately don't need it anyway. However, this leads to yet another problem where
+//_theoretically_ a particularly devious implementor could decide to actually _use_ the GLVersion
+//object provided in pixels()/pixels_mut() to do something completely non-trivial, in which case,
+//we actually _can't_ assume this...
+//
+//To fix this rare edge case, we simply add another variant to the ImageError for version errors
+//and assume version support for all normal PixelSrc types and just do a version check for anything
+//else
+//
+trait TryGetGL: PixelSrc { fn get_gl() -> Result<Self::GL,ImageError>; }
+
+impl<B:PixelSrc<GL=()>> TryGetGL for B { fn get_gl() -> Result<Self::GL,ImageError> { Ok(()) } }
+
+impl<P:Pixel,A:BufferStorage> TryGetGL for Buffer<[P],A> {
+    fn get_gl() -> Result<Self::GL,ImageError> { Ok(unsafe {assume_supported()}) }
+}
+impl<'a,P:Pixel,A:BufferStorage> TryGetGL for Slice<'a,[P],A> {
+    fn get_gl() -> Result<Self::GL,ImageError> { Ok(unsafe {assume_supported()}) }
+}
+impl<'a,P:Pixel,A:BufferStorage> TryGetGL for SliceMut<'a,[P],A> {
+    fn get_gl() -> Result<Self::GL,ImageError> { Ok(unsafe {assume_supported()}) }
+}
+impl<F:SpecificCompressed,A:BufferStorage> TryGetGL for Buffer<CompressedPixels<F>,A>  {
+    fn get_gl() -> Result<Self::GL,ImageError> { Ok(unsafe {assume_supported()}) }
+}
+impl<'a,F:SpecificCompressed,A:BufferStorage> TryGetGL for Slice<'a,CompressedPixels<F>,A> {
+    fn get_gl() -> Result<Self::GL,ImageError> { Ok(unsafe {assume_supported()}) }
+}
+impl<'a,F:SpecificCompressed,A:BufferStorage> TryGetGL for SliceMut<'a,CompressedPixels<F>,A> {
+    fn get_gl() -> Result<Self::GL,ImageError> { Ok(unsafe {assume_supported()}) }
+}
+
+impl<B:PixelSrc> TryGetGL for B {
+    default fn get_gl() -> Result<Self::GL,ImageError> {
+        crate::version::supported().map_err(|e| ImageError::GLVersion(e))
+    }
+}
+
 //TODO: creation methods for compressed data
-//TODO: add support for images with Buffers
-impl<P, B:PixelSrc<Pixels=[P],GL=()>> ClientImage<B> {
+impl<P, B:PixelSrc<Pixels=[P]>> ClientImage<B> {
 
     pub fn try_new(dim: [usize;3], pixels: B) -> Result<Self,ImageError> {
+        //compute the array size required to store that many pixels while making sure the value
+        //does not overflow
         let count = dim[0].checked_mul(dim[1]).and_then(|m| m.checked_mul(dim[2]));
+
+        //if we did not overflow
         if let Some(n) = count {
-            let len = pixels.pixels(()).len();
-            if n!=len {
+
+            //get a reference to the backing slice or GL buffer and make sure it has the exact
+            //length required to store the pixels for this image
+            let len = pixels.pixels(B::get_gl()?).len();
+            if n==len {
                 Ok( unsafe {Self::new_unchecked(dim, pixels)} )
             } else {
                 Err(ImageError::InvalidDimensions(dim, len))
             }
+
         } else {
-            Err(ImageError::SizeOverflow)
+            Err(ImageError::SizeOverflow(dim))
         }
     }
 

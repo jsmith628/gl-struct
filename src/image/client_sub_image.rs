@@ -7,10 +7,29 @@ pub struct ClientSubImage<I:?Sized> {
     image: I
 }
 
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum SubImageError {
-    OutOfBounds,
-    NotBlockAligned
+    OutOfBounds([usize;3], [usize;3]),
+    NotBlockAligned([usize;3], [usize;3]),
+    GLVersion(GLVersionError)
+}
+
+impl ::std::fmt::Display for SubImageError {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        match self {
+            SubImageError::OutOfBounds([x,y,z], [img_x,img_y,img_z]) => write!(
+                f,
+                "Subimage corner as {}x{}x{} out of bounds for image dimensions {}x{}x{}",
+                 x,y,z, img_x,img_y,img_z
+            ),
+            SubImageError::NotBlockAligned([x,y,z], [b_x,b_y,b_z]) => write!(
+                f, "Subimage dimensions {}x{}x{} not divisible by compressed block dimensions {}x{}x{}",
+                x,y,z, b_x,b_y,b_z
+            ),
+            SubImageError::GLVersion(e) => write!(f, "{}", e)
+        }
+    }
 }
 
 impl<I:?Sized> ClientSubImage<I> {
@@ -50,10 +69,10 @@ impl<I:ImageSrc> ClientSubImage<I> {
                     Ok(ClientSubImage::new_unchecked(offset, dim, img))
                 }
             } else {
-                Err(SubImageError::NotBlockAligned)
+                Err(SubImageError::NotBlockAligned(dim, block))
             }
         } else {
-            Err(SubImageError::OutOfBounds)
+            Err(SubImageError::OutOfBounds(corner, img_dim))
         }
     }
 
