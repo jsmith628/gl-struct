@@ -5,7 +5,7 @@ macro_rules! impl_pixel_src_deref {
         impl<$($a,)* $P:PixelSrc+?Sized> PixelSrc for $ty $(where $($where)*)? {
             type Pixels = $P::Pixels;
             type GL = $P::GL;
-            fn pixels(&self, gl: $P::GL) -> Pixels<$P::Pixels> { (&**self).pixels(gl) }
+            fn pixels(&self) -> Pixels<$P::Pixels, $P::GL> { (&**self).pixels() }
         }
     }
 }
@@ -14,7 +14,7 @@ macro_rules! impl_pixel_dst_deref {
     (for<$($a:lifetime,)* $P:ident> $ty:ty $(where $($where:tt)*)?) => {
         impl_pixel_src_deref!(for<$($a,)* $P> $ty $(where $($where)*)?);
         impl<$($a,)* $P:PixelDst+?Sized> PixelDst for $ty $(where $($where)*)? {
-            fn pixels_mut(&mut self, gl: $P::GL) -> PixelsMut<$P::Pixels> { (&mut **self).pixels_mut(gl) }
+            fn pixels_mut(&mut self) -> PixelsMut<$P::Pixels, $P::GL> { (&mut **self).pixels_mut() }
         }
     }
 }

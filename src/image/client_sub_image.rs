@@ -57,7 +57,7 @@ impl<I:ImageSrc> ClientSubImage<I> {
             }
         }
 
-        let img_dim = img.image(unimplemented!()).dim();
+        let img_dim = img.image().dim();
 
         let corner = [offset[0]+dim[0], offset[1]+dim[1], offset[2]+dim[2]];
         if corner < img_dim {
@@ -89,9 +89,9 @@ impl<I:CompressedImage+?Sized> CompressedImage for ClientSubImage<I> { type Form
 impl<I:ImageSrc+?Sized> ImageSrc for ClientSubImage<I> {
     type Pixels = I::Pixels;
     type GL = I::GL;
-    fn image(&self, gl:&Self::GL) -> ImagePtr<Self::Pixels> { unimplemented!() }
+    fn image(&self) -> ImagePtr<Self::Pixels,Self::GL> { unimplemented!() }
 }
 
 impl<I:ImageDst+?Sized> ImageDst for ClientSubImage<I> {
-    fn image_mut(&mut self, gl:&Self::GL) -> ImagePtrMut<Self::Pixels> { unimplemented!() }
+    fn image_mut(&mut self) -> ImagePtrMut<Self::Pixels,Self::GL> { unimplemented!() }
 }

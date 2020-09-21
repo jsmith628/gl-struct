@@ -7,79 +7,34 @@ use crate::version::*;
 
 use std::ptr::*;
 use std::mem::*;
+use std::ops::*;
 
 use std::borrow::Cow;
 use std::rc::Rc;
 use std::sync::Arc;
 
+use std::marker::PhantomData;
+
+pub use self::pixels::*;
 pub use self::compressed::*;
 
+mod pixels;
+mod compressed;
 mod deref;
 mod vec;
 mod buffer;
-mod compressed;
-
-#[derive(Derivative)]
-#[derivative(Clone(bound=""), Copy(bound=""))]
-pub enum Pixels<'a,P:?Sized> {
-    Slice(&'a P),
-    Buffer(GL_ARB_pixel_buffer_object, Slice<'a,P,ReadOnly>)
-}
-
-impl<'a,P:?Sized> Pixels<'a,P> {
-    pub fn size(&self) -> usize {
-        match self {
-            Self::Slice(ptr) => ::std::mem::size_of_val(ptr),
-            Self::Buffer(_, ptr) => ptr.size(),
-        }
-    }
-}
-
-impl<'a,P> Pixels<'a,[P]> {
-    pub fn is_empty(&self) -> bool { self.len()==0 }
-    pub fn len(&self) -> usize {
-        match self {
-            Self::Slice(ptr) => ptr.len(),
-            Self::Buffer(_,ptr) => ptr.len(),
-        }
-    }
-}
-
-pub enum PixelsMut<'a,P:?Sized> {
-    Slice(&'a mut P),
-    Buffer(GL_ARB_pixel_buffer_object, SliceMut<'a,P,ReadOnly>)
-}
-
-impl<'a,P:?Sized> PixelsMut<'a,P> {
-    pub fn size(&self) -> usize {
-        match self {
-            Self::Slice(ptr) => ::std::mem::size_of_val(ptr),
-            Self::Buffer(_, ptr) => ptr.size(),
-        }
-    }
-}
-
-impl<'a,P> PixelsMut<'a,[P]> {
-    pub fn is_empty(&self) -> bool { self.len()==0 }
-    pub fn len(&self) -> usize {
-        match self {
-            Self::Slice(ptr) => ptr.len(),
-            Self::Buffer(_,ptr) => ptr.len(),
-        }
-    }
-}
 
 pub trait PixelSrc {
     type Pixels: ?Sized;
     type GL: GLVersion;
-    fn pixels(&self, gl:Self::GL) -> Pixels<Self::Pixels>;
+    fn pixels(&self) -> Pixels<Self::Pixels, Self::GL>;
 }
 pub trait PixelDst: PixelSrc {
-    fn pixels_mut(&mut self, gl:Self::GL) -> PixelsMut<Self::Pixels>;
+    fn pixels_mut(&mut self) -> PixelsMut<Self::Pixels,Self::GL>;
 }
 pub trait FromPixels: PixelSrc {
     type Hint;
-    unsafe fn from_pixels<G:FnOnce(PixelsMut<Self::Pixels>)>(
+    unsafe fn from_pixels<G:FnOnce(PixelsMut<Self::Pixels,Self::GL>)>(
         gl:&Self::GL, hint:Self::Hint, size: usize, get:G
     ) -> Self;
 }
@@ -87,10 +42,10 @@ pub trait FromPixels: PixelSrc {
 impl<P:Pixel> PixelSrc for [P] {
     type Pixels = [P];
     type GL = (); //no extra extensions needed for pixel transfer to an array
-    fn pixels(&self, _:Self::GL) -> Pixels<[P]> { Pixels::Slice(self) }
+    fn pixels(&self) -> Pixels<[P],()> { Pixels::from_ref(self) }
 }
 impl<P:Pixel> PixelDst for [P] {
-    fn pixels_mut(&mut self, _:Self::GL) -> PixelsMut<[P]> { PixelsMut::Slice(self) }
+    fn pixels_mut(&mut self) -> PixelsMut<[P],()> { PixelsMut::from_mut(self) }
 }
 
 //NOTE: compressed pixel transfer was added alongside support for compressed internal formats
@@ -98,34 +53,24 @@ impl<P:Pixel> PixelDst for [P] {
 impl<F:SpecificCompressed> PixelSrc for CompressedPixels<F> {
     type Pixels = CompressedPixels<F>;
     type GL = ();
-    fn pixels(&self, _:Self::GL) -> Pixels<CompressedPixels<F>> { Pixels::Slice(self) }
+    fn pixels(&self) -> Pixels<CompressedPixels<F>,()> { Pixels::from_ref(self) }
 }
 impl<F:SpecificCompressed> PixelDst for CompressedPixels<F> {
-    fn pixels_mut(&mut self, _:Self::GL) -> PixelsMut<CompressedPixels<F>> { PixelsMut::Slice(self) }
+    fn pixels_mut(&mut self) -> PixelsMut<CompressedPixels<F>,()> { PixelsMut::from_mut(self) }
 }
 
-impl<'a,P:?Sized> PixelSrc for Pixels<'a,P> {
+impl<'a,P:?Sized,GL:GLVersion> PixelSrc for Pixels<'a,P,GL> {
     type Pixels = P;
-    type GL = ();
-    fn pixels(&self, _:Self::GL) -> Pixels<P> { *self }
+    type GL = GL;
+    fn pixels(&self) -> Pixels<P,GL> { self.into() }
 }
 
-impl<'a,P:?Sized> PixelSrc for PixelsMut<'a,P> {
+impl<'a,P:?Sized,GL:GLVersion> PixelSrc for PixelsMut<'a,P,GL> {
     type Pixels = P;
-    type GL = ();
-    fn pixels(&self, _:Self::GL) -> Pixels<P> {
-        match self {
-            Self::Slice(ptr) => Pixels::Slice(&**ptr),
-            Self::Buffer(gl,ptr) => Pixels::Buffer(*gl,ptr.as_slice()),
-        }
-    }
+    type GL = GL;
+    fn pixels(&self) -> Pixels<P,GL> { self.into() }
 }
 
-impl<'a,P:?Sized> PixelDst for PixelsMut<'a,P> {
-    fn pixels_mut(&mut self, _:Self::GL) -> PixelsMut<P> {
-        match self {
-            Self::Slice(ptr) => PixelsMut::Slice(&mut **ptr),
-            Self::Buffer(gl,ptr) => PixelsMut::Buffer(*gl,ptr.as_mut_slice()),
-        }
-    }
+impl<'a,P:?Sized,GL:GLVersion> PixelDst for PixelsMut<'a,P,GL> {
+    fn pixels_mut(&mut self) -> PixelsMut<P,GL> { self.into() }
 }

@@ -76,21 +76,21 @@ unsafe impl TexDim for ([usize;2], usize) {
 
 
 pub(super) fn dest_size_check<D:TexDim,I:ImageSrc>(dim:D, p:&I) {
-    let [width, height, depth] = p.image(unimplemented!()).dim();
+    let [width, height, depth] = p.image().dim();
     if D::dim()>=1 && width  < dim.width()  {panic!("Image destination width too small");}
     if D::dim()>=2 && height < dim.height() {panic!("Image destination height too small");}
     if D::dim()>=3 && depth  < dim.depth()  {panic!("Image destination depth too small");}
 }
 
 pub(super) fn size_check<D:TexDim,I:ImageSrc>(dim:D, p:&I) {
-    let [width, height, depth] = p.image(unimplemented!()).dim();
+    let [width, height, depth] = p.image().dim();
     if D::dim()>=1 && width  != dim.width()  {panic!("Image widths unequal");}
     if D::dim()>=2 && height != dim.height() {panic!("Image heights unequal");}
     if D::dim()>=3 && depth  != dim.depth()  {panic!("Image depths unequal");}
 }
 
 pub(super) fn source_size_check<D:TexDim,I:ImageSrc>(offset:D, dim:D, p:&I) {
-    let [width, height, depth] = p.image(unimplemented!()).dim();
+    let [width, height, depth] = p.image().dim();
     if D::dim()>=1 && width+offset.width()   > dim.width()  {panic!("Image source width out of bounds");}
     if D::dim()>=2 && height+offset.height() > dim.height() {panic!("Image source height out of bounds");}
     if D::dim()>=3 && depth+offset.depth()   > dim.depth()  {panic!("Image source depth out of bounds");}

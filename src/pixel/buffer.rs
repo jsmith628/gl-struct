@@ -5,8 +5,8 @@ macro_rules! impl_pixel_src_buf {
         impl<$($a,)* $($T $(:$bound)?),*> PixelSrc for $ty {
             type Pixels = $pixels;
             type GL = GL_ARB_pixel_buffer_object;
-            fn pixels(&self, gl: Self::GL) -> Pixels<$pixels> {
-                Pixels::Buffer(gl, self.as_slice().downgrade())
+            fn pixels(&self) -> Pixels<$pixels, GL_ARB_pixel_buffer_object> {
+                Pixels::from_buf(self.as_slice())
             }
         }
     }
@@ -16,8 +16,8 @@ macro_rules! impl_pixel_dst_buf {
     (for<$($a:lifetime,)* $($T:ident $(:$bound:ident)?),*> $ty:ty; $pixels:ty) => {
         impl_pixel_src_buf!(for<$($a,)* $($T $(:$bound)?),*> $ty; $pixels);
         impl<$($a,)* $($T $(:$bound)?),*> PixelDst for $ty {
-            fn pixels_mut(&mut self, gl: Self::GL) -> PixelsMut<$pixels> {
-                PixelsMut::Buffer(gl, self.as_mut_slice().downgrade())
+            fn pixels_mut(&mut self) -> PixelsMut<$pixels, GL_ARB_pixel_buffer_object> {
+                PixelsMut::from_buf(self.as_mut_slice())
             }
         }
     }

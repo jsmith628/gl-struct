@@ -50,60 +50,6 @@ impl<B> ClientImage<B> {
 
 }
 
-//Use specialization to try to get the OpenGL version necessary to create a ClientImage
-//
-//This is kinda an ugly system, but it's sort of necessary for a complicated set of reasons:
-//Basically, in order for the PixelSrc trait to be a safe, we need the PixelSrc trait to
-//guarantee that a given GL version is supported when accessing its pixels, thus requiring a GLVersion
-//object whenever calling pixels() or pixels_mut(). However, in order to do length/bounds checks
-//we _also_ need to get the length of the backing buffer from the reference returned by those methods,
-//but because of the aforementioned problem, we need a GLVersion object in order to do that.
-//Additionally, this is made worse by the fact that we don't even ultimately _need_ a GL version
-//to be loaded to check the length of a Buffer or Buffer slice.
-//
-//Now, one possible solution to this would be to simple add a len() or count() method to PixelSrc
-//and be done with it. However, this opens up the possibility of the len/count method conflicting
-//with the _actual_ length provided by the pixel reference.
-//
-//Another possible solution is instead to, in effect, just assume that GL version is loaded,
-//since we ultimately don't need it anyway. However, this leads to yet another problem where
-//_theoretically_ a particularly devious implementor could decide to actually _use_ the GLVersion
-//object provided in pixels()/pixels_mut() to do something completely non-trivial, in which case,
-//we actually _can't_ assume this...
-//
-//To fix this rare edge case, we simply add another variant to the ImageError for version errors
-//and assume version support for all normal PixelSrc types and just do a version check for anything
-//else
-//
-trait TryGetGL: PixelSrc { fn get_gl() -> Result<Self::GL,ImageError>; }
-
-impl<B:PixelSrc<GL=()>> TryGetGL for B { fn get_gl() -> Result<Self::GL,ImageError> { Ok(()) } }
-
-impl<P:Pixel,A:BufferStorage> TryGetGL for Buffer<[P],A> {
-    fn get_gl() -> Result<Self::GL,ImageError> { Ok(unsafe {assume_supported()}) }
-}
-impl<'a,P:Pixel,A:BufferStorage> TryGetGL for Slice<'a,[P],A> {
-    fn get_gl() -> Result<Self::GL,ImageError> { Ok(unsafe {assume_supported()}) }
-}
-impl<'a,P:Pixel,A:BufferStorage> TryGetGL for SliceMut<'a,[P],A> {
-    fn get_gl() -> Result<Self::GL,ImageError> { Ok(unsafe {assume_supported()}) }
-}
-impl<F:SpecificCompressed,A:BufferStorage> TryGetGL for Buffer<CompressedPixels<F>,A>  {
-    fn get_gl() -> Result<Self::GL,ImageError> { Ok(unsafe {assume_supported()}) }
-}
-impl<'a,F:SpecificCompressed,A:BufferStorage> TryGetGL for Slice<'a,CompressedPixels<F>,A> {
-    fn get_gl() -> Result<Self::GL,ImageError> { Ok(unsafe {assume_supported()}) }
-}
-impl<'a,F:SpecificCompressed,A:BufferStorage> TryGetGL for SliceMut<'a,CompressedPixels<F>,A> {
-    fn get_gl() -> Result<Self::GL,ImageError> { Ok(unsafe {assume_supported()}) }
-}
-
-impl<B:PixelSrc> TryGetGL for B {
-    default fn get_gl() -> Result<Self::GL,ImageError> {
-        crate::version::supported().map_err(|e| ImageError::GLVersion(e))
-    }
-}
-
 //TODO: creation methods for compressed data
 impl<P, B:PixelSrc<Pixels=[P]>> ClientImage<B> {
 
@@ -117,7 +63,7 @@ impl<P, B:PixelSrc<Pixels=[P]>> ClientImage<B> {
 
             //get a reference to the backing slice or GL buffer and make sure it has the exact
             //length required to store the pixels for this image
-            let len = pixels.pixels(B::get_gl()?).len();
+            let len = pixels.pixels().len();
             if n==len {
                 Ok( unsafe {Self::new_unchecked(dim, pixels)} )
             } else {
@@ -143,17 +89,17 @@ impl<F:SpecificCompressed,B:PixelSrc<Pixels=CompressedPixels<F>>> CompressedImag
 impl<B:PixelSrc> ImageSrc for ClientImage<B> {
     type Pixels = B::Pixels;
     type GL = B::GL;
-    fn image(&self, gl:&Self::GL) -> ImagePtr<Self::Pixels> { unimplemented!() }
+    fn image(&self) -> ImagePtr<Self::Pixels,Self::GL> { unimplemented!() }
 }
 
 impl<B:PixelDst> ImageDst for ClientImage<B> {
-    fn image_mut(&mut self, gl:&Self::GL) -> ImagePtrMut<Self::Pixels> { unimplemented!() }
+    fn image_mut(&mut self) -> ImagePtrMut<Self::Pixels,Self::GL> { unimplemented!() }
 }
 
 unsafe impl<B:FromPixels> OwnedImage for ClientImage<B> {
     type Hint = B::Hint;
 
-    unsafe fn from_gl<G:FnOnce(PixelStore, PixelsMut<Self::Pixels>)>(
+    unsafe fn from_gl<G:FnOnce(PixelStore, PixelsMut<Self::Pixels,Self::GL>)>(
         gl:&B::GL, hint:B::Hint, dim: [usize;3], get:G
     ) -> Self {
         let settings = Default::default();
