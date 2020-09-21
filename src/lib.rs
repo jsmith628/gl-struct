@@ -257,3 +257,90 @@ impl<T> BindingLocation<T> {
 
 
 }
+
+
+#[derive(Derivative)]
+#[derivative(Clone(bound=""), Copy(bound=""))]
+pub enum GLRef<'a,T:?Sized,A:buffer::BufferStorage> {
+    Ref(&'a T),
+    Buf(buffer::Slice<'a,T,A>)
+}
+
+impl<'a,'b:'a,T:?Sized,A:buffer::BufferStorage> From<&'a GLRef<'b,T,A>> for GLRef<'b,T,A> {
+    fn from(r:&'a GLRef<'b,T,A>) -> Self {
+        match r {
+            GLRef::Ref(ptr) => GLRef::Ref(ptr),
+            GLRef::Buf(ptr) => GLRef::Buf(*ptr),
+        }
+    }
+}
+
+impl<'a,'b:'a,T:?Sized,A:buffer::BufferStorage> From<&'a GLMut<'b,T,A>> for GLRef<'a,T,A> {
+    fn from(r:&'a GLMut<'b,T,A>) -> Self {
+        match r {
+            GLMut::Mut(ptr) => GLRef::Ref(ptr),
+            GLMut::Buf(ptr) => GLRef::Buf(ptr.as_slice()),
+        }
+    }
+}
+
+impl<'a,T:?Sized,A:buffer::BufferStorage> From<GLMut<'a,T,A>> for GLRef<'a,T,A> {
+    fn from(r:GLMut<'a,T,A>) -> Self {
+        match r {
+            GLMut::Mut(ptr) => GLRef::Ref(ptr),
+            GLMut::Buf(ptr) => GLRef::Buf(ptr.into()),
+        }
+    }
+}
+
+impl<'a,T:?Sized,A:buffer::BufferStorage> GLRef<'a,T,A> {
+    pub fn size(&self) -> usize {
+        match self {
+            Self::Ref(ptr) => ::std::mem::size_of_val(ptr),
+            Self::Buf(ptr) => ptr.size(),
+        }
+    }
+}
+
+impl<'a,T,A:buffer::BufferStorage> GLRef<'a,[T],A> {
+    pub fn is_empty(&self) -> bool { self.len()==0 }
+    pub fn len(&self) -> usize {
+        match self {
+            Self::Ref(ptr) => ptr.len(),
+            Self::Buf(ptr) => ptr.len(),
+        }
+    }
+}
+
+pub enum GLMut<'a,T:?Sized,A:buffer::BufferStorage> {
+    Mut(&'a mut T),
+    Buf(buffer::SliceMut<'a,T,A>)
+}
+
+impl<'a,'b:'a,T:?Sized,A:buffer::BufferStorage> From<&'a mut GLMut<'b,T,A>> for GLMut<'a,T,A> {
+    fn from(r:&'a mut GLMut<'b,T,A>) -> Self {
+        match r {
+            GLMut::Mut(ptr) => GLMut::Mut(ptr),
+            GLMut::Buf(ptr) => GLMut::Buf(ptr.as_mut_slice()),
+        }
+    }
+}
+
+impl<'a,T:?Sized,A:buffer::BufferStorage> GLMut<'a,T,A> {
+    pub fn size(&self) -> usize {
+        match self {
+            Self::Mut(ptr) => ::std::mem::size_of_val(ptr),
+            Self::Buf(ptr) => ptr.size(),
+        }
+    }
+}
+
+impl<'a,T,A:buffer::BufferStorage> GLMut<'a,[T],A> {
+    pub fn is_empty(&self) -> bool { self.len()==0 }
+    pub fn len(&self) -> usize {
+        match self {
+            Self::Mut(ptr) => ptr.len(),
+            Self::Buf(ptr) => ptr.len(),
+        }
+    }
+}
