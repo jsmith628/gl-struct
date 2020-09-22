@@ -20,8 +20,8 @@ pub use self::compressed::*;
 
 mod pixels;
 mod compressed;
-mod deref;
-mod vec;
+// mod deref;
+// mod vec;
 mod buffer;
 
 pub trait PixelSrc {
@@ -38,6 +38,10 @@ pub trait FromPixels: PixelSrc {
         gl:&Self::GL, hint:Self::Hint, size: usize, get:G
     ) -> Self;
 }
+
+//
+//Base impls on slices and compressed pixels
+//
 
 impl<P:Pixel> PixelSrc for [P] {
     type Pixels = [P];
@@ -59,6 +63,10 @@ impl<F:SpecificCompressed> PixelDst for CompressedPixels<F> {
     fn pixels_mut(&mut self) -> PixelsMut<CompressedPixels<F>,()> { PixelsMut::from_mut(self) }
 }
 
+//
+//Might as well add the trivial impl on Pixels
+//
+
 impl<'a,P:?Sized,GL:GLVersion> PixelSrc for Pixels<'a,P,GL> {
     type Pixels = P;
     type GL = GL;
@@ -73,4 +81,18 @@ impl<'a,P:?Sized,GL:GLVersion> PixelSrc for PixelsMut<'a,P,GL> {
 
 impl<'a,P:?Sized,GL:GLVersion> PixelDst for PixelsMut<'a,P,GL> {
     fn pixels_mut(&mut self) -> PixelsMut<P,GL> { self.into() }
+}
+
+//
+//Auto-impl on Deref
+//
+
+impl<T:Deref> PixelSrc for T where T::Target: PixelSrc {
+    type Pixels = <T::Target as PixelSrc>::Pixels;
+    type GL = <T::Target as PixelSrc>::GL;
+    fn pixels(&self) -> Pixels<Self::Pixels,Self::GL> { (&**self).pixels() }
+}
+
+impl<T:DerefMut> PixelDst for T where T::Target: PixelDst {
+    fn pixels_mut(&mut self) -> PixelsMut<Self::Pixels,Self::GL> { (&mut **self).pixels_mut()  }
 }
