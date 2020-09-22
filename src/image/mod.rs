@@ -20,17 +20,17 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::convert::TryInto;
 
-pub type ImagePtr<'a,P,GL> = ClientSubImage<ClientImage<Pixels<'a,P,GL>>>;
-pub type ImagePtrMut<'a,P,GL> = ClientSubImage<ClientImage<PixelsMut<'a,P,GL>>>;
+pub type ImageRef<'a,P,GL> = ClientSubImage<ClientImage<Pixels<'a,P,GL>>>;
+pub type ImageMut<'a,P,GL> = ClientSubImage<ClientImage<PixelsMut<'a,P,GL>>>;
 
 pub trait ImageSrc {
     type Pixels: ?Sized;
     type GL: GLVersion;
-    fn image(&self) -> ImagePtr<Self::Pixels,Self::GL>;
+    fn image(&self) -> ImageRef<Self::Pixels,Self::GL>;
 }
 
 pub trait ImageDst: ImageSrc {
-    fn image_mut(&mut self) -> ImagePtrMut<Self::Pixels,Self::GL>;
+    fn image_mut(&mut self) -> ImageMut<Self::Pixels,Self::GL>;
 }
 
 pub unsafe trait OwnedImage: ImageSrc {

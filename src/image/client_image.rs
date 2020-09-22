@@ -89,11 +89,11 @@ impl<F:SpecificCompressed,B:PixelSrc<Pixels=CompressedPixels<F>>> CompressedImag
 impl<B:PixelSrc> ImageSrc for ClientImage<B> {
     type Pixels = B::Pixels;
     type GL = B::GL;
-    fn image(&self) -> ImagePtr<Self::Pixels,Self::GL> { unimplemented!() }
+    fn image(&self) -> ImageRef<Self::Pixels,Self::GL> { unimplemented!() }
 }
 
 impl<B:PixelDst> ImageDst for ClientImage<B> {
-    fn image_mut(&mut self) -> ImagePtrMut<Self::Pixels,Self::GL> { unimplemented!() }
+    fn image_mut(&mut self) -> ImageMut<Self::Pixels,Self::GL> { unimplemented!() }
 }
 
 unsafe impl<B:FromPixels> OwnedImage for ClientImage<B> {
