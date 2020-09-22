@@ -10,8 +10,7 @@ pub struct ClientImage<B:?Sized> {
 pub enum ImageError {
     SizeOverflow([usize;3]),
     InvalidDimensions([usize;3], usize),
-    NotBlockAligned([usize;3], [usize;3]),
-    GLVersion(GLVersionError)
+    NotBlockAligned([usize;3], [usize;3])
 }
 
 impl ::std::fmt::Display for ImageError {
@@ -29,8 +28,7 @@ impl ::std::fmt::Display for ImageError {
             ImageError::NotBlockAligned([x,y,z], [b_x,b_y,b_z]) => write!(
                 f, "Image dimensions {}x{}x{} not divisible by compressed block dimensions {}x{}x{}",
                 x,y,z, b_x,b_y,b_z
-            ),
-            ImageError::GLVersion(e) => write!(f, "{}", e)
+            )
         }
     }
 }

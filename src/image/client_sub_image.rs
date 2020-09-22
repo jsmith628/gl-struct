@@ -11,8 +11,7 @@ pub struct ClientSubImage<I:?Sized> {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum SubImageError {
     OutOfBounds([usize;3], [usize;3]),
-    NotBlockAligned([usize;3], [usize;3]),
-    GLVersion(GLVersionError)
+    NotBlockAligned([usize;3], [usize;3])
 }
 
 impl ::std::fmt::Display for SubImageError {
@@ -26,8 +25,7 @@ impl ::std::fmt::Display for SubImageError {
             SubImageError::NotBlockAligned([x,y,z], [b_x,b_y,b_z]) => write!(
                 f, "Subimage dimensions {}x{}x{} not divisible by compressed block dimensions {}x{}x{}",
                 x,y,z, b_x,b_y,b_z
-            ),
-            SubImageError::GLVersion(e) => write!(f, "{}", e)
+            )
         }
     }
 }
