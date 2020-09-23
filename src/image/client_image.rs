@@ -67,8 +67,8 @@ impl<B:?Sized> ClientImage<B> {
     pub fn block_height(&self) -> usize { self.block_dim()[1] }
     pub fn block_depth(&self) -> usize { self.block_dim()[2] }
 
-    pub fn borrow(&self) -> ClientImage<&B> { ClientImage { dim:self.dim, pixels:&self.pixels } }
-    pub fn borrow_mut(&mut self) -> ClientImage<&mut B> { ClientImage { dim:self.dim, pixels:&mut self.pixels } }
+    pub fn as_ref(&self) -> ClientImage<&B> { ClientImage { dim:self.dim, pixels:&self.pixels } }
+    pub fn as_mut(&mut self) -> ClientImage<&mut B> { ClientImage { dim:self.dim, pixels:&mut self.pixels } }
 
 }
 
@@ -91,13 +91,13 @@ impl<P:PixelSrc+?Sized> ClientImage<P> {
     pub fn try_sub_image(
         &self, offset: [usize;3], dim: [usize;3]
     ) -> Result<ClientSubImage<ClientImage<&P>>, SubImageError> {
-        ClientSubImage::try_new(offset, dim, self.borrow())
+        ClientSubImage::try_new(offset, dim, self.as_ref())
     }
 
     pub fn try_sub_image_mut(
         &mut self, offset: [usize;3], dim: [usize;3]
     ) -> Result<ClientSubImage<ClientImage<&mut P>>, SubImageError> {
-        ClientSubImage::try_new(offset, dim, self.borrow_mut())
+        ClientSubImage::try_new(offset, dim, self.as_mut())
     }
 
     pub fn sub_image(&self, offset: [usize;3], dim: [usize;3]) -> ClientSubImage<ClientImage<&P>> {
