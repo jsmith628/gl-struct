@@ -170,7 +170,7 @@ impl<T:?Sized, A:BufferAccess> Buffer<T, A> {
             offset: 0,
             size: 0,
             capacity: 0,
-            usage: uninitialized(),
+            usage: BufferUsage::DynamicDraw,
             p: PhantomData
         }
     }
