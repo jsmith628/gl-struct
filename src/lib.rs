@@ -5,12 +5,12 @@
 #![feature(concat_idents)]
 #![feature(specialization)]
 #![feature(allocator_api)]
-#![feature(box_into_raw_non_null)]
 #![feature(result_map_or_else)]
 #![feature(trace_macros)]
 #![feature(unsize)]
 #![feature(coerce_unsized)]
 #![feature(const_fn)]
+#![allow(deprecated)]
 #![recursion_limit="8192"]
 
 pub extern crate gl;
@@ -230,8 +230,8 @@ macro_rules! gl_resource{
 pub mod glsl;
 pub mod program;
 pub mod buffer;
-pub mod buffer_new;
-pub mod texture;
+// pub mod buffer_new;
+// pub mod texture;
 
 pub trait Surface: {
     fn is_active(&self) -> bool;
@@ -428,14 +428,14 @@ impl<'a,R:Resource> Binding<'a,R> {
     #[inline] pub fn resource_id(&self) -> GLuint { self.1 }
 }
 
-impl<'a,R:Resource> !Sync for Binding<'a,R> {}
-impl<'a,R:Resource> !Send for Binding<'a,R> {}
+// impl<'a,R:Resource> !Sync for Binding<'a,R> {}
+// impl<'a,R:Resource> !Send for Binding<'a,R> {}
 impl<'a,R:Resource> Drop for Binding<'a,R> {
     #[inline] fn drop(&mut self) { unsafe { self.target().bind(0) } }
 }
 
-impl<R:Resource> !Sync for BindingLocation<R> {}
-impl<R:Resource> !Send for BindingLocation<R> {}
+// impl<R:Resource> !Sync for BindingLocation<R> {}
+// impl<R:Resource> !Send for BindingLocation<R> {}
 impl<R:Resource> BindingLocation<R> {
 
     ///The [target](Target) of this location
@@ -509,17 +509,17 @@ impl<R:Resource> BindingLocation<R> {
 ///and bind points
 ///
 pub struct Context {
-
+    _private: ::std::marker::PhantomData<*const ()>
 }
 
 impl Context {
     pub fn init(_gl: &GLProvider) -> Context {
-        Context {}
+        Context { _private: ::std::marker::PhantomData }
     }
 }
 
-impl !Send for Context {}
-impl !Sync for Context {}
+// impl !Send for Context {}
+// impl !Sync for Context {}
 
 glenum! {
     pub enum IntType {
