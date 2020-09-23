@@ -30,15 +30,6 @@ impl ::std::fmt::Display for SubImageError {
     }
 }
 
-impl<I:?Sized> ClientSubImage<I> {
-    pub fn dim(&self) -> [usize; 3] { self.dim }
-
-    pub fn width(&self) -> usize { self.dim()[0] }
-    pub fn height(&self) -> usize { self.dim()[1] }
-    pub fn depth(&self) -> usize { self.dim()[2] }
-
-}
-
 impl<I:ImageSrc> ClientSubImage<I> {
 
     pub unsafe fn new_unchecked(offset:[usize;3], dim:[usize;3], image: I) -> Self {
@@ -47,19 +38,11 @@ impl<I:ImageSrc> ClientSubImage<I> {
 
     pub fn try_new(offset:[usize;3], dim:[usize;3], img: I) -> Result<Self, SubImageError> {
 
-        trait BlockSize { fn _block_dim() -> [usize;3]; }
-        impl<I> BlockSize for I { default fn _block_dim() -> [usize;3] {[1;3]} }
-        impl<I:CompressedImageSrc> BlockSize for I {
-            fn _block_dim() -> [usize;3] {
-                [I::Format::block_width().into(), I::Format::block_height().into(), I::Format::block_depth().into()]
-            }
-        }
-
         let img_dim = img.image().dim();
 
         let corner = [offset[0]+dim[0], offset[1]+dim[1], offset[2]+dim[2]];
         if corner < img_dim {
-            let block = I::_block_dim();
+            let block = img.image().block_dim();
             if dim[0]%block[0] == 0 && dim[1]%block[1] == 0 && dim[2]%block[2] == 0 &&
                 offset[0]%block[0] == 0 && offset[1]%block[1] == 0 && offset[2]%block[2] == 0
             {
@@ -77,6 +60,46 @@ impl<I:ImageSrc> ClientSubImage<I> {
     pub fn new(offset:[usize;3], dim:[usize;3], img: I) -> Self {
         Self::try_new(offset, dim, img).unwrap()
     }
+
+}
+
+impl<I:?Sized> ClientSubImage<I> {
+    pub fn dim(&self) -> [usize; 3] { self.dim }
+
+    pub fn width(&self) -> usize { self.dim()[0] }
+    pub fn height(&self) -> usize { self.dim()[1] }
+    pub fn depth(&self) -> usize { self.dim()[2] }
+
+}
+
+trait InnerImg {
+    fn _base_dim(&self) -> [usize; 3];
+    fn _block_dim(&self) -> [usize; 3];
+}
+
+impl<I:ImageSrc+?Sized> InnerImg for ClientSubImage<I> {
+    default fn _base_dim(&self) -> [usize; 3] { self.image()._base_dim() }
+    default fn _block_dim(&self) -> [usize; 3] { self.image()._block_dim() }
+}
+
+impl<P:PixelSrc+?Sized> InnerImg for ClientSubImage<ClientImage<P>> where ClientImage<P>: ImageSrc {
+    fn _base_dim(&self) -> [usize; 3] { self.image.dim() }
+    fn _block_dim(&self) -> [usize; 3] { self.image.block_dim() }
+}
+
+impl<I:ImageSrc+?Sized> ClientSubImage<I> {
+
+    pub fn base_dim(&self) -> [usize; 3] { self._base_dim() }
+
+    pub fn base_width(&self) -> usize { self.base_dim()[0] }
+    pub fn base_height(&self) -> usize { self.base_dim()[1] }
+    pub fn base_depth(&self) -> usize { self.base_dim()[2] }
+
+    pub fn block_dim(&self) -> [usize; 3] { self._block_dim() }
+
+    pub fn block_width(&self) -> usize { self.block_dim()[0] }
+    pub fn block_height(&self) -> usize { self.block_dim()[1] }
+    pub fn block_depth(&self) -> usize { self.block_dim()[2] }
 
 }
 

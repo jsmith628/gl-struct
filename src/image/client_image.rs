@@ -34,17 +34,79 @@ impl ::std::fmt::Display for ImageError {
 }
 
 
-impl<B> ClientImage<B> {
-
-    pub unsafe fn new_unchecked(dim: [usize;3], pixels: B) -> Self {
+impl<P> ClientImage<P> {
+    pub unsafe fn new_unchecked(dim: [usize;3], pixels: P) -> Self {
         ClientImage { dim, pixels }
     }
+}
+
+impl<B:?Sized> ClientImage<B> {
 
     pub fn dim(&self) -> [usize; 3] { self.dim }
 
     pub fn width(&self) -> usize { self.dim()[0] }
     pub fn height(&self) -> usize { self.dim()[1] }
     pub fn depth(&self) -> usize { self.dim()[2] }
+
+    pub fn block_dim(&self) -> [usize; 3] {
+
+        //get the block size for compressed pixels and [1,1,1] for everything else
+        trait BlockSize { fn _block_dim() -> [usize;3]; }
+        impl<P:?Sized> BlockSize for P { default fn _block_dim() -> [usize;3] {[1;3]} }
+        impl<F:SpecificCompressed, P:PixelSrc<Pixels=CompressedPixels<F>>> BlockSize for P {
+            fn _block_dim() -> [usize;3] {
+                [F::block_width().into(), F::block_height().into(), F::block_depth().into()]
+            }
+        }
+
+        B::_block_dim()
+
+    }
+
+    pub fn block_width(&self) -> usize { self.block_dim()[0] }
+    pub fn block_height(&self) -> usize { self.block_dim()[1] }
+    pub fn block_depth(&self) -> usize { self.block_dim()[2] }
+
+    pub fn borrow(&self) -> ClientImage<&B> { ClientImage { dim:self.dim, pixels:&self.pixels } }
+    pub fn borrow_mut(&mut self) -> ClientImage<&mut B> { ClientImage { dim:self.dim, pixels:&mut self.pixels } }
+
+}
+
+impl<P:PixelSrc> ClientImage<P> {
+
+    pub fn try_into_sub_image(
+        self, offset: [usize;3], dim: [usize;3]
+    ) -> Result<ClientSubImage<ClientImage<P>>, SubImageError> {
+        ClientSubImage::try_new(offset, dim, self)
+    }
+
+    pub fn into_sub_image(self, offset: [usize;3], dim: [usize;3]) -> ClientSubImage<ClientImage<P>> {
+        self.try_into_sub_image(offset, dim).unwrap()
+    }
+
+}
+
+impl<P:PixelSrc+?Sized> ClientImage<P> {
+
+    pub fn try_sub_image(
+        &self, offset: [usize;3], dim: [usize;3]
+    ) -> Result<ClientSubImage<ClientImage<&P>>, SubImageError> {
+        ClientSubImage::try_new(offset, dim, self.borrow())
+    }
+
+    pub fn try_sub_image_mut(
+        &mut self, offset: [usize;3], dim: [usize;3]
+    ) -> Result<ClientSubImage<ClientImage<&mut P>>, SubImageError> {
+        ClientSubImage::try_new(offset, dim, self.borrow_mut())
+    }
+
+    pub fn sub_image(&self, offset: [usize;3], dim: [usize;3]) -> ClientSubImage<ClientImage<&P>> {
+        self.try_sub_image(offset, dim).unwrap()
+    }
+
+    pub fn sub_image_mut(&mut self, offset: [usize;3], dim: [usize;3]) -> ClientSubImage<ClientImage<&mut P>> {
+        self.try_sub_image_mut(offset, dim).unwrap()
+    }
 
 }
 
@@ -119,21 +181,21 @@ fn check_buffer_size(dim:[usize; 3], len: Option<usize> ) {
     }
 }
 
-impl<B:PixelSrc> ImageSrc for ClientImage<B> {
+impl<B:PixelSrc+?Sized> ImageSrc for ClientImage<B> {
     type Pixels = B::Pixels;
     type GL = B::GL;
     fn image(&self) -> ImageRef<Self::Pixels,Self::GL> {
         let (dim, pixels) = (self.dim(), self.pixels.pixels());
         check_buffer_size(dim, pixels._len());
-        unsafe { ClientSubImage::new_unchecked([0,0,0], dim, ClientImage::new_unchecked(dim, pixels)) }
+        unsafe { ClientImage::new_unchecked(dim, pixels).into_sub_image([0,0,0], dim) }
     }
 }
 
-impl<B:PixelDst> ImageDst for ClientImage<B> {
+impl<B:PixelDst+?Sized> ImageDst for ClientImage<B> {
     fn image_mut(&mut self) -> ImageMut<Self::Pixels,Self::GL> {
         let (dim, pixels) = (self.dim(), self.pixels.pixels_mut());
         check_buffer_size(dim, pixels._len());
-        unsafe { ClientSubImage::new_unchecked([0,0,0], dim, ClientImage::new_unchecked(dim, pixels)) }
+        unsafe { ClientImage::new_unchecked(dim, pixels).into_sub_image([0,0,0], dim) }
     }
 }
 
