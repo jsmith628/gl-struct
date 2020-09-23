@@ -312,6 +312,16 @@ impl<'a,T,A:buffer::BufferStorage> GLRef<'a,[T],A> {
     }
 }
 
+impl<'a,F:format::SpecificCompressed,A:buffer::BufferStorage> GLRef<'a,pixel::CompressedPixels<F>,A> {
+    pub fn is_empty(&self) -> bool { self.len()==0 }
+    pub fn len(&self) -> usize {
+        match self {
+            Self::Ref(ptr) => ptr.len(),
+            Self::Buf(ptr) => ptr.len(),
+        }
+    }
+}
+
 pub enum GLMut<'a,T:?Sized,A:buffer::BufferStorage> {
     Mut(&'a mut T),
     Buf(buffer::SliceMut<'a,T,A>)
@@ -336,6 +346,16 @@ impl<'a,T:?Sized,A:buffer::BufferStorage> GLMut<'a,T,A> {
 }
 
 impl<'a,T,A:buffer::BufferStorage> GLMut<'a,[T],A> {
+    pub fn is_empty(&self) -> bool { self.len()==0 }
+    pub fn len(&self) -> usize {
+        match self {
+            Self::Mut(ptr) => ptr.len(),
+            Self::Buf(ptr) => ptr.len(),
+        }
+    }
+}
+
+impl<'a,F:format::SpecificCompressed,A:buffer::BufferStorage> GLMut<'a,pixel::CompressedPixels<F>,A> {
     pub fn is_empty(&self) -> bool { self.len()==0 }
     pub fn len(&self) -> usize {
         match self {

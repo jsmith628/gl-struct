@@ -147,8 +147,9 @@ impl<T> BufPtr<[T]> {
 }
 
 impl<F:SpecificCompressed> BufPtr<CompressedPixels<F>> {
+    #[inline] pub fn is_empty(self) -> bool { unsafe {(&*self.ptr).is_empty()} }
     #[inline] pub fn blocks(self) -> usize { unsafe {(&*self.ptr).blocks()} }
-    #[inline] pub fn pixel_count(self) -> usize { unsafe {(&*self.ptr).pixel_count()} }
+    #[inline] pub fn len(self) -> usize { unsafe {(&*self.ptr).len()} }
 }
 
 ///
@@ -179,7 +180,7 @@ unsafe impl<T:Sized> NeedsDropVal for [T] {
     #[inline] fn needs_drop_val(&self) -> bool {!self.is_empty() && needs_drop::<T>()}
 }
 unsafe impl<F:SpecificCompressed> NeedsDropVal for CompressedPixels<F> {
-    #[inline] fn needs_drop_val(&self) -> bool {self.pixel_count()>0 && needs_drop::<F>()}
+    #[inline] fn needs_drop_val(&self) -> bool {self.len()>0 && needs_drop::<F::Block>()}
 }
 
 macro_rules! impl_tuple_needs_drop {

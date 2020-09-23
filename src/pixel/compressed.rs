@@ -16,7 +16,9 @@ impl<F:SpecificCompressed> CompressedPixels<F> {
 
     pub fn size(&self) -> usize { size_of_val(self) }
     pub fn blocks(&self) -> usize { self.data.len() }
-    pub fn pixel_count(&self) -> usize {
+
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
+    pub fn len(&self) -> usize {
         self.blocks() *
         self.block_width() as usize *
         self.block_height() as usize *

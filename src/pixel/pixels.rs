@@ -44,6 +44,11 @@ impl<'a,P,GL> Pixels<'a,[P],GL> {
     pub fn len(&self) -> usize { self.pixels.len() }
 }
 
+impl<'a,F:SpecificCompressed,GL> Pixels<'a,CompressedPixels<F>,GL> {
+    pub fn is_empty(&self) -> bool { self.pixels.is_empty() }
+    pub fn len(&self) -> usize { self.pixels.len() }
+}
+
 impl<'a,P:?Sized,GL1:GLVersion> Pixels<'a,P,GL1> {
 
     pub fn lock<GL2:Supports<GL1>>(self) -> Pixels<'a,P,GL2> {
@@ -87,6 +92,11 @@ impl<'a,P:?Sized,GL> PixelsMut<'a,P,GL> {
 }
 
 impl<'a,P,GL> PixelsMut<'a,[P],GL> {
+    pub fn is_empty(&self) -> bool { self.pixels.is_empty() }
+    pub fn len(&self) -> usize { self.pixels.len() }
+}
+
+impl<'a,F:SpecificCompressed,GL> PixelsMut<'a,CompressedPixels<F>,GL> {
     pub fn is_empty(&self) -> bool { self.pixels.is_empty() }
     pub fn len(&self) -> usize { self.pixels.len() }
 }

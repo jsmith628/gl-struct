@@ -223,8 +223,9 @@ impl<'a,T:AttribData, A:BufferStorage> Slice<'a,[T],A> {
 
 
 impl<'a,F:SpecificCompressed, A:BufferStorage> Slice<'a,CompressedPixels<F>,A> {
+    #[inline] pub fn is_empty(&self) -> usize { self.ptr.len() }
     #[inline] pub fn blocks(&self) -> usize { self.ptr.blocks() }
-    #[inline] pub fn pixel_count(&self) -> usize { self.ptr.pixel_count() }
+    #[inline] pub fn len(&self) -> usize { self.ptr.len() }
 }
 
 impl<'a,T:?Sized,A:BufferStorage> SliceMut<'a,T,A> {
@@ -350,8 +351,9 @@ impl<'a,T:AttribData, A:BufferStorage> SliceMut<'a,[T],A> {
 }
 
 impl<'a,F:SpecificCompressed, A:BufferStorage> SliceMut<'a,CompressedPixels<F>,A> {
+    #[inline] pub fn is_empty(&self) -> usize { self.ptr.len() }
     #[inline] pub fn blocks(&self) -> usize { self.ptr.blocks() }
-    #[inline] pub fn pixel_count(&self) -> usize { self.ptr.pixel_count() }
+    #[inline] pub fn len(&self) -> usize { self.ptr.len() }
 }
 
 //
