@@ -30,6 +30,23 @@ impl ::std::fmt::Display for SubImageError {
     }
 }
 
+fn check_bounds(
+    offset:[usize;3], dim:[usize;3], img_dim:[usize;3], block:[usize;3]
+) -> Result<(), SubImageError> {
+    let corner = [offset[0]+dim[0], offset[1]+dim[1], offset[2]+dim[2]];
+    if corner < img_dim {
+        if dim[0]%block[0] == 0 && dim[1]%block[1] == 0 && dim[2]%block[2] == 0 &&
+            offset[0]%block[0] == 0 && offset[1]%block[1] == 0 && offset[2]%block[2] == 0
+        {
+            Ok(())
+        } else {
+            Err(SubImageError::NotBlockAligned(dim, block))
+        }
+    } else {
+        Err(SubImageError::OutOfBounds(corner, img_dim))
+    }
+}
+
 impl<I:ImageSrc> ClientSubImage<I> {
 
     pub unsafe fn new_unchecked(offset:[usize;3], dim:[usize;3], image: I) -> Self {
@@ -37,24 +54,9 @@ impl<I:ImageSrc> ClientSubImage<I> {
     }
 
     pub fn try_new(offset:[usize;3], dim:[usize;3], img: I) -> Result<Self, SubImageError> {
-
-        let img_dim = img.image().dim();
-
-        let corner = [offset[0]+dim[0], offset[1]+dim[1], offset[2]+dim[2]];
-        if corner < img_dim {
-            let block = img.image().block_dim();
-            if dim[0]%block[0] == 0 && dim[1]%block[1] == 0 && dim[2]%block[2] == 0 &&
-                offset[0]%block[0] == 0 && offset[1]%block[1] == 0 && offset[2]%block[2] == 0
-            {
-                unsafe {
-                    Ok(ClientSubImage::new_unchecked(offset, dim, img))
-                }
-            } else {
-                Err(SubImageError::NotBlockAligned(dim, block))
-            }
-        } else {
-            Err(SubImageError::OutOfBounds(corner, img_dim))
-        }
+        check_bounds(offset, dim, img.image().dim(), img.image().block_dim()).map(
+            |_| unsafe { ClientSubImage::new_unchecked(offset, dim, img) }
+        )
     }
 
     pub fn new(offset:[usize;3], dim:[usize;3], img: I) -> Self {
@@ -64,6 +66,13 @@ impl<I:ImageSrc> ClientSubImage<I> {
 }
 
 impl<I:?Sized> ClientSubImage<I> {
+
+    pub fn offset(&self) -> [usize; 3] { self.offset }
+
+    pub fn offset_x(&self) -> usize { self.offset()[0] }
+    pub fn offset_y(&self) -> usize { self.offset()[1] }
+    pub fn offset_z(&self) -> usize { self.offset()[2] }
+
     pub fn dim(&self) -> [usize; 3] { self.dim }
 
     pub fn width(&self) -> usize { self.dim()[0] }
@@ -110,9 +119,30 @@ impl<I:CompressedImage+?Sized> CompressedImage for ClientSubImage<I> { type Form
 impl<I:ImageSrc+?Sized> ImageSrc for ClientSubImage<I> {
     type Pixels = I::Pixels;
     type GL = I::GL;
-    fn image(&self) -> ImageRef<Self::Pixels,Self::GL> { unimplemented!() }
+    fn image(&self) -> ImageRef<Self::Pixels,Self::GL> {
+        let img = self.image();
+        let (offset1, dim, offset2) = (self.offset(), self.dim(), img.offset());
+        check_bounds(offset1, dim, img.dim(), img.block_dim()).map(
+            |_| ClientSubImage {
+                offset: [offset1[0]+offset2[0], offset1[1]+offset2[1], offset1[2]+offset2[2]],
+                dim: img.dim(),
+                image: img.image
+            }
+        ).unwrap()
+    }
 }
 
 impl<I:ImageDst+?Sized> ImageDst for ClientSubImage<I> {
-    fn image_mut(&mut self) -> ImageMut<Self::Pixels,Self::GL> { unimplemented!() }
+    fn image_mut(&mut self) -> ImageMut<Self::Pixels,Self::GL> {
+        let (offset1, dim1) = (self.offset(), self.dim());
+        let img = self.image_mut();
+        let (offset2, dim2) = (img.offset(), img.dim());
+        check_bounds(offset1, dim1, dim2, img.block_dim()).map(
+            |_| ClientSubImage {
+                offset: [offset1[0]+offset2[0], offset1[1]+offset2[1], offset1[2]+offset2[2]],
+                dim: img.dim(),
+                image: img.image
+            }
+        ).unwrap()
+    }
 }
