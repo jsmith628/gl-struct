@@ -1,7 +1,7 @@
 [package]
 name = "gl-struct"
 version = "0.1.0"
-authors = ["Joshua Smith <anvil775@gmail.com>"]
+authors = ["Joshua Smith <jsmith62831@gmail.com>"]
 
 [dependencies]
 bitflags = "1.0"
