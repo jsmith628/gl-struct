@@ -4,7 +4,7 @@ use super::*;
 use crate::gl;
 use crate::version::*;
 use crate::format::*;
-use crate::pixel::*;
+use crate::pixels::*;
 use crate::vertex_array::*;
 
 use std::marker::{PhantomData, Unsize};

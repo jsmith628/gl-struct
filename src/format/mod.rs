@@ -1,5 +1,5 @@
 use super::*;
-use crate::pixel::*;
+use crate::pixels::*;
 
 pub use self::internal::*;
 pub use self::pixel::*;
