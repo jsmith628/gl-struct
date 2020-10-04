@@ -238,7 +238,7 @@ impl<T:AttribData, A:BufferStorage> Buffer<[T],A> {
 
 }
 
-impl<F:SpecificCompressed, A:BufferStorage> Buffer<CompressedPixels<F>,A> {
+impl<F:SpecificCompressed, A:BufferStorage> Buffer<Cmpr<F>,A> {
     #[inline] pub fn is_empty(&self) -> usize { self.ptr.len() }
     #[inline] pub fn blocks(&self) -> usize { self.ptr.blocks() }
     #[inline] pub fn len(&self) -> usize { self.ptr.len() }

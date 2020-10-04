@@ -53,7 +53,7 @@ impl<B:?Sized> ClientImage<B> {
         //get the block size for compressed pixels and [1,1,1] for everything else
         trait BlockSize { fn _block_dim() -> [usize;3]; }
         impl<P:?Sized> BlockSize for P { default fn _block_dim() -> [usize;3] {[1;3]} }
-        impl<F:SpecificCompressed, P:PixelSrc<Pixels=CompressedPixels<F>>> BlockSize for P {
+        impl<F:SpecificCompressed, P:PixelSrc<Pixels=Cmpr<F>>> BlockSize for P {
             fn _block_dim() -> [usize;3] {
                 [F::block_width().into(), F::block_height().into(), F::block_depth().into()]
             }
@@ -142,7 +142,7 @@ impl<P, B:PixelSrc<Pixels=[P]>> ClientImage<B> {
 }
 
 impl<P,B:PixelSrc<Pixels=[P]>> UncompressedImage for ClientImage<B> { type Pixel = P; }
-impl<F:SpecificCompressed,B:PixelSrc<Pixels=CompressedPixels<F>>> CompressedImage for ClientImage<B> {
+impl<F:SpecificCompressed,B:PixelSrc<Pixels=Cmpr<F>>> CompressedImage for ClientImage<B> {
     type Format = F;
 }
 
@@ -150,7 +150,7 @@ impl<F:SpecificCompressed,B:PixelSrc<Pixels=CompressedPixels<F>>> CompressedImag
 
 //a trait for getting the number of pixels in the backing buffer so that we can check
 //if it was changed. This is necessary since PixelSrc technically doesn't require having a
-//length method, so we have to specifically check for the cases of [P] and CompressedPixels.
+//length method, so we have to specifically check for the cases of [P] and Cmpr.
 //This shouldn't be an issue though since those are currently the only ones that can even
 //be sent to OpenGL atm
 trait Len { fn _len(&self) -> Option<usize>; }
@@ -161,10 +161,10 @@ impl<'a,P:?Sized,GL> Len for PixelsMut<'a,P,GL> { default fn _len(&self) -> Opti
 impl<'a,P,GL> Len for Pixels<'a,[P],GL> { fn _len(&self) -> Option<usize> { Some(self.len()) } }
 impl<'a,P,GL> Len for PixelsMut<'a,[P],GL> { fn _len(&self) -> Option<usize> { Some(self.len()) } }
 
-impl<'a,F:SpecificCompressed,GL> Len for Pixels<'a,CompressedPixels<F>,GL> {
+impl<'a,F:SpecificCompressed,GL> Len for Pixels<'a,Cmpr<F>,GL> {
     fn _len(&self) -> Option<usize> { Some(self.len()) }
 }
-impl<'a,F:SpecificCompressed,GL> Len for PixelsMut<'a,CompressedPixels<F>,GL> {
+impl<'a,F:SpecificCompressed,GL> Len for PixelsMut<'a,Cmpr<F>,GL> {
     fn _len(&self) -> Option<usize> { Some(self.len()) }
 }
 

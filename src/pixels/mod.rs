@@ -52,13 +52,13 @@ impl<P:Pixel> PixelDst for [P] {
 
 //NOTE: compressed pixel transfer was added alongside support for compressed internal formats
 //so we don't need to test for any extra OpenGL version or extension
-impl<F:SpecificCompressed> PixelSrc for CompressedPixels<F> {
-    type Pixels = CompressedPixels<F>;
+impl<F:SpecificCompressed> PixelSrc for Cmpr<F> {
+    type Pixels = Cmpr<F>;
     type GL = ();
-    fn pixels(&self) -> Pixels<CompressedPixels<F>,()> { Pixels::from_ref(self) }
+    fn pixels(&self) -> Pixels<Cmpr<F>,()> { Pixels::from_ref(self) }
 }
-impl<F:SpecificCompressed> PixelDst for CompressedPixels<F> {
-    fn pixels_mut(&mut self) -> PixelsMut<CompressedPixels<F>,()> { PixelsMut::from_mut(self) }
+impl<F:SpecificCompressed> PixelDst for Cmpr<F> {
+    fn pixels_mut(&mut self) -> PixelsMut<Cmpr<F>,()> { PixelsMut::from_mut(self) }
 }
 
 //

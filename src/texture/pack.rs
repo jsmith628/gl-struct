@@ -49,7 +49,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImage<'a,F,T> {
 impl<'a,F:SpecificCompressed,T:CompressedTransferTarget<F>> TexImage<'a,F,T> {
 
     unsafe fn pack_compressed_pixels(
-        &self, settings:PixelStore, pixels: PixelsMut<CompressedPixels<F>>
+        &self, settings:PixelStore, pixels: PixelsMut<Cmpr<F>>
     ) where F:SpecificCompressed {
 
         //since these are specific to the format, these are set independent of PixelStore::apply_packing()

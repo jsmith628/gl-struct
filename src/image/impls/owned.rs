@@ -22,16 +22,16 @@ use super::*;
 // impl_own_img!(for<P> Vec<P>);
 //
 // impl_own_img!(for<P> Box<[P]>);
-// impl_own_img!(for<F:SpecificCompressed> Box<CompressedPixels<F>>);
+// impl_own_img!(for<F:SpecificCompressed> Box<Cmpr<F>>);
 //
 // impl_own_img!(for<P> Rc<[P]>);
-// impl_own_img!(for<F:SpecificCompressed> Rc<CompressedPixels<F>>);
+// impl_own_img!(for<F:SpecificCompressed> Rc<Cmpr<F>>);
 //
 // impl_own_img!(for<P> Arc<[P]>);
-// impl_own_img!(for<F:SpecificCompressed> Arc<CompressedPixels<F>>);
+// impl_own_img!(for<F:SpecificCompressed> Arc<Cmpr<F>>);
 //
 // impl_own_img!(for<P,A:BufferStorage> Buffer<[P],A>);
-// impl_own_img!(for<F:SpecificCompressed,A:BufferStorage> Buffer<CompressedPixels<F>,A>);
+// impl_own_img!(for<F:SpecificCompressed,A:BufferStorage> Buffer<Cmpr<F>,A>);
 
 unsafe impl<'a,P:ImageSrc+ToOwned+?Sized> OwnedImage for Cow<'a,P> where P::Owned: OwnedImage<Pixels=P::Pixels> {
     type GL = <P::Owned as OwnedImage>::GL;

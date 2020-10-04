@@ -52,7 +52,7 @@ pub trait TexImageDst<F:InternalFormat> = TexImageSrc<F> + ImageDst;
 pub trait OwnedTexImage<F:InternalFormat> = TexImageSrc<F> + OwnedImage;
 
 pub trait CompressedImageSrc =
-    CompressedImage + ImageSrc<Pixels=CompressedPixels<<Self as CompressedImage>::Format>>;
+    CompressedImage + ImageSrc<Pixels=Cmpr<<Self as CompressedImage>::Format>>;
 
 pub trait CompressedImageDst = CompressedImageSrc + ImageDst;
 pub trait OwnedCompressedImage = CompressedImageSrc + OwnedImage;

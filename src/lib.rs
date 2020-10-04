@@ -312,7 +312,7 @@ impl<'a,T,A:buffer::BufferStorage> GLRef<'a,[T],A> {
     }
 }
 
-impl<'a,F:format::SpecificCompressed,A:buffer::BufferStorage> GLRef<'a,pixels::CompressedPixels<F>,A> {
+impl<'a,F:format::SpecificCompressed,A:buffer::BufferStorage> GLRef<'a,pixels::Cmpr<F>,A> {
     pub fn is_empty(&self) -> bool { self.len()==0 }
     pub fn len(&self) -> usize {
         match self {
@@ -355,7 +355,7 @@ impl<'a,T,A:buffer::BufferStorage> GLMut<'a,[T],A> {
     }
 }
 
-impl<'a,F:format::SpecificCompressed,A:buffer::BufferStorage> GLMut<'a,pixels::CompressedPixels<F>,A> {
+impl<'a,F:format::SpecificCompressed,A:buffer::BufferStorage> GLMut<'a,pixels::Cmpr<F>,A> {
     pub fn is_empty(&self) -> bool { self.len()==0 }
     pub fn len(&self) -> usize {
         match self {
