@@ -48,29 +48,21 @@ impl<B:?Sized> ClientImage<B> {
     pub fn height(&self) -> usize { self.dim()[1] }
     pub fn depth(&self) -> usize { self.dim()[2] }
 
-    pub fn block_dim(&self) -> [usize; 3] {
-
-        //get the block size for compressed pixels and [1,1,1] for everything else
-        trait BlockSize { fn _block_dim() -> [usize;3]; }
-        impl<P:?Sized> BlockSize for P { default fn _block_dim() -> [usize;3] {[1;3]} }
-        impl<F:SpecificCompressed, P:PixelSrc<Pixels=Cmpr<F>>> BlockSize for P {
-            fn _block_dim() -> [usize;3] {
-                [F::block_width().into(), F::block_height().into(), F::block_depth().into()]
-            }
-        }
-
-        B::_block_dim()
-
-    }
-
-    pub fn block_width(&self) -> usize { self.block_dim()[0] }
-    pub fn block_height(&self) -> usize { self.block_dim()[1] }
-    pub fn block_depth(&self) -> usize { self.block_dim()[2] }
-
     pub fn as_ref(&self) -> ClientImage<&B> { ClientImage { dim:self.dim, pixels:&self.pixels } }
     pub fn as_mut(&mut self) -> ClientImage<&mut B> { ClientImage { dim:self.dim, pixels:&mut self.pixels } }
 
 }
+
+impl<P:PixelSrc+?Sized> ClientImage<P> {
+
+    pub fn block_dim(&self) -> [usize; 3] { [self.block_width(), self.block_height(), self.block_depth()] }
+
+    pub fn block_width(&self) -> usize { <P::Pixels as PixelData>::block_width() }
+    pub fn block_height(&self) -> usize { <P::Pixels as PixelData>::block_height() }
+    pub fn block_depth(&self) -> usize { <P::Pixels as PixelData>::block_depth() }
+
+}
+
 
 impl<P:PixelSrc> ClientImage<P> {
 

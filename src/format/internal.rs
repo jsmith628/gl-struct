@@ -28,9 +28,9 @@ pub unsafe trait SizedPixelFormat: SizedFormat {
 #[marker] pub unsafe trait CompressedFormat: InternalFormat {}
 pub unsafe trait SpecificCompressed: CompressedFormat + SizedFormat {
     type Block: Copy;
-    fn block_width() -> u8;
-    fn block_height() -> u8;
-    fn block_depth() -> u8;
+    fn block_width() -> usize;
+    fn block_height() -> usize;
+    fn block_depth() -> usize;
     #[inline] fn block_size() -> usize { ::std::mem::size_of::<Self::Block>() }
 }
 
@@ -96,9 +96,9 @@ macro_rules! internal_format {
         unsafe impl CompressedFormat for $fmt {}
         unsafe impl SpecificCompressed for $fmt {
             type Block = $block;
-            fn block_width() -> u8 {$w}
-            fn block_height() -> u8 {$h}
-            fn block_depth() -> u8 {$d}
+            fn block_width() -> usize {$w}
+            fn block_height() -> usize {$h}
+            fn block_depth() -> usize {$d}
         }
     };
 

@@ -9,9 +9,9 @@ pub struct Cmpr<F:SpecificCompressed> {
 impl<F:SpecificCompressed> Cmpr<F> {
 
     pub fn format(&self) -> GLenum { F::glenum() }
-    pub fn block_width(&self) -> u8 { F::block_width() }
-    pub fn block_height(&self) -> u8 { F::block_height() }
-    pub fn block_depth(&self) -> u8 { F::block_depth() }
+    pub fn block_width(&self) -> usize { F::block_width() }
+    pub fn block_height(&self) -> usize { F::block_height() }
+    pub fn block_depth(&self) -> usize { F::block_depth() }
     pub fn block_size(&self) -> usize { size_of::<F::Block>() }
 
     pub fn size(&self) -> usize { size_of_val(self) }

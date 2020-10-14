@@ -508,9 +508,9 @@ macro_rules! impl_pixel {
         }
 
         unsafe impl PixelData for $p {
-            fn block_width() -> u8 {1}
-            fn block_height() -> u8 {1}
-            fn block_depth() -> u8 {1}
+            fn block_width() -> usize {1}
+            fn block_height() -> usize {1}
+            fn block_depth() -> usize {1}
             fn count(&self) -> usize {1}
         }
 
@@ -524,9 +524,9 @@ macro_rules! impl_pixel {
         }
 
         unsafe impl PixelData for $vec {
-            fn block_width() -> u8 {1}
-            fn block_height() -> u8 {1}
-            fn block_depth() -> u8 {1}
+            fn block_width() -> usize {1}
+            fn block_height() -> usize {1}
+            fn block_depth() -> usize {1}
             fn count(&self) -> usize {1}
         }
 
@@ -540,9 +540,9 @@ macro_rules! impl_pixel {
         }
 
         unsafe impl<$T:SubPixel> PixelData for [$T; $n] {
-            fn block_width() -> u8 {1}
-            fn block_height() -> u8 {1}
-            fn block_depth() -> u8 {1}
+            fn block_width() -> usize {1}
+            fn block_height() -> usize {1}
+            fn block_depth() -> usize {1}
             fn count(&self) -> usize {1}
         }
 
@@ -561,23 +561,23 @@ impl_pixel! {
 }
 
 pub unsafe trait PixelData: ByteOrder {
-    fn block_width() -> u8;
-    fn block_height() -> u8;
-    fn block_depth() -> u8;
+    fn block_width() -> usize;
+    fn block_height() -> usize;
+    fn block_depth() -> usize;
     fn count(&self) -> usize;
 }
 
 unsafe impl<P:PixelData> PixelData for [P] {
-    fn block_width() -> u8 {1}
-    fn block_height() -> u8 {1}
-    fn block_depth() -> u8 {1}
+    fn block_width() -> usize {1}
+    fn block_height() -> usize {1}
+    fn block_depth() -> usize {1}
     fn count(&self) -> usize { self.len() }
 }
 
 unsafe impl<F:SpecificCompressed> PixelData for Cmpr<F> {
-    fn block_width() -> u8 { F::block_width() }
-    fn block_height() -> u8 { F::block_height() }
-    fn block_depth() -> u8 { F::block_depth() }
+    fn block_width() -> usize { F::block_width() }
+    fn block_height() -> usize { F::block_height() }
+    fn block_depth() -> usize { F::block_depth() }
     fn count(&self) -> usize { self.len() }
 }
 
