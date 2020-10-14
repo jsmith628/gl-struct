@@ -113,11 +113,24 @@ impl<P:PixelSrc> ClientImage<P> {
         //if we did not overflow
         if let Some(n) = count {
 
-            //get a reference to the backing slice or GL buffer and make sure it has the exact
-            //length required to store the pixels for this image
+            //get a reference to the backing buffer of pixels and make sure
+            //the buffer has the exact length required to store the pixels for this image
             let len = pixels.pixels().len();
-            if n==len {
-                Ok( unsafe {Self::new_unchecked(dim, pixels)} )
+            if n == len {
+
+                let block = [
+                    <P::Pixels as PixelData>::block_width(),
+                    <P::Pixels as PixelData>::block_height(),
+                    <P::Pixels as PixelData>::block_depth()
+                ];
+
+                //make sure the block dimensions perfectly divide the dimensions
+                if block[0]%dim[0]==0 && block[0]%dim[0]==0 && block[0]%dim[0]==0 {
+                    Ok(ClientImage { dim, pixels })
+                } else {
+                    Err(ImageError::NotBlockAligned(dim, block))
+                }
+
             } else {
                 Err(ImageError::InvalidDimensions(dim, len))
             }
