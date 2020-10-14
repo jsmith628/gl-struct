@@ -23,7 +23,7 @@ mod compressed;
 mod buffer;
 
 pub trait PixelSrc {
-    type Pixels: ?Sized;
+    type Pixels: PixelData+?Sized;
     type GL: GLVersion;
     fn pixels(&self) -> Pixels<Self::Pixels, Self::GL>;
 }
@@ -41,12 +41,12 @@ pub trait FromPixels: PixelSrc {
 //Base impls on slices and compressed pixels
 //
 
-impl<P> PixelSrc for [P] {
+impl<P:Pixel> PixelSrc for [P] {
     type Pixels = [P];
     type GL = (); //no extra extensions needed for pixel transfer to an array
     fn pixels(&self) -> Pixels<[P],()> { Pixels::from_ref(self) }
 }
-impl<P> PixelDst for [P] {
+impl<P:Pixel> PixelDst for [P] {
     fn pixels_mut(&mut self) -> PixelsMut<[P],()> { PixelsMut::from_mut(self) }
 }
 
@@ -65,19 +65,19 @@ impl<F:SpecificCompressed> PixelDst for Cmpr<F> {
 //Might as well add the trivial impl on Pixels
 //
 
-impl<'a,P:?Sized,GL:GLVersion> PixelSrc for Pixels<'a,P,GL> {
+impl<'a,P:PixelData+?Sized,GL:GLVersion> PixelSrc for Pixels<'a,P,GL> {
     type Pixels = P;
     type GL = GL;
     fn pixels(&self) -> Pixels<P,GL> { self.into() }
 }
 
-impl<'a,P:?Sized,GL:GLVersion> PixelSrc for PixelsMut<'a,P,GL> {
+impl<'a,P:PixelData+?Sized,GL:GLVersion> PixelSrc for PixelsMut<'a,P,GL> {
     type Pixels = P;
     type GL = GL;
     fn pixels(&self) -> Pixels<P,GL> { self.into() }
 }
 
-impl<'a,P:?Sized,GL:GLVersion> PixelDst for PixelsMut<'a,P,GL> {
+impl<'a,P:PixelData+?Sized,GL:GLVersion> PixelDst for PixelsMut<'a,P,GL> {
     fn pixels_mut(&mut self) -> PixelsMut<P,GL> { self.into() }
 }
 
@@ -85,7 +85,7 @@ impl<'a,P:?Sized,GL:GLVersion> PixelDst for PixelsMut<'a,P,GL> {
 //Also, might as well have a GLRef and GLMut impl
 //
 
-impl<'a,P:?Sized,A:BufferStorage> PixelSrc for GLRef<'a,P,A> {
+impl<'a,P:PixelData+?Sized,A:BufferStorage> PixelSrc for GLRef<'a,P,A> {
     type Pixels = P;
     type GL = GL_ARB_pixel_buffer_object;
     fn pixels(&self) -> Pixels<P,GL_ARB_pixel_buffer_object> {
@@ -96,7 +96,7 @@ impl<'a,P:?Sized,A:BufferStorage> PixelSrc for GLRef<'a,P,A> {
     }
 }
 
-impl<'a,P:?Sized,A:BufferStorage> PixelSrc for GLMut<'a,P,A> {
+impl<'a,P:PixelData+?Sized,A:BufferStorage> PixelSrc for GLMut<'a,P,A> {
     type Pixels = P;
     type GL = GL_ARB_pixel_buffer_object;
     fn pixels(&self) -> Pixels<P,GL_ARB_pixel_buffer_object> {
@@ -107,7 +107,7 @@ impl<'a,P:?Sized,A:BufferStorage> PixelSrc for GLMut<'a,P,A> {
     }
 }
 
-impl<'a,P:?Sized,A:BufferStorage> PixelDst for GLMut<'a,P,A> {
+impl<'a,P:PixelData+?Sized,A:BufferStorage> PixelDst for GLMut<'a,P,A> {
     fn pixels_mut(&mut self) -> PixelsMut<P,GL_ARB_pixel_buffer_object> {
         match self {
             Self::Mut(ptr) => PixelsMut::from_mut(&mut **ptr).lock(),

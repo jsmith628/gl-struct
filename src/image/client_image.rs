@@ -111,7 +111,7 @@ impl<P:PixelSrc+?Sized> ClientImage<P> {
 }
 
 //TODO: creation methods for compressed data
-impl<P, B:PixelSrc<Pixels=[P]>> ClientImage<B> {
+impl<P:Pixel, B:PixelSrc<Pixels=[P]>> ClientImage<B> {
 
     pub fn try_new(dim: [usize;3], pixels: B) -> Result<Self,ImageError> {
         //compute the array size required to store that many pixels while making sure the value
@@ -141,7 +141,7 @@ impl<P, B:PixelSrc<Pixels=[P]>> ClientImage<B> {
 
 }
 
-impl<P,B:PixelSrc<Pixels=[P]>> UncompressedImage for ClientImage<B> { type Pixel = P; }
+impl<P:Pixel,B:PixelSrc<Pixels=[P]>> UncompressedImage for ClientImage<B> { type Pixel = P; }
 impl<F:SpecificCompressed,B:PixelSrc<Pixels=Cmpr<F>>> CompressedImage for ClientImage<B> {
     type Format = F;
 }

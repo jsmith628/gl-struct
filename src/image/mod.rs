@@ -24,7 +24,7 @@ pub type ImageRef<'a,P,GL> = ClientSubImage<ClientImage<Pixels<'a,P,GL>>>;
 pub type ImageMut<'a,P,GL> = ClientSubImage<ClientImage<PixelsMut<'a,P,GL>>>;
 
 pub trait ImageSrc {
-    type Pixels: ?Sized;
+    type Pixels: PixelData+?Sized;
     type GL: GLVersion;
     fn image(&self) -> ImageRef<Self::Pixels,Self::GL>;
 }
