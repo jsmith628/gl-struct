@@ -39,14 +39,14 @@ impl<'a,P:?Sized,GL> Pixels<'a,P,GL> {
     pub fn borrow(&self) -> GLRef<P,ReadOnly> { self.pixels }
 }
 
-impl<'a,P,GL> Pixels<'a,[P],GL> {
-    pub fn is_empty(&self) -> bool { self.pixels.is_empty() }
-    pub fn len(&self) -> usize { self.pixels.len() }
-}
-
-impl<'a,F:SpecificCompressed,GL> Pixels<'a,Cmpr<F>,GL> {
-    pub fn is_empty(&self) -> bool { self.pixels.is_empty() }
-    pub fn len(&self) -> usize { self.pixels.len() }
+impl<'a,P:PixelData+?Sized,GL> Pixels<'a,P,GL> {
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
+    pub fn len(&self) -> usize {
+        match self.pixels {
+            GLRef::Ref(ptr) => P::len_ref(ptr),
+            GLRef::Buf(ptr) => P::len_buf(ptr.as_slice()),
+        }
+    }
 }
 
 impl<'a,P:?Sized,GL1:GLVersion> Pixels<'a,P,GL1> {
@@ -91,14 +91,14 @@ impl<'a,P:?Sized,GL> PixelsMut<'a,P,GL> {
     pub fn borrow_mut(&mut self) -> GLMut<P,ReadOnly> { (&mut self.pixels).into() }
 }
 
-impl<'a,P,GL> PixelsMut<'a,[P],GL> {
-    pub fn is_empty(&self) -> bool { self.pixels.is_empty() }
-    pub fn len(&self) -> usize { self.pixels.len() }
-}
-
-impl<'a,F:SpecificCompressed,GL> PixelsMut<'a,Cmpr<F>,GL> {
-    pub fn is_empty(&self) -> bool { self.pixels.is_empty() }
-    pub fn len(&self) -> usize { self.pixels.len() }
+impl<'a,P:PixelData+?Sized,GL> PixelsMut<'a,P,GL> {
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
+    pub fn len(&self) -> usize {
+        match &self.pixels {
+            GLMut::Mut(ptr) => P::len_ref(ptr),
+            GLMut::Buf(ptr) => P::len_buf(ptr.as_slice()),
+        }
+    }
 }
 
 impl<'a,P:?Sized,GL1:GLVersion> PixelsMut<'a,P,GL1> {

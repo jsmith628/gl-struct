@@ -2,6 +2,7 @@ use super::*;
 
 use crate::version::*;
 use crate::glsl::*;
+use crate::buffer::*;
 
 use std::convert::TryInto;
 
@@ -511,7 +512,8 @@ macro_rules! impl_pixel {
             fn block_width() -> usize {1}
             fn block_height() -> usize {1}
             fn block_depth() -> usize {1}
-            fn count(&self) -> usize {1}
+            fn len_ref(&self) -> usize {1}
+            fn len_buf<A:BufferStorage>(_: Slice<Self, A>) -> usize {1}
         }
 
         impl_pixel!($($rest)*);
@@ -527,7 +529,8 @@ macro_rules! impl_pixel {
             fn block_width() -> usize {1}
             fn block_height() -> usize {1}
             fn block_depth() -> usize {1}
-            fn count(&self) -> usize {1}
+            fn len_ref(&self) -> usize {1}
+            fn len_buf<A:BufferStorage>(_: Slice<Self, A>) -> usize {1}
         }
 
         impl_pixel!($($rest)*);
@@ -543,7 +546,8 @@ macro_rules! impl_pixel {
             fn block_width() -> usize {1}
             fn block_height() -> usize {1}
             fn block_depth() -> usize {1}
-            fn count(&self) -> usize {1}
+            fn len_ref(&self) -> usize {1}
+            fn len_buf<A:BufferStorage>(_: Slice<Self, A>) -> usize {1}
         }
 
         impl_pixel!($($rest)*);
@@ -564,21 +568,24 @@ pub unsafe trait PixelData: ByteOrder {
     fn block_width() -> usize;
     fn block_height() -> usize;
     fn block_depth() -> usize;
-    fn count(&self) -> usize;
+    fn len_ref(&self) -> usize;
+    fn len_buf<A:BufferStorage>(this: Slice<Self, A>) -> usize;
 }
 
 unsafe impl<P:PixelData> PixelData for [P] {
     fn block_width() -> usize {1}
     fn block_height() -> usize {1}
     fn block_depth() -> usize {1}
-    fn count(&self) -> usize { self.len() }
+    fn len_ref(&self) -> usize { self.len() }
+    fn len_buf<A:BufferStorage>(this: Slice<Self, A>) -> usize { this.len() }
 }
 
 unsafe impl<F:SpecificCompressed> PixelData for Cmpr<F> {
     fn block_width() -> usize { F::block_width() }
     fn block_height() -> usize { F::block_height() }
     fn block_depth() -> usize { F::block_depth() }
-    fn count(&self) -> usize { self.len() }
+    fn len_ref(&self) -> usize { self.len() }
+    fn len_buf<A:BufferStorage>(this: Slice<Self, A>) -> usize { this.len() }
 }
 
 pub unsafe trait CompressedPixelData: PixelData {
