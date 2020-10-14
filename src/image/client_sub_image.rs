@@ -23,7 +23,8 @@ impl ::std::fmt::Display for SubImageError {
                  x,y,z, img_x,img_y,img_z
             ),
             SubImageError::NotBlockAligned([x,y,z], [b_x,b_y,b_z]) => write!(
-                f, "Subimage dimensions {}x{}x{} not divisible by compressed block dimensions {}x{}x{}",
+                f, "Subimage corner lies at {}x{}x{} on the base image which us not divisible by
+                    the block dimensions of the current pixel format: {}x{}x{}",
                 x,y,z, b_x,b_y,b_z
             )
         }
@@ -35,13 +36,16 @@ fn check_bounds(
 ) -> Result<(), SubImageError> {
     let corner = [offset[0]+dim[0], offset[1]+dim[1], offset[2]+dim[2]];
     if corner < img_dim {
-        if dim[0]%block[0] == 0 && dim[1]%block[1] == 0 && dim[2]%block[2] == 0 &&
-            offset[0]%block[0] == 0 && offset[1]%block[1] == 0 && offset[2]%block[2] == 0
-        {
-            Ok(())
+        if offset[0]%block[0] == 0 && offset[1]%block[1] == 0 && offset[2]%block[2] == 0 {
+            if corner[0]%block[0] == 0 && corner[1]%block[1] == 0 && corner[2]%block[2] == 0 {
+                Ok(())
+            } else {
+                Err(SubImageError::NotBlockAligned(corner, block))
+            }
         } else {
-            Err(SubImageError::NotBlockAligned(dim, block))
+            Err(SubImageError::NotBlockAligned(offset, block))
         }
+
     } else {
         Err(SubImageError::OutOfBounds(corner, img_dim))
     }
