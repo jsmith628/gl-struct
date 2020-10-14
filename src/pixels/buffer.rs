@@ -23,9 +23,9 @@ macro_rules! impl_pixel_dst_buf {
     }
 }
 
-impl_pixel_dst_buf!(for<P:Pixel,A:BufferStorage> Buffer<[P],A>; [P]);
-impl_pixel_src_buf!(for<'a,P:Pixel,A:BufferStorage> Slice<'a,[P],A>; [P]);
-impl_pixel_dst_buf!(for<'a,P:Pixel,A:BufferStorage> SliceMut<'a,[P],A>; [P]);
+impl_pixel_dst_buf!(for<P,A:BufferStorage> Buffer<[P],A>; [P]);
+impl_pixel_src_buf!(for<'a,P,A:BufferStorage> Slice<'a,[P],A>; [P]);
+impl_pixel_dst_buf!(for<'a,P,A:BufferStorage> SliceMut<'a,[P],A>; [P]);
 
 impl_pixel_dst_buf!(for<F:SpecificCompressed,A:BufferStorage> Buffer<Cmpr<F>,A>; Cmpr<F>);
 impl_pixel_src_buf!(for<'a,F:SpecificCompressed,A:BufferStorage> Slice<'a,Cmpr<F>,A>; Cmpr<F>);

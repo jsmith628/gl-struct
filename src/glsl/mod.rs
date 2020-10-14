@@ -14,7 +14,7 @@ pub use self::c_bool::*;
 pub use self::conv::*;
 pub use self::layout::*;
 pub use self::ops::*;
-pub use self::functions::*;
+// pub use self::functions::*;
 
 #[macro_use]
 mod glsl;
@@ -24,7 +24,7 @@ mod conv;
 mod layout;
 mod ops;
 mod glsl_type;
-mod functions;
+// mod functions;
 
 pub unsafe trait GLSLType: Sized + Copy + 'static {
     type AttribFormat: AttribFormat;

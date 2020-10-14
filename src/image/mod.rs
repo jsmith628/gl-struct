@@ -46,7 +46,7 @@ pub trait CompressedImage: ImageSrc { type Format: SpecificCompressed; }
 pub trait TexImageSrc<F:InternalFormat> =
     UncompressedImage + ImageSrc<Pixels=[<Self as UncompressedImage>::Pixel]>
 where
-    <Self as UncompressedImage>::Pixel: PixelData<<F as InternalFormat>::PixelLayout>;
+    <Self as UncompressedImage>::Pixel: UncompressedPixelData<<F as InternalFormat>::PixelLayout>;
 
 pub trait TexImageDst<F:InternalFormat> = TexImageSrc<F> + ImageDst;
 pub trait OwnedTexImage<F:InternalFormat> = TexImageSrc<F> + OwnedImage;

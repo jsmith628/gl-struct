@@ -58,9 +58,9 @@ pub trait DepthFormat = InternalFormat<PixelLayout = DepthLayout>;
 pub trait StencilFormat = InternalFormat<PixelLayout = StencilLayout>;
 pub trait DepthStencilFormat = InternalFormat<PixelLayout = DepthStencilLayout>;
 
-pub unsafe trait BufferTextureFormat: ColorFormat {
-    type Pixel: PixelData<Self::PixelLayout>;
-}
+// pub unsafe trait BufferTextureFormat: ColorFormat {
+//     type Pixel: PixelData<Self::PixelLayout>;
+// }
 
 #[marker] pub unsafe trait ViewCompatible<F:SizedFormat>: SizedFormat {}
 unsafe impl<F:SizedFormat> ViewCompatible<F> for F {}

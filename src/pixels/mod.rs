@@ -41,12 +41,12 @@ pub trait FromPixels: PixelSrc {
 //Base impls on slices and compressed pixels
 //
 
-impl<P:Pixel> PixelSrc for [P] {
+impl<P> PixelSrc for [P] {
     type Pixels = [P];
     type GL = (); //no extra extensions needed for pixel transfer to an array
     fn pixels(&self) -> Pixels<[P],()> { Pixels::from_ref(self) }
 }
-impl<P:Pixel> PixelDst for [P] {
+impl<P> PixelDst for [P] {
     fn pixels_mut(&mut self) -> PixelsMut<[P],()> { PixelsMut::from_mut(self) }
 }
 

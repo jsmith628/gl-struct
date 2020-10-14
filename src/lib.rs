@@ -4,6 +4,7 @@
 #![feature(never_type)]
 #![feature(untagged_unions)]
 #![feature(const_fn)]
+#![feature(min_const_generics)]
 #![feature(concat_idents)]
 #![feature(unsize)]
 #![feature(coerce_unsized)]
@@ -82,7 +83,7 @@ glenum! {
 
 impl IntType {
     #[inline]
-    pub fn size_of(self) -> usize {
+    pub fn size(self) -> usize {
         match self {
             IntType::Byte | IntType::UByte => 1,
             IntType::Short |IntType::UShort => 2,

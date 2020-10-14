@@ -653,6 +653,7 @@ version_struct!{ {()}
     },
 }
 
+//TODO add EXT_texture_compression_s3tc
 
 macro_rules! impl_tuple_versions {
 

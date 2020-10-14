@@ -1,5 +1,8 @@
 use super::*;
+
 use crate::version::*;
+use crate::glsl::*;
+
 use std::convert::TryInto;
 
 glenum! {
@@ -92,6 +95,12 @@ impl From<IntColorComponents> for PixelFormat {
 glenum! {
 
     pub enum FloatType {
+        [Byte BYTE "Byte"],
+        [UByte UNSIGNED_BYTE "UByte"],
+        [Short SHORT "Short"],
+        [UShort UNSIGNED_SHORT "UShort"],
+        [Int INT "Int"],
+        [UInt UNSIGNED_INT "UInt"],
         [Half(GL_ARB_half_float_pixel) HALF_FLOAT "Half"],
         [Float FLOAT "Float"]
     }
@@ -114,10 +123,11 @@ glenum! {
 
 impl FloatType {
     #[inline]
-    pub fn size_of(self) -> usize {
+    pub fn size(self) -> usize {
         match self {
-            FloatType::Half(_) => 2,
-            FloatType::Float => 4,
+            Self::Byte  | Self::UByte => 1,
+            Self::Short | Self::UShort | Self::Half(_) => 2,
+            Self::Int   | Self::UInt   | Self::Float => 4
         }
     }
 }
@@ -150,12 +160,20 @@ impl PixelType {
     }
 }
 
-impl From<FloatType> for PixelType {
-    #[inline] fn from(f:FloatType) -> Self {GLenum::from(f).try_into().unwrap()}
+impl From<IntType> for FloatType {
+    #[inline] fn from(f:IntType) -> Self {(f as GLenum).try_into().unwrap()}
 }
 
 impl From<IntType> for PixelType {
     #[inline] fn from(f:IntType) -> Self {(f as GLenum).try_into().unwrap()}
+}
+
+impl From<FloatType> for PixelType {
+    #[inline] fn from(f:FloatType) -> Self {GLenum::from(f).try_into().unwrap()}
+}
+
+impl From<!> for PixelType {
+    #[inline] fn from(x:!) -> Self { x }
 }
 
 pub unsafe trait PixelLayout: Copy+Clone+PartialEq+Eq+Hash+Debug {
@@ -176,6 +194,10 @@ pub enum IntLayout {
 }
 
 display_from_debug!(IntLayout);
+
+impl From<IntType> for IntLayout {
+    fn from(ty:IntType) -> IntLayout { IntLayout::Integer(IntColorComponents::RED_INTEGER, ty) }
+}
 
 unsafe impl PixelLayout for IntLayout {
 
@@ -221,7 +243,6 @@ unsafe impl PixelLayout for IntLayout {
 #[derive(Copy,Clone,PartialEq,Eq,Hash,Debug)]
 pub enum FloatLayout {
     Float(ColorComponents, FloatType),
-    Normalized(ColorComponents, IntType),
 
     //packed normalized types
     UByte3_3_2(GL_EXT_packed_pixels),           UByte2_3_3Rev(GL12),
@@ -261,13 +282,20 @@ display_from_debug!(FloatLayout);
 //     }
 // }
 
+impl From<IntType> for FloatLayout {
+    fn from(ty:IntType) -> FloatLayout { FloatLayout::Float(ColorComponents::RED, ty.into()) }
+}
+
+impl From<FloatType> for FloatLayout {
+    fn from(ty:FloatType) -> FloatLayout { FloatLayout::Float(ColorComponents::RED, ty) }
+}
+
 unsafe impl PixelLayout for FloatLayout {
 
     #[inline]
     fn fmt(self) -> PixelFormat {
         match self {
             Self::Float(fmt, _) => fmt.into(),
-            Self::Normalized(fmt, _) => fmt.into(),
 
             //MUST be RGB
             Self::UByte3_3_2(_)     | Self::UByte2_3_3Rev(_)  |
@@ -288,7 +316,6 @@ unsafe impl PixelLayout for FloatLayout {
     fn ty(self) -> PixelType {
         match self {
             Self::Float(_, ty)           => ty.into(),
-            Self::Normalized(_, ty)      => ty.into(),
             Self::UByte3_3_2(_)          => PixelType::UNSIGNED_BYTE_3_3_2,
             Self::UByte2_3_3Rev(_)       => PixelType::UNSIGNED_BYTE_2_3_3_REV,
             Self::UShort5_6_5(_)         => PixelType::UNSIGNED_SHORT_5_6_5,
@@ -308,33 +335,21 @@ unsafe impl PixelLayout for FloatLayout {
 }
 
 #[derive(Copy,Clone,PartialEq,Eq,Hash,Debug)]
-pub enum DepthLayout {
-    Float(FloatType),
-    Normalized(IntType)
-}
+pub struct DepthLayout(FloatType);
 
 impl From<FloatType> for DepthLayout {
-    fn from(ty:FloatType) -> Self { DepthLayout::Float(ty) }
+    fn from(ty:FloatType) -> Self { DepthLayout(ty) }
 }
 
 impl From<IntType> for DepthLayout {
-    fn from(ty:IntType) -> Self { DepthLayout::Normalized(ty) }
+    fn from(ty:IntType) -> Self { DepthLayout(ty.into()) }
 }
 
 display_from_debug!(DepthLayout);
 
 unsafe impl PixelLayout for DepthLayout {
-
     #[inline] fn fmt(self) -> PixelFormat { PixelFormat::DEPTH_COMPONENT }
-
-    #[inline]
-    fn ty(self) -> PixelType {
-        match self {
-            Self::Float(ty) => ty.into(),
-            Self::Normalized(ty) => ty.into()
-        }
-    }
-
+    #[inline] fn ty(self) -> PixelType { self.0.into() }
 }
 
 #[derive(Copy,Clone,PartialEq,Eq,Hash,Debug)]
@@ -394,165 +409,302 @@ unsafe impl PixelLayout for DepthStencilLayout {
 
 display_from_debug!(DepthStencilLayout);
 
-pub unsafe trait Pixel: Copy+PartialEq {
-    type GL: GLVersion;
+pub trait ByteOrder {
+    fn swap_bytes() -> bool;
+}
+
+macro_rules! impl_byte_order {
+    ($($p:ty),*) => {
+        $(
+            impl ByteOrder for $p {
+                fn swap_bytes() -> bool {false}
+            }
+        )*
+    }
+}
+
+impl_byte_order!(
+
+    !, (),
+
+    u8, i8, u16, i16, u32, i32, f32, u64, i64, f64, u128, i128,
+
+    uvec2, uvec3, uvec4,
+    ivec2, ivec3, ivec4,
+     vec2,  vec3,  vec4,
+    dvec2, dvec3, dvec4
+
+);
+
+impl<F:SpecificCompressed> ByteOrder for Cmpr<F> {
     fn swap_bytes() -> bool {false}
-    fn lsb_first() -> bool {false}
 }
 
-pub unsafe trait PixelData<F: PixelLayout>: Pixel {
-    fn layout<GL:Supports<Self::GL>>(&GL) -> F;
+impl<P:ByteOrder, const N:usize> ByteOrder for [P; N] {
+    fn swap_bytes() -> bool {P::swap_bytes()}
 }
 
-// macro_rules! impl_int {
-//     ($($prim:ident $ty:ident)*) => {
-//         $(
-//             impl_int!(@color $prim; RED RED_INTEGER $ty);
-//             impl_int!(@color [$prim;1]; RED RED_INTEGER $ty);
-//             // impl_int!(@impl [$prim;2]; RG RG_INTEGER $ty);
-//             impl_int!(@color [$prim;3]; RGB RGB_INTEGER $ty);
-//             impl_int!(@color [$prim;4]; RGBA RGBA_INTEGER $ty);
-//
-//             unsafe impl PixelData<DepthLayout> for $prim {
-//                 type GL = ();
-//                 fn layout<GL:Supports<()>>(_:&GL) -> DepthLayout { IntType::$ty.into() }
-//             }
-//             unsafe impl PixelData<DepthLayout> for [$prim;1] {
-//                 type GL = ();
-//                 fn layout<GL:Supports<()>>(_:&GL) -> DepthLayout { IntType::$ty.into() }
-//             }
-//             unsafe impl PixelData<StencilLayout> for $prim {
-//                 type GL = ();
-//                 fn layout<GL:Supports<()>>(_:&GL) -> StencilLayout { IntType::$ty.into() }
-//             }
-//             unsafe impl PixelData<StencilLayout> for [$prim;1] {
-//                 type GL = ();
-//                 fn layout<GL:Supports<()>>(_:&GL) -> StencilLayout { IntType::$ty.into() }
-//             }
-//
-//             //since the RG format wasn't added until GL30
-//             unsafe impl PixelData<IntLayout> for [$prim;2] {
-//                 type GL = GL30;
-//                 fn layout<GL:Supports<GL30>>(gl:&GL) -> IntLayout {
-//                     IntLayout::Integer(IntColorComponents::RG_INTEGER(downgrade_to(gl)), IntType::$ty)
-//                 }
-//             }
-//             unsafe impl PixelData<FloatLayout> for [$prim;2] {
-//                 type GL = GL30;
-//                 fn layout<GL:Supports<GL30>>(gl:&GL) -> FloatLayout {
-//                     FloatLayout::Normalized(ColorComponents::RG(downgrade_to(gl)), IntType::$ty)
-//                 }
-//             }
-//
-//         )*
-//     };
-//
-//     (@color $prim:ty; $fmt1:ident $fmt2:ident $ty:ident) => {
-//         unsafe impl PixelData<IntLayout> for $prim {
-//             type GL = ();
-//             fn layout<GL:Supports<()>>(_:&GL) -> IntLayout {
-//                 IntLayout::Integer(IntColorComponents::$fmt2, IntType::$ty)
-//             }
-//         }
-//         unsafe impl PixelData<FloatLayout> for $prim {
-//             type GL = ();
-//             fn layout<GL:Supports<()>>(_:&GL) -> FloatLayout {
-//                 FloatLayout::Normalized(ColorComponents::$fmt1, IntType::$ty)
-//             }
-//         }
-//     };
-//
-// }
-//
-// impl_int!{
-//     GLbyte Byte
-//     GLubyte UByte
-//     GLshort Short
-//     GLushort UShort
-//     GLint Int
-//     GLuint UInt
-// }
-//
-// macro_rules! impl_float {
-//     ($($prim:ident $ty:ident)*) => {
-//         $(
-//             impl_float!(@impl $prim; RED $ty);
-//             impl_float!(@impl [$prim;1]; RED $ty);
-//             // impl_float!(@impl [$prim;2]; RG $ty);
-//             impl_float!(@impl [$prim;3]; RGB $ty);
-//             impl_float!(@impl [$prim;4]; RGBA $ty);
-//
-//             unsafe impl PixelData<DepthLayout> for $prim {
-//                 type GL = ();
-//                 fn layout<GL:Supports<()>>(_:&GL) -> DepthLayout { FloatType::$ty.into() }
-//             }
-//             unsafe impl PixelData<DepthLayout> for [$prim;1] {
-//                 type GL = ();
-//                 fn layout<GL:Supports<()>>(_:&GL) -> DepthLayout { FloatType::$ty.into() }
-//             }
-//
-//             unsafe impl PixelData<DepthStencilLayout> for $prim {
-//                 type GL = ();
-//                 fn layout<GL:Supports<()>>(_:&GL) -> DepthStencilLayout { FloatType::$ty.into() }
-//             }
-//             unsafe impl PixelData<DepthStencilLayout> for [$prim;1] {
-//                 type GL = ();
-//                 fn layout<GL:Supports<()>>(_:&GL) -> DepthStencilLayout { FloatType::$ty.into() }
-//             }
-//
-//             unsafe impl PixelData<FloatLayout> for [$prim; 2] {
-//                 type GL = GL30;
-//                 fn layout<GL:Supports<GL30>>(gl:&GL) -> FloatLayout {
-//                     FloatLayout::Float(ColorComponents::RG(downgrade_to(gl)), FloatType::$ty)
-//                 }
-//             }
-//
-//         )*
-//     };
-//
-//     (@impl $prim:ty; $fmt:ident $ty:ident) => {
-//         unsafe impl PixelData<FloatLayout> for $prim {
-//             type GL = ();
-//             fn layout<GL:Supports<()>>(_:&GL) -> FloatLayout {
-//                 FloatLayout::Float(ColorComponents::$fmt, FloatType::$ty)
-//             }
-//         }
-//     };
-//
-// }
-//
-// impl_float!(GLfloat Float);
-//
-// macro_rules! impl_vec {
-//     (@$layout:ident $($vec:ident $inner:ty; $gl:ty),*) => {
-//         $(
-//             unsafe impl Pixel<$layout> for $vec {
-//                 type GL = $gl;
-//                 fn layout<GL:Supports<$gl>>(gl:&GL) -> $layout {
-//                     <$inner as Pixel<$layout>>::layout(gl.into())
-//                 }
-//             }
-//         )*
-//     }
-// }
-//
-// use glsl::*;
-//
-// //TODO: add the 3D vecs after reverting the alignment requirements
-//
-// impl_vec!(
-//     @IntLayout
-//     ivec2 [GLint; 2]; GL30,
-//     uvec2 [GLuint;2]; GL30,
-//     ivec4 [GLint; 4]; (),
-//     uvec4 [GLuint;4]; ()
-// );
-// impl_vec!{
-//     @FloatLayout
-//     ivec2 [GLint;  2]; GL30,
-//     uvec2 [GLuint; 2]; GL30,
-//      vec2 [GLfloat;2]; GL30,
-//     ivec4 [GLint;  4]; (),
-//     uvec4 [GLuint; 4]; (),
-//      vec4 [GLfloat;4]; ()
-// }
+impl<P:ByteOrder> ByteOrder for [P] {
+    fn swap_bytes() -> bool {P::swap_bytes()}
+}
+
+pub unsafe trait SubPixel: ByteOrder + Copy + PartialEq {
+    type GL: GLVersion;
+}
+
+pub unsafe trait SubPixelData<T:Copy+Into<PixelType>>: SubPixel {
+    fn ty<GL:Supports<Self::GL>>(&GL) -> T;
+}
+
+unsafe impl SubPixel for ! { type GL = !; }
+
+macro_rules! impl_subpixel {
+
+    (Version; ) => {};
+    (Version; $p:ty, $($rest:tt)*) => { impl_subpixel!(Version; $p = (), $($rest)*); };
+    (Version; $p:ty) => { impl_subpixel!(Version; $p = (),); };
+    (Version; $p:ty = $gl:ty) => { impl_subpixel!(Version; $p = $gl,); };
+    (Version; $p:ty = $gl:ty, $($rest:tt)*) => {
+        unsafe impl SubPixel for $p { type GL = $gl; }
+        impl_subpixel!(Version; $($rest)*);
+    };
+
+    (; $($p:ty = $ty:ident $(($gl:ident))?),*) => { };
+    ($kind0:ty $(, $kind:ty)*; $($p:ty = $ty:ident),*) => {
+        $(
+            unsafe impl SubPixelData<$kind0> for $p {
+                fn ty<GL:Supports<Self::GL>>(_:&GL) -> $kind0 {<$kind0>::$ty}
+            }
+        )*
+        impl_subpixel!($($kind),*; $($p = $ty),*);
+    };
+}
+
+impl_subpixel!(Version; u8, i8, u16, i16, u32, i32, f32);
+
+impl_subpixel!{
+    IntType, FloatType;
+    u8 = UByte, u16 = UShort, u32 = UInt, i8 = Byte, i16 = UShort, i32 = Int
+}
+
+impl_subpixel!(FloatType; f32 = Float);
+
+pub trait PackedPixel = Pixel<SubPixel=!>;
+
+pub unsafe trait Pixel: PixelData + Copy + PartialEq {
+    type SubPixel: SubPixel;
+    fn components() -> usize;
+}
+
+macro_rules! impl_pixel {
+
+    () => {};
+
+    ($p:ident; $($rest:tt)*) => {
+
+        unsafe impl Pixel for $p {
+            type SubPixel = $p;
+            fn components() -> usize {1}
+        }
+
+        unsafe impl PixelData for $p {
+            fn block_width() -> u8 {1}
+            fn block_height() -> u8 {1}
+            fn block_depth() -> u8 {1}
+            fn count(&self) -> usize {1}
+        }
+
+        impl_pixel!($($rest)*);
+    };
+
+    ($vec:ident as [$p:ident; $n:literal]; $($rest:tt)*) => {
+        unsafe impl Pixel for $vec {
+            type SubPixel = $p;
+            fn components() -> usize {$n}
+        }
+
+        unsafe impl PixelData for $vec {
+            fn block_width() -> u8 {1}
+            fn block_height() -> u8 {1}
+            fn block_depth() -> u8 {1}
+            fn count(&self) -> usize {1}
+        }
+
+        impl_pixel!($($rest)*);
+    };
+
+    ([$T:ident; $n:literal]; $($rest:tt)*) => {
+        unsafe impl<$T:SubPixel> Pixel for [$T; $n] {
+            type SubPixel = $T;
+            fn components() -> usize {$n}
+        }
+
+        unsafe impl<$T:SubPixel> PixelData for [$T; $n] {
+            fn block_width() -> u8 {1}
+            fn block_height() -> u8 {1}
+            fn block_depth() -> u8 {1}
+            fn count(&self) -> usize {1}
+        }
+
+        impl_pixel!($($rest)*);
+    }
+}
+
+impl_pixel! {
+    u8; i8; u16; i16; u32; i32; f32;
+    [T; 1]; [T; 2]; [T; 3]; [T; 4];
+
+    uvec2 as [u32;2]; uvec3 as [u32;3]; uvec4 as [u32;4];
+    ivec2 as [i32;2]; ivec3 as [i32;3]; ivec4 as [i32;4];
+     vec2 as [f32;2];  vec3 as [f32;3];  vec4 as [f32;4];
+
+}
+
+pub unsafe trait PixelData: ByteOrder {
+    fn block_width() -> u8;
+    fn block_height() -> u8;
+    fn block_depth() -> u8;
+    fn count(&self) -> usize;
+}
+
+unsafe impl<P:PixelData> PixelData for [P] {
+    fn block_width() -> u8 {1}
+    fn block_height() -> u8 {1}
+    fn block_depth() -> u8 {1}
+    fn count(&self) -> usize { self.len() }
+}
+
+unsafe impl<F:SpecificCompressed> PixelData for Cmpr<F> {
+    fn block_width() -> u8 { F::block_width() }
+    fn block_height() -> u8 { F::block_height() }
+    fn block_depth() -> u8 { F::block_depth() }
+    fn count(&self) -> usize { self.len() }
+}
+
+pub unsafe trait CompressedPixelData: PixelData {
+    type Format: SpecificCompressed;
+}
+
+unsafe impl<F:SpecificCompressed> CompressedPixelData for Cmpr<F> {
+    type Format = F;
+}
+
+pub unsafe trait UncompressedPixelData<F: PixelLayout>: PixelData {
+    type GL: GLVersion;
+    fn layout<GL:Supports<Self::GL>>(gl: &GL) -> F;
+}
+
+unsafe impl<F: PixelLayout, P:Pixel+UncompressedPixelData<F>> UncompressedPixelData<F> for [P] {
+    type GL = P::GL;
+    //TODO: Fix the panic that occurs when the array is empty
+    fn layout<GL:Supports<Self::GL>>(gl: &GL) -> F { P::layout(gl) }
+}
+
+macro_rules! impl_vec_data {
+    (; $($vec:ident as $inner:tt with GL=$gl:tt),*) => {};
+    ($layout:ident $(, $layouts:ident)*; $($vec:ident as $inner:tt with GL=$gl:tt),*) => {
+        $(
+            unsafe impl UncompressedPixelData<$layout> for $vec {
+                type GL = $gl;
+                fn layout<GL:Supports<$gl>>(gl: &GL) -> $layout {
+                    let gl: $gl = downgrade_to(gl);
+                    <$inner as UncompressedPixelData<$layout>>::layout(&gl)
+                }
+            }
+        )*
+        impl_vec_data!($($layouts),*;  $($vec as $inner with GL=$gl),*);
+    }
+}
+
+//TODO re-add vec3s once the alignment is fixed
+
+impl_vec_data!{
+    IntLayout, FloatLayout;
+    uvec2 as [u32;2] with GL=GL30, ivec2 as [i32;2] with GL=GL30,
+    // uvec3 as [u32;3] with GL=(),   ivec3 as [i32;3] with GL=(),
+    uvec4 as [u32;4] with GL=(),   ivec4 as [i32;4] with GL=()
+}
+
+impl_vec_data!{
+    FloatLayout;
+    vec2 as [f32;2] with GL=GL30, vec3 as [f32;3] with GL=(), vec4 as [f32;4] with GL=()
+}
+
+macro_rules! impl_arr_data {
+    ([$C:ident; 1] $ty:ident $layout:ident) => {
+        unsafe impl<$C:SubPixelData<$ty>> UncompressedPixelData<$layout> for [C;1] {
+            type GL = C::GL;
+            fn layout<GL:Supports<Self::GL>>(gl: &GL) -> $layout { C::ty(gl).into() }
+        }
+    };
+
+    ([$C:ident; $N:literal] $layout:ident::$variant:ident($comp:expr, $ty:ident)) => {
+        unsafe impl<$C:SubPixelData<$ty>> UncompressedPixelData<$layout> for [C;$N] {
+            type GL = C::GL;
+            fn layout<GL:Supports<Self::GL>>(gl: &GL) -> $layout {
+                $layout::$variant($comp, <$C as SubPixelData<$ty>>::ty(gl))
+            }
+        }
+    }
+}
+
+impl_arr_data!([C; 4] IntLayout::Integer(IntColorComponents::RGBA_INTEGER, IntType));
+impl_arr_data!([C; 4] FloatLayout::Float(ColorComponents::RGBA, FloatType));
+
+impl_arr_data!([C; 3] IntLayout::Integer(IntColorComponents::RGB_INTEGER, IntType));
+impl_arr_data!([C; 3] FloatLayout::Float(ColorComponents::RGB, FloatType));
+
+unsafe impl<C:SubPixelData<IntType>> UncompressedPixelData<IntLayout> for [C;2] {
+    type GL = (GL30, C::GL);
+    fn layout<GL:Supports<(GL30, C::GL)>>(gl: &GL) -> IntLayout {
+        let gl: Self::GL = downgrade_to(gl);
+        IntLayout::Integer(IntColorComponents::RG_INTEGER(downgrade_to(&gl)), C::ty(&gl))
+    }
+}
+
+unsafe impl<C:SubPixelData<FloatType>> UncompressedPixelData<FloatLayout> for [C;2] {
+    type GL = (GL30, C::GL);
+    fn layout<GL:Supports<(GL30, C::GL)>>(gl: &GL) -> FloatLayout {
+        let gl: Self::GL = downgrade_to(gl);
+        FloatLayout::Float(ColorComponents::RG(downgrade_to(&gl)), C::ty(&gl))
+    }
+}
+
+impl_arr_data!([C; 1] IntLayout::Integer(IntColorComponents::RED_INTEGER, IntType));
+impl_arr_data!([C; 1] FloatLayout::Float(ColorComponents::RED, FloatType));
+impl_arr_data!([C; 1] IntType StencilLayout);
+impl_arr_data!([C; 1] FloatType DepthLayout);
+// impl_arr_data!([C; 1] FloatType DepthStencilLayout);
+
+macro_rules! impl_prim_data {
+
+    ($layout:ident for $p:ident with $ty:ident) => {
+        unsafe impl UncompressedPixelData<$layout> for $p {
+            type GL = ();
+            fn layout<GL:Supports<()>>(gl: &GL) -> $layout {
+                <Self as SubPixelData<$ty>>::ty(gl).into()
+            }
+        }
+    };
+
+    (@int $($p:ident $gl:ty;)*) => {
+        $(
+            impl_prim_data!(IntLayout for $p with IntType);
+            impl_prim_data!(FloatLayout for $p with IntType);
+            impl_prim_data!(StencilLayout for $p with IntType);
+            impl_prim_data!(DepthLayout for $p with IntType);
+        )*
+    };
+
+    (@float $($p:ident $gl:ty;)*) => {
+        $(
+            impl_prim_data!(FloatLayout for $p with FloatType);
+            impl_prim_data!(DepthLayout for $p with FloatType);
+            impl_prim_data!(DepthStencilLayout for $p with FloatType);
+        )*
+    }
+
+}
+
+impl_prim_data!(@int u8(); i8(); u16(); i16(); u32(); i32(););
+impl_prim_data!(@float f32(););
