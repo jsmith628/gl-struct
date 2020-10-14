@@ -1,9 +1,9 @@
 use super::*;
 
 #[derive(Clone,Copy)]
-pub struct ClientImage<B:?Sized> {
+pub struct ClientImage<P:?Sized> {
     dim: [usize;3],
-    pixels: B
+    pixels: P
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -40,7 +40,7 @@ impl<P> ClientImage<P> {
     }
 }
 
-impl<B:?Sized> ClientImage<B> {
+impl<P:?Sized> ClientImage<P> {
 
     pub fn dim(&self) -> [usize; 3] { self.dim }
 
@@ -48,8 +48,8 @@ impl<B:?Sized> ClientImage<B> {
     pub fn height(&self) -> usize { self.dim()[1] }
     pub fn depth(&self) -> usize { self.dim()[2] }
 
-    pub fn as_ref(&self) -> ClientImage<&B> { ClientImage { dim:self.dim, pixels:&self.pixels } }
-    pub fn as_mut(&mut self) -> ClientImage<&mut B> { ClientImage { dim:self.dim, pixels:&mut self.pixels } }
+    pub fn as_ref(&self) -> ClientImage<&P> { ClientImage { dim:self.dim, pixels:&self.pixels } }
+    pub fn as_mut(&mut self) -> ClientImage<&mut P> { ClientImage { dim:self.dim, pixels:&mut self.pixels } }
 
 }
 
@@ -134,7 +134,7 @@ impl<P:Pixel, B:PixelSrc<Pixels=[P]>> ClientImage<B> {
 }
 
 impl<P:Pixel,B:PixelSrc<Pixels=[P]>> UncompressedImage for ClientImage<B> { type Pixel = P; }
-impl<F:SpecificCompressed,B:PixelSrc<Pixels=Cmpr<F>>> CompressedImage for ClientImage<B> {
+impl<F:SpecificCompressed,P:PixelSrc<Pixels=Cmpr<F>>> CompressedImage for ClientImage<P> {
     type Format = F;
 }
 
@@ -173,33 +173,33 @@ fn check_buffer_size(dim:[usize; 3], len: Option<usize> ) {
     }
 }
 
-impl<B:PixelSrc+?Sized> ImageSrc for ClientImage<B> {
-    type Pixels = B::Pixels;
-    type GL = B::GL;
-    fn image(&self) -> ImageRef<Self::Pixels,Self::GL> {
+impl<P:PixelSrc+?Sized> ImageSrc for ClientImage<P> {
+    type Pixels = P::Pixels;
+    type GL = P::GL;
+    fn image(&self) -> ImageRef<P::Pixels,P::GL> {
         let (dim, pixels) = (self.dim(), self.pixels.pixels());
         check_buffer_size(dim, pixels._len());
         unsafe { ClientImage::new_unchecked(dim, pixels).into_sub_image([0,0,0], dim) }
     }
 }
 
-impl<B:PixelDst+?Sized> ImageDst for ClientImage<B> {
-    fn image_mut(&mut self) -> ImageMut<Self::Pixels,Self::GL> {
+impl<P:PixelDst+?Sized> ImageDst for ClientImage<P> {
+    fn image_mut(&mut self) -> ImageMut<P::Pixels,P::GL> {
         let (dim, pixels) = (self.dim(), self.pixels.pixels_mut());
         check_buffer_size(dim, pixels._len());
         unsafe { ClientImage::new_unchecked(dim, pixels).into_sub_image([0,0,0], dim) }
     }
 }
 
-unsafe impl<B:FromPixels> OwnedImage for ClientImage<B> {
-    type Hint = B::Hint;
+unsafe impl<P:FromPixels> OwnedImage for ClientImage<P> {
+    type Hint = P::Hint;
 
-    unsafe fn from_gl<G:FnOnce(PixelStore, PixelsMut<Self::Pixels,Self::GL>)>(
-        gl:&B::GL, hint:B::Hint, dim: [usize;3], get:G
+    unsafe fn from_gl<G:FnOnce(PixelStore, PixelsMut<P::Pixels,P::GL>)>(
+        gl:&P::GL, hint:P::Hint, dim: [usize;3], get:G
     ) -> Self {
         let settings = Default::default();
         ClientImage {
-            dim, pixels: B::from_pixels(gl, hint, pixel_count(dim), |ptr| get(settings, ptr))
+            dim, pixels: P::from_pixels(gl, hint, pixel_count(dim), |ptr| get(settings, ptr))
         }
     }
 }
