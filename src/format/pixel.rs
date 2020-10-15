@@ -5,6 +5,7 @@ use crate::glsl::*;
 use crate::buffer::*;
 
 use std::convert::TryInto;
+use std::mem::size_of;
 
 glenum! {
 
@@ -512,6 +513,7 @@ macro_rules! impl_pixel {
             fn block_width() -> usize {1}
             fn block_height() -> usize {1}
             fn block_depth() -> usize {1}
+            fn block_size() -> usize {size_of::<Self>()}
             fn len_ref(&self) -> usize {1}
             fn len_buf<A:BufferStorage>(_: Slice<Self, A>) -> usize {1}
         }
@@ -529,6 +531,7 @@ macro_rules! impl_pixel {
             fn block_width() -> usize {1}
             fn block_height() -> usize {1}
             fn block_depth() -> usize {1}
+            fn block_size() -> usize {size_of::<Self>()}
             fn len_ref(&self) -> usize {1}
             fn len_buf<A:BufferStorage>(_: Slice<Self, A>) -> usize {1}
         }
@@ -546,6 +549,7 @@ macro_rules! impl_pixel {
             fn block_width() -> usize {1}
             fn block_height() -> usize {1}
             fn block_depth() -> usize {1}
+            fn block_size() -> usize {size_of::<Self>()}
             fn len_ref(&self) -> usize {1}
             fn len_buf<A:BufferStorage>(_: Slice<Self, A>) -> usize {1}
         }
@@ -568,6 +572,7 @@ pub unsafe trait PixelData: ByteOrder {
     fn block_width() -> usize;
     fn block_height() -> usize;
     fn block_depth() -> usize;
+    fn block_size() -> usize;
     fn len_ref(&self) -> usize;
     fn len_buf<A:BufferStorage>(this: Slice<Self, A>) -> usize;
 }
@@ -576,6 +581,7 @@ unsafe impl<P:PixelData> PixelData for [P] {
     fn block_width() -> usize {1}
     fn block_height() -> usize {1}
     fn block_depth() -> usize {1}
+    fn block_size() -> usize {size_of::<P>()}
     fn len_ref(&self) -> usize { self.len() }
     fn len_buf<A:BufferStorage>(this: Slice<Self, A>) -> usize { this.len() }
 }
@@ -584,6 +590,7 @@ unsafe impl<F:SpecificCompressed> PixelData for Cmpr<F> {
     fn block_width() -> usize { F::block_width() }
     fn block_height() -> usize { F::block_height() }
     fn block_depth() -> usize { F::block_depth() }
+    fn block_size() -> usize { F::block_size() }
     fn len_ref(&self) -> usize { self.len() }
     fn len_buf<A:BufferStorage>(this: Slice<Self, A>) -> usize { this.len() }
 }
