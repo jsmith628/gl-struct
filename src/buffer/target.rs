@@ -12,6 +12,14 @@ pub(crate) static mut ARRAY_BUFFER: BindingLocation<BufferTarget> = unsafe {
     BindingLocation::new(BufferTarget::ArrayBuffer)
 };
 
+pub(crate) static mut PIXEL_PACK_BUFFER: BindingLocation<BufferTarget> = unsafe {
+    BindingLocation::new(BufferTarget::PixelPackBuffer)
+};
+
+pub(crate) static mut PIXEL_UNPACK_BUFFER: BindingLocation<BufferTarget> = unsafe {
+    BindingLocation::new(BufferTarget::PixelUnpackBuffer)
+};
+
 glenum!{
     ///Binding targets for [glBindBuffer()](gl::BindBuffer()) and OpenGL calls
     ///acting on those targets
@@ -64,4 +72,28 @@ impl<'a,T:?Sized,A:BufferStorage> Target<SliceMut<'a,T,A>> for BufferTarget {
     fn target_id(self) -> GLenum { self as GLenum }
     unsafe fn bind(self, buf:&SliceMut<T,A>) { gl::BindBuffer(self.into(), buf.id()) }
     unsafe fn unbind(self) { gl::BindBuffer(self.into(), 0) }
+}
+
+impl<'a,T:?Sized,A:BufferStorage> Target<GLRef<'a,T,A>> for BufferTarget {
+    fn target_id(self) -> GLenum { self as GLenum }
+    unsafe fn unbind(self) { gl::BindBuffer(self.into(), 0) }
+    unsafe fn bind(self, buf:&GLRef<T,A>) { if let GLRef::Buf(ptr) = buf { self.bind(ptr) } }
+}
+
+impl<'a,T:?Sized,A:BufferStorage> Target<GLMut<'a,T,A>> for BufferTarget {
+    fn target_id(self) -> GLenum { self as GLenum }
+    unsafe fn unbind(self) { gl::BindBuffer(self.into(), 0) }
+    unsafe fn bind(self, buf:&GLMut<'a,T,A>) { if let GLMut::Buf(ptr) = buf { self.bind(ptr) } }
+}
+
+impl<'a,T:?Sized,GL> Target<Pixels<'a,T,GL>> for BufferTarget {
+    fn target_id(self) -> GLenum { self as GLenum }
+    unsafe fn unbind(self) { gl::BindBuffer(self.into(), 0) }
+    unsafe fn bind(self, buf:&Pixels<'a,T,GL>) { self.bind(&buf.borrow()) }
+}
+
+impl<'a,T:?Sized,GL> Target<PixelsMut<'a,T,GL>> for BufferTarget {
+    fn target_id(self) -> GLenum { self as GLenum }
+    unsafe fn unbind(self) { gl::BindBuffer(self.into(), 0) }
+    unsafe fn bind(self, buf:&PixelsMut<'a,T,GL>) { self.bind(&buf.borrow()) }
 }
