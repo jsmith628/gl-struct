@@ -37,6 +37,14 @@ impl<'a,P:?Sized> Pixels<'a,P,GL_ARB_pixel_buffer_object> {
 impl<'a,P:?Sized,GL> Pixels<'a,P,GL> {
     pub fn size(&self) -> usize { self.pixels.size() }
     pub fn borrow(&self) -> GLRef<P,ReadOnly> { self.pixels }
+
+    pub fn void_ptr(&mut self) -> *const GLvoid {
+        match self.borrow() {
+            GLRef::Ref(ptr) => ptr as *const P as *const GLvoid,
+            GLRef::Buf(ptr) => ptr.offset() as *const GLvoid
+        }
+    }
+
 }
 
 impl<'a,P:PixelData+?Sized,GL> Pixels<'a,P,GL> {
@@ -89,6 +97,21 @@ impl<'a,P:?Sized,GL> PixelsMut<'a,P,GL> {
     pub fn size(&self) -> usize { self.pixels.size() }
     pub fn borrow(&self) -> GLRef<P,ReadOnly> { (&self.pixels).into() }
     pub fn borrow_mut(&mut self) -> GLMut<P,ReadOnly> { (&mut self.pixels).into() }
+
+    pub fn void_ptr(&mut self) -> *const GLvoid {
+        match self.borrow_mut() {
+            GLMut::Mut(ptr) => ptr as *mut P as *const GLvoid,
+            GLMut::Buf(ptr) => ptr.offset() as *const GLvoid
+        }
+    }
+
+    pub fn void_ptr_mut(&mut self) -> *mut GLvoid {
+        match self.borrow_mut() {
+            GLMut::Mut(ptr) => ptr as *mut P as *mut GLvoid,
+            GLMut::Buf(ptr) => ptr.offset() as *mut GLvoid
+        }
+    }
+
 }
 
 impl<'a,P:PixelData+?Sized,GL> PixelsMut<'a,P,GL> {
