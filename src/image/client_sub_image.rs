@@ -88,16 +88,19 @@ impl<I:?Sized> ClientSubImage<I> {
 trait InnerImg {
     fn _base_dim(&self) -> [usize; 3];
     fn _block_dim(&self) -> [usize; 3];
+    fn _block_size(&self) -> usize;
 }
 
 impl<I:ImageSrc+?Sized> InnerImg for ClientSubImage<I> {
     default fn _base_dim(&self) -> [usize; 3] { self.image()._base_dim() }
     default fn _block_dim(&self) -> [usize; 3] { self.image()._block_dim() }
+    default fn _block_size(&self) -> usize { self.image()._block_size() }
 }
 
-impl<P:PixelSrc+?Sized> InnerImg for ClientSubImage<ClientImage<P>> where ClientImage<P>: ImageSrc {
+impl<P:PixelSrc+?Sized> InnerImg for ClientSubImage<ClientImage<P>> {
     fn _base_dim(&self) -> [usize; 3] { self.image.dim() }
     fn _block_dim(&self) -> [usize; 3] { self.image.block_dim() }
+    fn _block_size(&self) -> usize { self.image.block_size() }
 }
 
 impl<I:ImageSrc+?Sized> ClientSubImage<I> {
@@ -113,6 +116,8 @@ impl<I:ImageSrc+?Sized> ClientSubImage<I> {
     pub fn block_width(&self) -> usize { self.block_dim()[0] }
     pub fn block_height(&self) -> usize { self.block_dim()[1] }
     pub fn block_depth(&self) -> usize { self.block_dim()[2] }
+
+    pub fn block_size(&self) -> usize { self._block_size() }
 
 }
 

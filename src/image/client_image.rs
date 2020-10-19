@@ -61,6 +61,8 @@ impl<P:PixelSrc+?Sized> ClientImage<P> {
     pub fn block_height(&self) -> usize { <P::Pixels as PixelData>::block_height() }
     pub fn block_depth(&self) -> usize { <P::Pixels as PixelData>::block_depth() }
 
+    pub fn block_size(&self) -> usize { <P::Pixels as PixelData>::block_size() }
+
 }
 
 
