@@ -11,11 +11,9 @@ unsafe fn apply_packing<P:PixelData+?Sized>(img: &ImageMut<P,()>) {
     // gl::PixelStorei(gl::PACK_LSB_FIRST,    self.lsb_first.into());
     // gl::PixelStorei(gl::PACK_ALIGNMENT,    self.row_alignment.0.into());
 
-    //TODO: do this manually using pointer offsets since it makes this step compiler-optimizable
-    //and reduces the number of OpenGL calls
-    gl::PixelStorei(gl::PACK_SKIP_PIXELS,  img.offset_x().try_into().unwrap());
-    gl::PixelStorei(gl::PACK_SKIP_ROWS,    img.offset_y().try_into().unwrap());
-    gl::PixelStorei(gl::PACK_SKIP_IMAGES,  img.offset_z().try_into().unwrap());
+    // gl::PixelStorei(gl::PACK_SKIP_PIXELS,  img.offset_x().try_into().unwrap());
+    // gl::PixelStorei(gl::PACK_SKIP_ROWS,    img.offset_y().try_into().unwrap());
+    // gl::PixelStorei(gl::PACK_SKIP_IMAGES,  img.offset_z().try_into().unwrap());
 
     //TODO: try benchmarking some tests to avoid these calls
     gl::PixelStorei(gl::PACK_ROW_LENGTH,   img.base_width().try_into().unwrap());
@@ -34,6 +32,35 @@ unsafe fn apply_compressed_packing<P:PixelData+?Sized>(img: &ImageMut<P,()>) {
 
 }
 
+fn pixel_ptr_with_offset<P:PixelData+?Sized>(img: &mut ImageMut<P,()>)  -> *mut GLvoid {
+
+    //get the dimensions, block dimensions, and offset
+    let [w, h, _] = img.base_dim();
+    let [bw, bh, bd] = img.block_dim();
+    let [x, y, z] = img.offset();
+
+    //get the offset position _in blocks_
+    //NOTE: here, we assume that the offsets are divisible by the block size of the image
+    //as the CLientImage and ClientSubImage api disallows safe code from doing so
+    let [bx, by, bz] = [x/bw, y/bh, z/bd];
+
+    //get the number of blocks to offset by
+    //NOTE that we ignore all the stuff with row alignment since that is not currently implemented
+    //(and probably won't be)
+    let block_offset = bz*h + by*w + bx;
+    let byte_offset = block_offset * img.block_size();
+
+    //get the pointer and offset it
+    let ptr = img.base_image_mut().pixels_mut().void_ptr_mut();
+    unsafe {
+        //shouldn't overflow or go out of bounds since the image system
+        //literally checks that upon creation
+        ptr.offset(byte_offset.try_into().unwrap())
+    }
+
+}
+
+
 impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImage<'a,F,T> {
 
     unsafe fn pack<GL, P>(&self, gl:&GL, mut img: ImageMut<P,()>) where
@@ -50,7 +77,7 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImage<'a,F,T> {
                     t.resource().level().try_into().unwrap(),
                     P::layout(gl).fmt().into(),
                     P::layout(gl).ty().into(),
-                    img.resource_mut().base_image_mut().pixels_mut().void_ptr_mut()
+                    pixel_ptr_with_offset(img.resource_mut())
                 )
             )
         );
@@ -77,7 +104,7 @@ impl<'a,F:SpecificCompressed,T:CompressedTransferTarget<F>> TexImage<'a,F,T> {
                 |mut img| gl::GetCompressedTexImage(
                     t.resource().face.into(),
                     t.resource().level().try_into().unwrap(),
-                    img.resource_mut().base_image_mut().pixels_mut().void_ptr_mut()
+                    pixel_ptr_with_offset(img.resource_mut())
                 )
             )
         );
