@@ -146,6 +146,31 @@ impl<P:PixelSrc> ClientImage<P> {
 
 }
 
+impl<'a,P:?Sized,GL1:GLVersion> ClientImage<Pixels<'a,P,GL1>> {
+
+    pub fn lock<GL2:Supports<GL1>>(self) -> ClientImage<Pixels<'a,P,GL2>> {
+        ClientImage { dim: self.dim, pixels: self.pixels.lock() }
+    }
+
+    pub fn unlock<GL2:Supports<GL1>>(self, gl:&GL2) -> ClientImage<Pixels<'a,P,()>> {
+        ClientImage { dim: self.dim, pixels: self.pixels.unlock(gl) }
+    }
+
+}
+
+impl<'a,P:?Sized,GL1:GLVersion> ClientImage<PixelsMut<'a,P,GL1>> {
+
+    pub fn lock<GL2:Supports<GL1>>(self) -> ClientImage<PixelsMut<'a,P,GL2>> {
+        ClientImage { dim: self.dim, pixels: self.pixels.lock() }
+    }
+
+    pub fn unlock<GL2:Supports<GL1>>(self, gl:&GL2) -> ClientImage<PixelsMut<'a,P,()>> {
+        ClientImage { dim: self.dim, pixels: self.pixels.unlock(gl) }
+    }
+
+}
+
+
 impl<P:Pixel,B:PixelSrc<Pixels=[P]>> UncompressedImage for ClientImage<B> { type Pixel = P; }
 impl<F:SpecificCompressed,P:PixelSrc<Pixels=Cmpr<F>>> CompressedImage for ClientImage<P> {
     type Format = F;
@@ -160,6 +185,16 @@ fn check_buffer_size(dim:[usize; 3], len: usize ) {
     if req_len != len {
         panic!("image pixel buffer length illegally modified from {} to {}.", req_len, len)
     }
+}
+
+impl<P:PixelSrc+?Sized> PixelSrc for ClientImage<P> {
+    type Pixels = P::Pixels;
+    type GL = P::GL;
+    fn pixels(&self) -> Pixels<P::Pixels,P::GL> { self.pixels.pixels() }
+}
+
+impl<P:PixelDst+?Sized> PixelDst for ClientImage<P> {
+    fn pixels_mut(&mut self) -> PixelsMut<P::Pixels,P::GL> { self.pixels.pixels_mut() }
 }
 
 impl<P:PixelSrc+?Sized> ImageSrc for ClientImage<P> {

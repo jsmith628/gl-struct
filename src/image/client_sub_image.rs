@@ -116,6 +116,34 @@ impl<I:ImageSrc+?Sized> ClientSubImage<I> {
 
 }
 
+impl<'a,P:?Sized,GL1:GLVersion> ImageRef<'a,P,GL1> {
+
+    pub fn lock<GL2:Supports<GL1>>(self) -> ImageRef<'a,P,GL2> {
+        ClientSubImage { offset: self.offset, dim: self.dim, image: self.image.lock() }
+    }
+
+    pub fn unlock<GL2:Supports<GL1>>(self, gl:&GL2) -> ImageRef<'a,P,()> {
+        ClientSubImage { offset: self.offset, dim: self.dim, image: self.image.unlock(gl) }
+    }
+
+}
+
+impl<'a,P:?Sized,GL1:GLVersion> ImageMut<'a,P,GL1> {
+
+    pub fn lock<GL2:Supports<GL1>>(self) -> ImageMut<'a,P,GL2> {
+        ClientSubImage { offset: self.offset, dim: self.dim, image: self.image.lock() }
+    }
+
+    pub fn unlock<GL2:Supports<GL1>>(self, gl:&GL2) -> ImageMut<'a,P,()> {
+        ClientSubImage { offset: self.offset, dim: self.dim, image: self.image.unlock(gl) }
+    }
+
+}
+
+impl<I:?Sized> ClientSubImage<I> {
+    pub(crate) fn base_image(&self) -> &I { &self.image }
+    pub(crate) fn base_image_mut(&mut self) -> &mut I { &mut self.image }
+}
 
 impl<I:UncompressedImage+?Sized> UncompressedImage for ClientSubImage<I> { type Pixel = I::Pixel; }
 impl<I:CompressedImage+?Sized> CompressedImage for ClientSubImage<I> { type Format = I::Format; }
