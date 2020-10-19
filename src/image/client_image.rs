@@ -1,5 +1,8 @@
 use super::*;
 
+//TODO: consider changing the dimension type to be an isize in order to better fit in line with
+//use in the GL
+
 #[derive(Clone,Copy)]
 pub struct ClientImage<P:?Sized> {
     dim: [usize;3],
