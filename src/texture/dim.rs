@@ -101,3 +101,36 @@ pub(super) fn compressed_block_check<D:TexDim,F:SpecificCompressed>(dim:D) {
     if dim.height() % F::block_height() as usize != 0 {panic!("Image destination height not block aligned");}
     if dim.depth() % F::block_depth() as usize   != 0 {panic!("Image destination depth not block aligned");}
 }
+
+pub(super) unsafe fn offset_img_ptr_mut(
+    ptr: *mut GLvoid, block_dim: [usize;3], block_size: usize, offset: [usize;3], dim: [usize;3]
+) -> *mut GLvoid {
+    offset_img_ptr(ptr, block_dim, block_size, offset, dim) as *mut GLvoid
+}
+
+pub(super) unsafe fn offset_img_ptr(
+    ptr: *const GLvoid, block_dim: [usize;3], block_size: usize, offset: [usize;3], dim: [usize;3]
+) -> *const GLvoid {
+
+    //pattern match for convenience
+    let [bw, bh, bd] = block_dim;
+    let [x, y, z] = offset;
+    let [w, h, _] = dim;
+
+    //get the offset position _in blocks_
+    //NOTE: here, when the data comes from the image system, we can assume that the offsets are
+    //divisible by the block size of the image as ClientImage and ClientSubImage disallow safe code
+    //from doing so
+    let [bx, by, bz] = [x/bw, y/bh, z/bd];
+
+    //get the number of blocks to offset by
+    //NOTE that we ignore all the stuff with row alignment since that is not currently implemented
+    //(and probably won't be)
+    let block_offset = bz*h + by*w + bx;
+    let byte_offset = block_offset * block_size;
+
+    //shouldn't overflow or go out of bounds since the image system
+    //checks for it upon creation
+    ptr.offset(byte_offset.try_into().unwrap())
+
+}
