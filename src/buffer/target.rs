@@ -1,5 +1,9 @@
 use super::*;
 
+use crate::image::{ImageRef, ImageMut};
+use crate::pixels::{PixelSrc, Pixels, PixelsMut};
+use crate::format::PixelData;
+
 pub(super) static mut COPY_READ_BUFFER: BindingLocation<BufferTarget> = unsafe {
     BindingLocation::new(BufferTarget::CopyReadBuffer)
 };
@@ -96,4 +100,16 @@ impl<'a,T:?Sized,GL> Target<PixelsMut<'a,T,GL>> for BufferTarget {
     fn target_id(self) -> GLenum { self as GLenum }
     unsafe fn unbind(self) { gl::BindBuffer(self.into(), 0) }
     unsafe fn bind(self, buf:&PixelsMut<'a,T,GL>) { self.bind(&buf.borrow()) }
+}
+
+impl<'a,T:PixelData+?Sized,GL:GLVersion> Target<ImageRef<'a,T,GL>> for BufferTarget {
+    fn target_id(self) -> GLenum { self as GLenum }
+    unsafe fn unbind(self) { gl::BindBuffer(self.into(), 0) }
+    unsafe fn bind(self, buf:&ImageRef<'a,T,GL>) { self.bind(&buf.base_image().pixels()) }
+}
+
+impl<'a,T:PixelData+?Sized,GL:GLVersion> Target<ImageMut<'a,T,GL>> for BufferTarget {
+    fn target_id(self) -> GLenum { self as GLenum }
+    unsafe fn unbind(self) { gl::BindBuffer(self.into(), 0) }
+    unsafe fn bind(self, buf:&ImageMut<'a,T,GL>) { self.bind(&buf.base_image().pixels()) }
 }
