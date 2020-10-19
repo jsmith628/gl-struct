@@ -210,14 +210,26 @@ pub(crate) struct BindingLocation<T>(pub(crate) T, PhantomData<*const ()>);
 
 ///An object that owns a binding of a [Resource] to a particular [BindingLocation] and unbinds it when leaving scope
 pub(crate) struct Binding<'a,R,T:Target<R>>(pub(crate) &'a BindingLocation<T>, pub(crate) &'a R);
+pub(crate) struct BindingMut<'a,R,T:Target<R>>(pub(crate) &'a BindingLocation<T>, pub(crate) &'a mut R);
 
 impl<'a,R,T:Target<R>> Binding<'a,R,T> {
     #[inline] pub fn target(&self) -> T { *self.0.target() }
-    #[inline] pub fn resource(&self) -> &R { self.1 }
     #[inline] pub fn target_id(&self) -> GLenum { self.target().target_id() }
+    #[inline] pub fn resource(&self) -> &R { self.1 }
 }
 
 impl<'a,R,T:Target<R>> Drop for Binding<'a,R,T> {
+    #[inline] fn drop(&mut self) { unsafe { self.target().unbind() } }
+}
+
+impl<'a,R,T:Target<R>> BindingMut<'a,R,T> {
+    #[inline] pub fn target(&self) -> T { *self.0.target() }
+    #[inline] pub fn target_id(&self) -> GLenum { self.target().target_id() }
+    #[inline] pub fn resource(&self) -> &R { self.1 }
+    #[inline] pub fn resource_mut(&mut self) -> &mut R { self.1 }
+}
+
+impl<'a,R,T:Target<R>> Drop for BindingMut<'a,R,T> {
     #[inline] fn drop(&mut self) { unsafe { self.target().unbind() } }
 }
 
@@ -249,10 +261,23 @@ impl<T> BindingLocation<T> {
     }
 
     #[inline]
+    pub fn bind_mut<'a,R>(&'a mut self, resource: &'a mut R) -> BindingMut<'a,R,T> where T:Target<R> {
+        unsafe { self.target().bind(resource); }
+        BindingMut(self, resource)
+    }
+
+    #[inline]
     pub fn map_bind<'a,R,U,F>(&'a mut self, resource: &'a R, f:F) -> U
     where T: Target<R>, F: FnOnce(Binding<'a,R,T>) -> U
     {
         f(self.bind(resource))
+    }
+
+    #[inline]
+    pub fn map_bind_mut<'a,R,U,F>(&'a mut self, resource: &'a mut R, f:F) -> U
+    where T: Target<R>, F: FnOnce(BindingMut<'a,R,T>) -> U
+    {
+        f(self.bind_mut(resource))
     }
 
 
