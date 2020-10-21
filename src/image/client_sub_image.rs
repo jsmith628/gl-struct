@@ -150,9 +150,6 @@ impl<I:?Sized> ClientSubImage<I> {
     pub(crate) fn base_image_mut(&mut self) -> &mut I { &mut self.image }
 }
 
-impl<I:UncompressedImage+?Sized> UncompressedImage for ClientSubImage<I> { type Pixel = I::Pixel; }
-impl<I:CompressedImage+?Sized> CompressedImage for ClientSubImage<I> { type Format = I::Format; }
-
 impl<I:ImageSrc+?Sized> ImageSrc for ClientSubImage<I> {
     type Pixels = I::Pixels;
     type GL = I::GL;

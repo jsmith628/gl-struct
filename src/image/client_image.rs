@@ -175,12 +175,6 @@ impl<'a,P:?Sized,GL1:GLVersion> ClientImage<PixelsMut<'a,P,GL1>> {
 
 }
 
-
-impl<P:Pixel,B:PixelSrc<Pixels=[P]>> UncompressedImage for ClientImage<B> { type Pixel = P; }
-impl<F:SpecificCompressed,P:PixelSrc<Pixels=Cmpr<F>>> CompressedImage for ClientImage<P> {
-    type Format = F;
-}
-
 //NOTE: we need to check the size of the internal buffer since _hypothetically_ some asshole
 //_could_ modify the length of the backing image buffer to make it invalid and since we are going
 //directly to openGL from here, an invalid buffer size could be EXTREMELY memory unsafe.
@@ -217,18 +211,5 @@ impl<P:PixelDst+?Sized> ImageDst for ClientImage<P> {
         let (dim, pixels) = (self.dim(), self.pixels.pixels_mut());
         check_buffer_size(dim, pixels.len());
         unsafe { ClientImage::new_unchecked(dim, pixels).into_sub_image([0,0,0], dim) }
-    }
-}
-
-unsafe impl<P:FromPixels> OwnedImage for ClientImage<P> {
-    type Hint = P::Hint;
-
-    unsafe fn from_gl<G:FnOnce(PixelStore, PixelsMut<P::Pixels,P::GL>)>(
-        gl:&P::GL, hint:P::Hint, dim: [usize;3], get:G
-    ) -> Self {
-        let settings = Default::default();
-        ClientImage {
-            dim, pixels: P::from_pixels(gl, hint, pixel_count(dim), |ptr| get(settings, ptr))
-        }
     }
 }
