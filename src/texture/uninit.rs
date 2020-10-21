@@ -49,26 +49,24 @@ impl<T:TextureType> UninitTex<T> {
         }
     }
 
-    #[allow(unused_variables)]
-    pub fn image<F,I>(self, gl: &F::GL, data: I) -> Texture<F,T> where
-        F: InternalFormat,
-        I: TexImageSrc<F>,
-        T: PixelTransferTarget<F> + BaseImage
+    pub fn image<F:InternalFormat,GL,I:ImageSrc>(self, gl: &GL, img: I) -> Texture<F,T> where
+        T: PixelTransferTarget<F> + BaseImage,
+        I::Pixels: UncompressedPixelData<F::PixelLayout>,
+        GL: Supports<F::GL> + Supports<I::GL> + Supports<<I::Pixels as UncompressedPixelData<F::PixelLayout>>::GL>
     {
         let mut tex = Texture { id:self.id(), phantom:PhantomData };
-        // unsafe { tex.base_image_mut().image_unchecked(data); }
+        unsafe { tex.base_image_mut().image_init(gl, img.image().unlock(gl)); }
         forget(self);
         tex
     }
 
-    #[allow(unused_variables)]
-    pub fn compressed_image<F,I>(self, gl: &F::GL, data: I) -> Texture<F,T> where
-        F: SpecificCompressed,
-        I: CompressedImageSrc<Format=F>,
-        T: CompressedTransferTarget<F> + BaseImage
+    pub fn compressed_image<F:SpecificCompressed,GL,I:ImageSrc>(self, gl:&GL, img:I) -> Texture<F,T> where
+        T: CompressedTransferTarget<F> + BaseImage,
+        I::Pixels: CompressedPixelData<Format=F>,
+        GL: Supports<F::GL> + Supports<I::GL>
     {
         let mut tex = Texture { id:self.id(), phantom:PhantomData };
-        // unsafe { tex.base_image_mut().compressed_image_unchecked(data); }
+        unsafe { tex.base_image_mut().compressed_image_init(img.image().unlock(gl)); }
         forget(self);
         tex
     }

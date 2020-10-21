@@ -14,7 +14,7 @@ pub use self::dim::*;
 pub use self::uninit::*;
 pub use self::image::*;
 pub use self::pack::*;
-// pub use self::unpack::*;
+pub use self::unpack::*;
 pub use self::mipmap::*;
 pub use self::swizzle::*;
 pub use self::params::*;
@@ -25,7 +25,7 @@ mod uninit;
 mod mipmap;
 mod image;
 mod pack;
-// mod unpack;
+mod unpack;
 mod swizzle;
 mod params;
 
