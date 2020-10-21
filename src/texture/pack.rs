@@ -53,17 +53,18 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImage<'a,F,T> {
         GL: Supports<P::GL>
     {
 
-        apply_packing(&img);
-
         TEXTURE0.map_bind(self,
             |t| PIXEL_PACK_BUFFER.map_bind_mut(&mut img,
-                |mut img| gl::GetTexImage(
-                    t.resource().face.into(),
-                    t.resource().level().try_into().unwrap(),
-                    P::layout(gl).fmt().into(),
-                    P::layout(gl).ty().into(),
-                    pixel_ptr_with_offset(img.resource_mut())
-                )
+                |mut img| {
+                    apply_packing(img.resource());
+                    gl::GetTexImage(
+                        t.resource().face.into(),
+                        t.resource().level().try_into().unwrap(),
+                        P::layout(gl).fmt().into(),
+                        P::layout(gl).ty().into(),
+                        pixel_ptr_with_offset(img.resource_mut())
+                    )
+                }
             )
         );
 
@@ -83,14 +84,16 @@ impl<'a,F:InternalFormat,T:PixelTransferTarget<F>> TexImage<'a,F,T> {
 impl<'a,F:SpecificCompressed,T:CompressedTransferTarget<F>> TexImage<'a,F,T> {
 
     unsafe fn pack_compressed<P:CompressedPixelData<Format=F>+?Sized>(&self, mut img: ImageMut<P,()>) {
-        apply_compressed_packing(&img);
         TEXTURE0.map_bind(self,
             |t| PIXEL_PACK_BUFFER.map_bind_mut(&mut img,
-                |mut img| gl::GetCompressedTexImage(
-                    t.resource().face.into(),
-                    t.resource().level().try_into().unwrap(),
-                    pixel_ptr_with_offset(img.resource_mut())
-                )
+                |mut img| {
+                    apply_compressed_packing(img.resource());
+                    gl::GetCompressedTexImage(
+                        t.resource().face.into(),
+                        t.resource().level().try_into().unwrap(),
+                        pixel_ptr_with_offset(img.resource_mut())
+                    )
+                }
             )
         );
     }
