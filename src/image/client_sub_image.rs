@@ -154,7 +154,7 @@ impl<I:ImageSrc+?Sized> ImageSrc for ClientSubImage<I> {
     type Pixels = I::Pixels;
     type GL = I::GL;
     fn image(&self) -> ImageRef<Self::Pixels,Self::GL> {
-        let img = self.image();
+        let img = self.base_image().image();
         let (offset1, dim, offset2) = (self.offset(), self.dim(), img.offset());
         let offset = [offset1[0]+offset2[0], offset1[1]+offset2[1], offset1[2]+offset2[2]];
         check_bounds(offset, dim, img.dim(), img.block_dim()).map(
@@ -168,7 +168,7 @@ impl<I:ImageSrc+?Sized> ImageSrc for ClientSubImage<I> {
 impl<I:ImageDst+?Sized> ImageDst for ClientSubImage<I> {
     fn image_mut(&mut self) -> ImageMut<Self::Pixels,Self::GL> {
         let (offset1, dim) = (self.offset(), self.dim());
-        let img = self.image_mut();
+        let img = self.base_image_mut().image_mut();
         let offset2 = img.offset();
         let offset = [offset1[0]+offset2[0], offset1[1]+offset2[1], offset1[2]+offset2[2]];
         check_bounds(offset, dim, img.dim(), img.block_dim()).map(
