@@ -81,6 +81,10 @@ impl<P:PixelSrc> ClientImage<P> {
         self.try_into_sub_image(offset, dim).unwrap()
     }
 
+    pub fn as_sub_image(self) -> ClientSubImage<ClientImage<P>> {
+        unsafe { ClientSubImage::new_unchecked([0,0,0], self.dim, self) }
+    }
+
 }
 
 impl<P:PixelSrc+?Sized> ClientImage<P> {
@@ -147,6 +151,10 @@ impl<P:PixelSrc> ClientImage<P> {
 
     pub fn new(dim: [usize;3], pixels: P) -> Self {
         Self::try_new(dim, pixels).unwrap()
+    }
+
+    pub fn new_1d(p:P) -> Self {
+        unsafe { Self::new_unchecked([p.pixels().len(),1,1], p) }
     }
 
 }
