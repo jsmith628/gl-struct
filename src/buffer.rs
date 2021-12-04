@@ -104,7 +104,7 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut, RangeBounds, Bound};
 use std::slice::from_raw_parts;
 use std::rc::Rc;
-use std::alloc::{AllocRef, Global};
+use std::alloc::{/*AllocRef,*/ Global, Allocator};
 use std::ptr::{drop_in_place, NonNull};
 use std::mem::*;
 
@@ -300,7 +300,7 @@ impl<T:?Sized, A:BufferAccess> Buffer<T, A> {
         buf.buffer_storage(hint, size_of_val(&*refr), ptr);
 
         //now, we need to dealocate the heap storage of the Box WITHOUT running the destructor of the object.
-        Global.dealloc(NonNull::new_unchecked(transmute(ptr)), ::std::alloc::Layout::for_value(&*refr));
+        Global.deallocate(NonNull::new_unchecked(transmute(ptr)), ::std::alloc::Layout::for_value(&*refr));
 
         //return our newly created buffer
         buf

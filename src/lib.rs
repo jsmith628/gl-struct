@@ -1,5 +1,5 @@
 #![feature(core_intrinsics)]
-#![feature(optin_builtin_traits)]
+// #![feature(optin_builtin_traits)]
 #![feature(ptr_offset_from)]
 #![feature(untagged_unions)]
 #![feature(concat_idents)]
@@ -9,7 +9,7 @@
 #![feature(trace_macros)]
 #![feature(unsize)]
 #![feature(coerce_unsized)]
-#![feature(const_fn)]
+// #![feature(const_fn)]
 #![allow(deprecated)]
 #![recursion_limit="8192"]
 
