@@ -108,8 +108,6 @@ use std::alloc::{/*AllocRef,*/ Global, Allocator};
 use std::ptr::{drop_in_place, NonNull};
 use std::mem::*;
 
-use trait_arith::{Boolean, True, False};
-
 
 pub unsafe trait GPUCopy {}
 unsafe impl<T:Copy> GPUCopy for T {}

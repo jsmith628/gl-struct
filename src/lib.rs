@@ -18,8 +18,6 @@ pub extern crate gl;
 #[macro_use] extern crate macro_program;
 #[macro_use] extern crate bitflags;
 
-extern crate trait_arith;
-
 use gl::types::*;
 use std::convert::TryFrom;
 use std::fmt;
@@ -591,4 +589,26 @@ impl Debug for GLError {
         }
     }
 
+}
+
+/// A trait for type-level bools
+pub trait Boolean {
+    type Not: Boolean<Not=Self>;
+    const VALUE: bool;
+}
+
+/// A type representing a `true` value
+pub struct True;
+
+/// A type representing a `false` value
+pub struct False;
+
+impl Boolean for True {
+    type Not = False;
+    const VALUE: bool = true;
+}
+
+impl Boolean for False {
+    type Not = True;
+    const VALUE: bool = false;
 }
