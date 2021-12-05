@@ -15,7 +15,6 @@
 
 pub extern crate gl;
 
-#[macro_use] extern crate macro_program;
 #[macro_use] extern crate bitflags;
 
 use gl::types::*;

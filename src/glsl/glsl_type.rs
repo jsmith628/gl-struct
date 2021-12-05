@@ -12,43 +12,65 @@ use std::slice::*;
 ///
 macro_rules! gl_builder {
 
-    ({$($gl:ident)*} c_bool @ty_suffix $($tail:tt)*) => { gl_builder!({$($gl)* ui} $($tail)*) };
-    ({$($gl:ident)*} GLuint @ty_suffix $($tail:tt)*) => { gl_builder!({$($gl)* ui} $($tail)*) };
-    ({$($gl:ident)*} GLint @ty_suffix $($tail:tt)*) => { gl_builder!({$($gl)* i} $($tail)*) };
-    ({$($gl:ident)*} GLfloat @ty_suffix $($tail:tt)*) => { gl_builder!({$($gl)* f} $($tail)*) };
-    ({$($gl:ident)*} GLdouble @ty_suffix $($tail:tt)*) => { gl_builder!({$($gl)* d} $($tail)*) };
+    //some control flow patterns. Probably would be better practice to redesign to not need these
+    //but it is what it is for now
+    ([true] $then:tt $else:tt @if $($tail:tt)*) => { gl_builder!($then $($tail)*); };
+    ([false] $then:tt $else:tt @if $($tail:tt)*) => { gl_builder!($else $($tail)*); };
 
-    ({$($gl:ident)*} 1 @uni_vec $($tail:tt)*) => { gl_builder!({$($gl)* Uniform1} $($tail)*) };
-    ({$($gl:ident)*} 2 @uni_vec $($tail:tt)*) => { gl_builder!({$($gl)* Uniform2} $($tail)*) };
-    ({$($gl:ident)*} 3 @uni_vec $($tail:tt)*) => { gl_builder!({$($gl)* Uniform3} $($tail)*) };
-    ({$($gl:ident)*} 4 @uni_vec $($tail:tt)*) => { gl_builder!({$($gl)* Uniform4} $($tail)*) };
+    ([true] @not $($tail:tt)*) => { gl_builder!([false] $($tail)*); };
+    ([false] @not $($tail:tt)*) => { gl_builder!([true] $($tail)*); };
 
-    ({$($gl:ident)*} 2 @uni_mat $($tail:tt)*) => { gl_builder!({$($gl)* UniformMatrix2} $($tail)*) };
-    ({$($gl:ident)*} 3 @uni_mat $($tail:tt)*) => { gl_builder!({$($gl)* UniformMatrix3} $($tail)*) };
-    ({$($gl:ident)*} 4 @uni_mat $($tail:tt)*) => { gl_builder!({$($gl)* UniformMatrix4} $($tail)*) };
+    ([1]      [1] @eq $($tail:tt)*) => { gl_builder!([true] $($tail)*); };
+    ([2]      [2] @eq $($tail:tt)*) => { gl_builder!([true] $($tail)*); };
+    ([3]      [3] @eq $($tail:tt)*) => { gl_builder!([true] $($tail)*); };
+    ([4]      [4] @eq $($tail:tt)*) => { gl_builder!([true] $($tail)*); };
+    ([1]      [$b:literal] @eq $($tail:tt)*) => { gl_builder!([false] $($tail)*); };
+    ([2]      [$b:literal] @eq $($tail:tt)*) => { gl_builder!([false] $($tail)*); };
+    ([3]      [$b:literal] @eq $($tail:tt)*) => { gl_builder!([false] $($tail)*); };
+    ([4]      [$b:literal] @eq $($tail:tt)*) => { gl_builder!([false] $($tail)*); };
+    // ([$a:lit] [$b:lit] @eq $($tail:tt)*) => { gl_builder!([false] $($tail)*) };
 
-    ({$($gl:ident)*} 2 @mat_xN $($tail:tt)*) => { gl_builder!({$($gl)* x2} $($tail)*) };
-    ({$($gl:ident)*} 3 @mat_xN $($tail:tt)*) => { gl_builder!({$($gl)* x3} $($tail)*) };
-    ({$($gl:ident)*} 4 @mat_xN $($tail:tt)*) => { gl_builder!({$($gl)* x4} $($tail)*) };
+    ([$($code:tt)*] @quote) => { $($code)* };
+    ({$($code:tt)*} @eval $($tail:tt)*) => { gl_builder!($($code)* $($tail)*) };
 
-    ({$($gl:ident)*} @v $($tail:tt)*) => { gl_builder!({$($gl)* v} $($tail)*) };
 
-    ({$($gl:ident)*} @concat) => { concat_idents!($($gl),*) };
+    ({$($gl:ident)*} c_bool @ty_suffix $($tail:tt)*) => { gl_builder!({$($gl)* ui} $($tail)*); };
+    ({$($gl:ident)*} GLuint @ty_suffix $($tail:tt)*) => { gl_builder!({$($gl)* ui} $($tail)*); };
+    ({$($gl:ident)*} GLint @ty_suffix $($tail:tt)*) => { gl_builder!({$($gl)* i} $($tail)*); };
+    ({$($gl:ident)*} GLfloat @ty_suffix $($tail:tt)*) => { gl_builder!({$($gl)* f} $($tail)*); };
+    ({$($gl:ident)*} GLdouble @ty_suffix $($tail:tt)*) => { gl_builder!({$($gl)* d} $($tail)*); };
 
-    (@get $prim:ident) => { gl_builder!({GetUniform} $prim @ty_suffix @v @concat) };
-    (@get [$prim:ident; $c:tt]) => { gl_builder!(@get $prim) };
-    (@get [[$prim:ident; $c1:tt]; $c2:tt]) => { gl_builder!(@get $prim) };
+    ({$($gl:ident)*} 1 @uni_vec $($tail:tt)*) => { gl_builder!({$($gl)* Uniform1} $($tail)*); };
+    ({$($gl:ident)*} 2 @uni_vec $($tail:tt)*) => { gl_builder!({$($gl)* Uniform2} $($tail)*); };
+    ({$($gl:ident)*} 3 @uni_vec $($tail:tt)*) => { gl_builder!({$($gl)* Uniform3} $($tail)*); };
+    ({$($gl:ident)*} 4 @uni_vec $($tail:tt)*) => { gl_builder!({$($gl)* Uniform4} $($tail)*); };
 
-    (@set $prim:ident) => { gl_builder!(@set [$prim; 1]) };
-    (@set [$prim:ident; $c:tt]) => { gl_builder!({} $c @uni_vec $prim @ty_suffix @v @concat) };
+    ({$($gl:ident)*} 2 @uni_mat $($tail:tt)*) => { gl_builder!({$($gl)* UniformMatrix2} $($tail)*); };
+    ({$($gl:ident)*} 3 @uni_mat $($tail:tt)*) => { gl_builder!({$($gl)* UniformMatrix3} $($tail)*); };
+    ({$($gl:ident)*} 4 @uni_mat $($tail:tt)*) => { gl_builder!({$($gl)* UniformMatrix4} $($tail)*); };
+
+    ({$($gl:ident)*} 2 @mat_xN $($tail:tt)*) => { gl_builder!({$($gl)* x2} $($tail)*); };
+    ({$($gl:ident)*} 3 @mat_xN $($tail:tt)*) => { gl_builder!({$($gl)* x3} $($tail)*); };
+    ({$($gl:ident)*} 4 @mat_xN $($tail:tt)*) => { gl_builder!({$($gl)* x4} $($tail)*); };
+
+    ({$($gl:ident)*} @v $($tail:tt)*) => { gl_builder!({$($gl)* v} $($tail)*); };
+
+    ({$($gl:ident)*} @concat) => { concat_idents!($($gl),*); };
+
+    (@get $prim:ident) => { gl_builder!({GetUniform} $prim @ty_suffix @v @concat); };
+    (@get [$prim:ident; $c:tt]) => { gl_builder!(@get $prim); };
+    (@get [[$prim:ident; $c1:tt]; $c2:tt]) => { gl_builder!(@get $prim); };
+
+    (@set $prim:ident) => { gl_builder!(@set [$prim; 1]); };
+    (@set [$prim:ident; $c:tt]) => { gl_builder!({} $c @uni_vec $prim @ty_suffix @v @concat); };
     (@set [[$prim:ident; $c1:tt]; $c2:tt]) => {
-        macro_program! (
-            [$c1] @hex {[$c2] @hex} @eval @eq
-            { gl_builder @pass_to {} $c2 @uni_mat }
-            { gl_builder @pass_to {} $c2 @uni_mat $c1 @mat_xN }
+        gl_builder! (
+            [$c1] [$c2] @eq
+            { {} $c2 @uni_mat }
+            { {} $c2 @uni_mat $c1 @mat_xN }
             @if @eval
             $prim @ty_suffix @v @concat
-        )
+        );
     };
 
 
@@ -110,7 +132,7 @@ macro_rules! glsl_type {
 
     ({$a:expr} $align_vec4:tt $std140:tt $std430:tt $scalar:tt $mat:tt {$fmt:ty} {$prim:ty} {$set:expr} {$get:expr} $name:ident) => {
 
-        macro_program! {
+        gl_builder! {
             [$scalar] @not [
                 #[repr(C)]
                 #[repr(align($a))]
@@ -136,7 +158,7 @@ macro_rules! glsl_type {
 
             unsafe fn load_uniforms(id: GLint, data: &[Self]){
                 let f = &$set;
-                macro_program!{
+                gl_builder!{
                     [$mat]
                     [f(id, data.len() as GLint, false as GLboolean, transmute(&data[0][0][0]));]
                     [f(id, data.len() as GLint, transmute(&data[0]));]
@@ -152,15 +174,15 @@ macro_rules! glsl_type {
             }
         }
 
-        macro_program!{
+        gl_builder!{
             [$std430] [unsafe impl Layout<std430> for $name {}] [] @if @quote
         }
 
-        macro_program!{
+        gl_builder!{
             [$std140] [unsafe impl Layout<std140> for $name {}] [] @if @quote
         }
 
-        macro_program!{
+        gl_builder!{
             [$align_vec4] [unsafe impl AlignedVec4 for $name {}] [] @if @quote
         }
 
@@ -268,7 +290,7 @@ macro_rules! impl_array_type {
     ($attrib_support:tt $($num:tt)*) => {
         $(
             unsafe impl<T:GLSLType> GLSLType for [T; $num] {
-                macro_program!{
+                gl_builder!{
                     [$attrib_support]
                         [type AttributeFormat = [T::AttributeFormat; $num];]
                         [type AttributeFormat = UnsupportedFormat;]

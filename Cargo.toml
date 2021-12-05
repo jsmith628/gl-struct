@@ -6,7 +6,6 @@ authors = ["Joshua Smith <jsmith62831@gmail.com>"]
 [dependencies]
 bitflags = "1.0"
 gl = "0.12.0"
-macro-program = {path="../macro-program"}
 
 [dev-dependencies]
 glfw = "0.27.0"
