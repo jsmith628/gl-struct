@@ -1,5 +1,6 @@
 
 use std::slice::*;
+use std::mem::*;
 
 ///
 ///A macro constucting the gl functions for managing uniforms using the
@@ -14,55 +15,55 @@ macro_rules! gl_builder {
 
     //some control flow patterns. Probably would be better practice to redesign to not need these
     //but it is what it is for now
-    ([true] $then:tt $else:tt @if $($tail:tt)*) => { gl_builder!($then $($tail)*); };
-    ([false] $then:tt $else:tt @if $($tail:tt)*) => { gl_builder!($else $($tail)*); };
+    ([true] $then:tt $else:tt @if $($tail:tt)*) => { gl_builder!{$then $($tail)*} };
+    ([false] $then:tt $else:tt @if $($tail:tt)*) => { gl_builder!{$else $($tail)*} };
 
-    ([true] @not $($tail:tt)*) => { gl_builder!([false] $($tail)*); };
-    ([false] @not $($tail:tt)*) => { gl_builder!([true] $($tail)*); };
+    ([true] @not $($tail:tt)*) => { gl_builder!{[false] $($tail)*} };
+    ([false] @not $($tail:tt)*) => { gl_builder!{[true] $($tail)*} };
 
-    ([1]      [1] @eq $($tail:tt)*) => { gl_builder!([true] $($tail)*); };
-    ([2]      [2] @eq $($tail:tt)*) => { gl_builder!([true] $($tail)*); };
-    ([3]      [3] @eq $($tail:tt)*) => { gl_builder!([true] $($tail)*); };
-    ([4]      [4] @eq $($tail:tt)*) => { gl_builder!([true] $($tail)*); };
-    ([1]      [$b:literal] @eq $($tail:tt)*) => { gl_builder!([false] $($tail)*); };
-    ([2]      [$b:literal] @eq $($tail:tt)*) => { gl_builder!([false] $($tail)*); };
-    ([3]      [$b:literal] @eq $($tail:tt)*) => { gl_builder!([false] $($tail)*); };
-    ([4]      [$b:literal] @eq $($tail:tt)*) => { gl_builder!([false] $($tail)*); };
-    // ([$a:lit] [$b:lit] @eq $($tail:tt)*) => { gl_builder!([false] $($tail)*) };
+    ([1]      [1] @eq $($tail:tt)*) => { gl_builder!{[true] $($tail)*} };
+    ([2]      [2] @eq $($tail:tt)*) => { gl_builder!{[true] $($tail)*} };
+    ([3]      [3] @eq $($tail:tt)*) => { gl_builder!{[true] $($tail)*} };
+    ([4]      [4] @eq $($tail:tt)*) => { gl_builder!{[true] $($tail)*} };
+    ([1]      [$b:literal] @eq $($tail:tt)*) => { gl_builder!{[false] $($tail)*} };
+    ([2]      [$b:literal] @eq $($tail:tt)*) => { gl_builder!{[false] $($tail)*} };
+    ([3]      [$b:literal] @eq $($tail:tt)*) => { gl_builder!{[false] $($tail)*} };
+    ([4]      [$b:literal] @eq $($tail:tt)*) => { gl_builder!{[false] $($tail)*} };
+    // ([$a:lit] [$b:lit] @eq $($tail:tt)*) => { gl_builder!{[false] $($tail)*} };
 
     ([$($code:tt)*] @quote) => { $($code)* };
-    ({$($code:tt)*} @eval $($tail:tt)*) => { gl_builder!($($code)* $($tail)*) };
+    ({$($code:tt)*} @eval $($tail:tt)*) => { gl_builder!{$($code)* $($tail)*} };
 
 
-    ({$($gl:ident)*} c_bool @ty_suffix $($tail:tt)*) => { gl_builder!({$($gl)* ui} $($tail)*); };
-    ({$($gl:ident)*} GLuint @ty_suffix $($tail:tt)*) => { gl_builder!({$($gl)* ui} $($tail)*); };
-    ({$($gl:ident)*} GLint @ty_suffix $($tail:tt)*) => { gl_builder!({$($gl)* i} $($tail)*); };
-    ({$($gl:ident)*} GLfloat @ty_suffix $($tail:tt)*) => { gl_builder!({$($gl)* f} $($tail)*); };
-    ({$($gl:ident)*} GLdouble @ty_suffix $($tail:tt)*) => { gl_builder!({$($gl)* d} $($tail)*); };
+    ({$($gl:ident)*} c_bool @ty_suffix $($tail:tt)*) => { gl_builder!{{$($gl)* ui} $($tail)*} };
+    ({$($gl:ident)*} GLuint @ty_suffix $($tail:tt)*) => { gl_builder!{{$($gl)* ui} $($tail)*} };
+    ({$($gl:ident)*} GLint @ty_suffix $($tail:tt)*) => { gl_builder!{{$($gl)* i} $($tail)*} };
+    ({$($gl:ident)*} GLfloat @ty_suffix $($tail:tt)*) => { gl_builder!{{$($gl)* f} $($tail)*} };
+    ({$($gl:ident)*} GLdouble @ty_suffix $($tail:tt)*) => { gl_builder!{{$($gl)* d} $($tail)*} };
 
-    ({$($gl:ident)*} 1 @uni_vec $($tail:tt)*) => { gl_builder!({$($gl)* Uniform1} $($tail)*); };
-    ({$($gl:ident)*} 2 @uni_vec $($tail:tt)*) => { gl_builder!({$($gl)* Uniform2} $($tail)*); };
-    ({$($gl:ident)*} 3 @uni_vec $($tail:tt)*) => { gl_builder!({$($gl)* Uniform3} $($tail)*); };
-    ({$($gl:ident)*} 4 @uni_vec $($tail:tt)*) => { gl_builder!({$($gl)* Uniform4} $($tail)*); };
+    ({$($gl:ident)*} 1 @uni_vec $($tail:tt)*) => { gl_builder!{{$($gl)* Uniform1} $($tail)*} };
+    ({$($gl:ident)*} 2 @uni_vec $($tail:tt)*) => { gl_builder!{{$($gl)* Uniform2} $($tail)*} };
+    ({$($gl:ident)*} 3 @uni_vec $($tail:tt)*) => { gl_builder!{{$($gl)* Uniform3} $($tail)*} };
+    ({$($gl:ident)*} 4 @uni_vec $($tail:tt)*) => { gl_builder!{{$($gl)* Uniform4} $($tail)*} };
 
-    ({$($gl:ident)*} 2 @uni_mat $($tail:tt)*) => { gl_builder!({$($gl)* UniformMatrix2} $($tail)*); };
-    ({$($gl:ident)*} 3 @uni_mat $($tail:tt)*) => { gl_builder!({$($gl)* UniformMatrix3} $($tail)*); };
-    ({$($gl:ident)*} 4 @uni_mat $($tail:tt)*) => { gl_builder!({$($gl)* UniformMatrix4} $($tail)*); };
+    ({$($gl:ident)*} 2 @uni_mat $($tail:tt)*) => { gl_builder!{{$($gl)* UniformMatrix2} $($tail)*} };
+    ({$($gl:ident)*} 3 @uni_mat $($tail:tt)*) => { gl_builder!{{$($gl)* UniformMatrix3} $($tail)*} };
+    ({$($gl:ident)*} 4 @uni_mat $($tail:tt)*) => { gl_builder!{{$($gl)* UniformMatrix4} $($tail)*} };
 
-    ({$($gl:ident)*} 2 @mat_xN $($tail:tt)*) => { gl_builder!({$($gl)* x2} $($tail)*); };
-    ({$($gl:ident)*} 3 @mat_xN $($tail:tt)*) => { gl_builder!({$($gl)* x3} $($tail)*); };
-    ({$($gl:ident)*} 4 @mat_xN $($tail:tt)*) => { gl_builder!({$($gl)* x4} $($tail)*); };
+    ({$($gl:ident)*} 2 @mat_xN $($tail:tt)*) => { gl_builder!{{$($gl)* x2} $($tail)*} };
+    ({$($gl:ident)*} 3 @mat_xN $($tail:tt)*) => { gl_builder!{{$($gl)* x3} $($tail)*} };
+    ({$($gl:ident)*} 4 @mat_xN $($tail:tt)*) => { gl_builder!{{$($gl)* x4} $($tail)*} };
 
-    ({$($gl:ident)*} @v $($tail:tt)*) => { gl_builder!({$($gl)* v} $($tail)*); };
+    ({$($gl:ident)*} @v $($tail:tt)*) => { gl_builder!{{$($gl)* v} $($tail)*} };
 
-    ({$($gl:ident)*} @concat) => { concat_idents!($($gl),*); };
+    ({$($gl:ident)*} @concat) => { concat_idents!{$($gl),*} };
 
-    (@get $prim:ident) => { gl_builder!({GetUniform} $prim @ty_suffix @v @concat); };
-    (@get [$prim:ident; $c:tt]) => { gl_builder!(@get $prim); };
-    (@get [[$prim:ident; $c1:tt]; $c2:tt]) => { gl_builder!(@get $prim); };
+    (@get $prim:ident) => { gl_builder!{{GetUniform} $prim @ty_suffix @v @concat} };
+    (@get [$prim:ident; $c:tt]) => { gl_builder!{@get $prim} };
+    (@get [[$prim:ident; $c1:tt]; $c2:tt]) => { gl_builder!{@get $prim} };
 
-    (@set $prim:ident) => { gl_builder!(@set [$prim; 1]); };
-    (@set [$prim:ident; $c:tt]) => { gl_builder!({} $c @uni_vec $prim @ty_suffix @v @concat); };
+    (@set $prim:ident) => { gl_builder!{@set [$prim; 1]} };
+    (@set [$prim:ident; $c:tt]) => { gl_builder!{{} $c @uni_vec $prim @ty_suffix @v @concat} };
     (@set [[$prim:ident; $c1:tt]; $c2:tt]) => {
         gl_builder! (
             [$c1] [$c2] @eq
@@ -70,7 +71,7 @@ macro_rules! gl_builder {
             { {} $c2 @uni_mat $c1 @mat_xN }
             @if @eval
             $prim @ty_suffix @v @concat
-        );
+        )
     };
 
 
@@ -167,10 +168,10 @@ macro_rules! glsl_type {
             }
 
             unsafe fn get_uniform(p: GLuint, id:GLint) -> Self {
-                let mut data = ::std::mem::uninitialized::<Self>();
+                let mut data = MaybeUninit::<Self>::uninit();
                 let f = &$get;
-                f(p, id, transmute(&mut data));
-                data
+                f(p, id, data.as_mut_ptr() as *mut _);
+                data.assume_init()
             }
         }
 
@@ -303,11 +304,11 @@ macro_rules! impl_array_type {
                 }
 
                 unsafe fn get_uniform(p: GLuint, id:GLint) -> Self {
-                    let mut data = ::std::mem::uninitialized::<Self>();
+                    let mut data = MaybeUninit::uninit_array();
                     for i in 0..$num {
-                        data[i] = T::get_uniform(p, id + i as GLint);
+                        data[i] = MaybeUninit::new(T::get_uniform(p, id + i as GLint));
                     }
-                    data
+                    MaybeUninit::array_assume_init(data)
                 }
 
                 #[inline] fn uniform_locations() -> GLuint { T::uniform_locations() * $num }
@@ -399,13 +400,13 @@ macro_rules! impl_tuple_type {
             }
 
             unsafe fn get_uniform(p: GLuint, id:GLint) -> Self {
-                let ($(mut $t),*) = ::std::mem::uninitialized::<Self>();
+                let ($(mut $t),*) = ($(MaybeUninit::<$T>::uninit()),*);
                 let mut i = id;
                 $(
-                    *(&mut $t) = $T::get_uniform(p, i);
+                    $t.write($T::get_uniform(p, i));
                     *(&mut i) = i + $T::uniform_locations() as GLint;
                 )*
-                ($($t),*)
+                ($($t.assume_init()),*)
             }
 
             #[inline] fn uniform_locations() -> GLuint { 0 $(+ $T::uniform_locations())* }

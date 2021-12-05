@@ -163,7 +163,7 @@ impl<T:?Sized, A:BufferAccess> Buffer<T, A> {
         gl::GenBuffers(1, &mut id as *mut GLuint);
         Buffer {
             id: id,
-            repr: uninitialized(),
+            repr: Repr { void: ::std::ptr::null() },
             is_ref: false,
             offset: 0,
             size: 0,
@@ -456,9 +456,9 @@ impl<T:GPUCopy+Sized> Buffer<T,Write> {
 
 impl<T:Sized, A:ReadAccess> Buffer<T,A> {
     unsafe fn _read(&self) -> T {
-        let mut dest = uninitialized::<T>();
-        self.read_buffer(transmute::<*mut T, *mut GLvoid>(&mut dest as *mut T));
-        dest
+        let mut dest = MaybeUninit::uninit();
+        self.read_buffer(dest.as_mut_ptr() as *mut _);
+        dest.assume_init()
     }
 
     pub fn into_inner(self) -> T {
@@ -973,11 +973,15 @@ macro_rules! impl_as_attrib_arrays {
             #[inline]
             pub fn as_attrib_arrays<'a, $($A:GLSLType),*>(&'a self) -> ($(AttribArray<'a, $A>),*) where $($T: AttributeData<$A>),*{
                 unsafe {
-                    let ($($t),*) = ::std::mem::uninitialized::<($($T),*)>();
-                    let first: *const u8 = transmute(&impl_as_attrib_arrays!(@first $($t)*));
+                    let ($($t),*) = ($(MaybeUninit::<$T>::uninit()),*);
+                    let first = impl_as_attrib_arrays!(@first $($t)*).as_ptr() as *const u8;
 
                     let arrays = (
-                        $(self.get_attrib_array::<$A,$T>((transmute::<&$T, *const u8>(&$t).offset_from(first)) as usize)),*
+                        $(
+                            self.get_attrib_array::<$A,$T>(
+                                ($t.as_ptr() as *const u8).offset_from(first) as usize
+                            )
+                        ),*
                     );
                     $(forget($t);)*
 

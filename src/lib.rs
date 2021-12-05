@@ -1,21 +1,20 @@
 #![feature(core_intrinsics)]
-// #![feature(optin_builtin_traits)]
-#![feature(ptr_offset_from)]
 #![feature(untagged_unions)]
 #![feature(concat_idents)]
-#![feature(specialization)]
 #![feature(allocator_api)]
-#![feature(result_map_or_else)]
 #![feature(trace_macros)]
 #![feature(unsize)]
 #![feature(coerce_unsized)]
-// #![feature(const_fn)]
-#![allow(deprecated)]
+#![feature(maybe_uninit_array_assume_init)]
+#![feature(maybe_uninit_uninit_array)]
+// #![allow(deprecated)]
+//yes yes bad, but alas, I already used it a bunch so...
+#![allow(incomplete_features)]
+#![feature(specialization)]
+
 #![recursion_limit="8192"]
 
 pub extern crate gl;
-
-#[macro_use] extern crate bitflags;
 
 use gl::types::*;
 use std::convert::TryFrom;
@@ -140,88 +139,88 @@ macro_rules! check_loaded {
 }
 
 
-macro_rules! gl_resource{
-
-    (@fun gen=$gl:ident) => {
-        #[inline]
-        fn gen(_gl: &Self::GL) -> Self {
-            unsafe {
-                let mut obj = ::std::mem::uninitialized::<Self>();
-                gl::$gl(1, &mut obj.0 as *mut gl::types::GLuint);
-                obj
-            }
-        }
-
-        #[inline]
-        fn gen_resources(_gl: &Self::GL, count: gl::types::GLuint) -> Box<[Self]> {
-            unsafe {
-                let mut obj = Vec::<Self>::with_capacity(count as usize);
-                obj.set_len(count as usize);
-                gl::$gl(count as gl::types::GLsizei, &mut obj[0].0 as *mut gl::types::GLuint);
-                obj.into_boxed_slice()
-            }
-        }
-    };
-
-    (@fun is=$gl:ident) => {
-        #[inline] fn is(id: gl::types::GLuint) -> bool { unsafe { gl::$gl(id) != gl::FALSE } }
-    };
-
-    (@fun gl=$GL:ident) => { type GL = $GL; };
-    (@fun target=$Target:ident) => { type BindingTarget = $Target; };
-
-    (@fun delete=$gl:ident) => {
-        #[inline]
-        fn delete(self) {
-            unsafe { gl::$gl(1, &self.into_raw() as *const gl::types::GLuint); }
-        }
-
-        #[inline]
-        fn delete_resources(resources: Box<[Self]>) {
-            unsafe {
-                //the transmutation makes sure that we don't double-free
-                let ids = ::std::mem::transmute::<Box<[Self]>, Box<[gl::types::GLuint]>>(resources);
-                gl::$gl(ids.len() as gl::types::GLsizei, &ids[0] as *const gl::types::GLuint);
-            }
-        }
-    };
-
-    ({$($mod:tt)*} struct $name:ident {$($fun:ident=$gl:ident),*}) => {
-        #[repr(C)] $($mod)* struct $name(GLuint);
-
-        unsafe impl $crate::Resource for $name {
-            $(gl_resource!(@fun $fun=$gl);)*
-
-            #[inline] fn id(&self) -> gl::types::GLuint { self.0 }
-
-            #[inline]
-            unsafe fn from_raw(id: gl::types::GLuint) -> Option<Self> {
-                if Self::is(id) { Some($name(id)) } else {None}
-            }
-
-            #[inline]
-            fn into_raw(self) -> gl::types::GLuint {
-                let id = self.id();
-                ::std::mem::forget(self);
-                id
-            }
-
-        }
-
-        impl Drop for $name {
-            #[inline] fn drop(&mut self) { $crate::Resource::delete($name(self.0)); }
-        }
-
-
-    };
-
-    ({$($mod:tt)*} #[$attr:meta] $($tt:tt)*) => {gl_resource!({$($mod)* #[$attr]} $($tt)*);};
-    ({$($mod:tt)*} $kw:ident($($args:tt)*) $($tt:tt)*) => {gl_resource!({$($mod)* $kw($($args)*)} $($tt)*);};
-    ({$($mod:tt)*} $kw:ident $($tt:tt)*) => {gl_resource!({$($mod)* $kw} $($tt)*);};
-
-    ($kw:ident $($tt:tt)*) => {gl_resource!({} $kw $($tt)*);};
-    (#[$attr:meta] $($tt:tt)*) => {gl_resource!({} #[$attr] $($tt)*);};
-}
+// macro_rules! gl_resource{
+//
+//     (@fun gen=$gl:ident) => {
+//         #[inline]
+//         fn gen(_gl: &Self::GL) -> Self {
+//             unsafe {
+//                 let mut obj = ::std::mem::uninitialized::<Self>();
+//                 gl::$gl(1, &mut obj.0 as *mut gl::types::GLuint);
+//                 obj
+//             }
+//         }
+//
+//         #[inline]
+//         fn gen_resources(_gl: &Self::GL, count: gl::types::GLuint) -> Box<[Self]> {
+//             unsafe {
+//                 let mut obj = Vec::<Self>::with_capacity(count as usize);
+//                 obj.set_len(count as usize);
+//                 gl::$gl(count as gl::types::GLsizei, &mut obj[0].0 as *mut gl::types::GLuint);
+//                 obj.into_boxed_slice()
+//             }
+//         }
+//     };
+//
+//     (@fun is=$gl:ident) => {
+//         #[inline] fn is(id: gl::types::GLuint) -> bool { unsafe { gl::$gl(id) != gl::FALSE } }
+//     };
+//
+//     (@fun gl=$GL:ident) => { type GL = $GL; };
+//     (@fun target=$Target:ident) => { type BindingTarget = $Target; };
+//
+//     (@fun delete=$gl:ident) => {
+//         #[inline]
+//         fn delete(self) {
+//             unsafe { gl::$gl(1, &self.into_raw() as *const gl::types::GLuint); }
+//         }
+//
+//         #[inline]
+//         fn delete_resources(resources: Box<[Self]>) {
+//             unsafe {
+//                 //the transmutation makes sure that we don't double-free
+//                 let ids = ::std::mem::transmute::<Box<[Self]>, Box<[gl::types::GLuint]>>(resources);
+//                 gl::$gl(ids.len() as gl::types::GLsizei, &ids[0] as *const gl::types::GLuint);
+//             }
+//         }
+//     };
+//
+//     ({$($mod:tt)*} struct $name:ident {$($fun:ident=$gl:ident),*}) => {
+//         #[repr(C)] $($mod)* struct $name(GLuint);
+//
+//         unsafe impl $crate::Resource for $name {
+//             $(gl_resource!(@fun $fun=$gl);)*
+//
+//             #[inline] fn id(&self) -> gl::types::GLuint { self.0 }
+//
+//             #[inline]
+//             unsafe fn from_raw(id: gl::types::GLuint) -> Option<Self> {
+//                 if Self::is(id) { Some($name(id)) } else {None}
+//             }
+//
+//             #[inline]
+//             fn into_raw(self) -> gl::types::GLuint {
+//                 let id = self.id();
+//                 ::std::mem::forget(self);
+//                 id
+//             }
+//
+//         }
+//
+//         impl Drop for $name {
+//             #[inline] fn drop(&mut self) { $crate::Resource::delete($name(self.0)); }
+//         }
+//
+//
+//     };
+//
+//     ({$($mod:tt)*} #[$attr:meta] $($tt:tt)*) => {gl_resource!({$($mod)* #[$attr]} $($tt)*);};
+//     ({$($mod:tt)*} $kw:ident($($args:tt)*) $($tt:tt)*) => {gl_resource!({$($mod)* $kw($($args)*)} $($tt)*);};
+//     ({$($mod:tt)*} $kw:ident $($tt:tt)*) => {gl_resource!({$($mod)* $kw} $($tt)*);};
+//
+//     ($kw:ident $($tt:tt)*) => {gl_resource!({} $kw $($tt)*);};
+//     (#[$attr:meta] $($tt:tt)*) => {gl_resource!({} #[$attr] $($tt)*);};
+// }
 
 #[macro_use]
 pub mod glsl;
@@ -350,7 +349,7 @@ pub unsafe trait Resource:Sized {
     fn gen_resources(gl: &Self::GL, count: GLuint) -> Box<[Self]>;
 
     ///Determines if a given id is the name of an OpenGL resource of this type
-    fn is(GLuint) -> bool;
+    fn is(id: GLuint) -> bool;
 
     ///Returns true if the two OpenGL objects are the same _object_ without checking value-equivalence
     #[inline] fn obj_eq<R:Resource+?Sized>(&self, rhs:&R) -> bool {self.id()==rhs.id()}

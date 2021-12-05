@@ -833,10 +833,13 @@ macro_rules! glsl {
             pub fn get_attrib_arrays<'a, A:BufferAccess>(buf: &'a Buffer<[Self], A>) -> ($(AttribArray<'a, $ty>),*) {
                 unsafe {
                     use std::mem::*;
-                    let uninit: Self = uninitialized();
-                    let start: *const u8 = transmute(&uninit);
+                    let uninit = ::std::mem::MaybeUninit::<Self>::uninit();
+                    let start = uninit.as_ptr() as *const u8;
                     let arrays = (
-                        $(buf.get_attrib_array::<$ty, $ty>(i8::wrapping_sub(transmute::<&$ty,*const u8>(&uninit.$name) as i8, start as i8) as usize)),*
+                        $(buf.get_attrib_array::<$ty, $ty>(
+                            //get the byte offset from the field to the start of the object
+                            (&uninit.assume_init_ref().$name as *const _ as *const u8).offset_from(start) as usize
+                        )),*
                     );
                     forget(uninit);
 
@@ -877,18 +880,18 @@ macro_rules! glsl {
             }
 
             unsafe fn get_uniform(p: GLuint, id:GLint) -> Self {
-                let mut value = ::std::mem::uninitialized::<Self>();
+                let mut value = ::std::mem::MaybeUninit::<Self>::uninit();
 
                 #[allow(unused_variables)]
                 #[allow(unused_mut)]
                 let mut i = id;
 
                 $(
-                    value.$name = <$ty as GLSLType>::get_uniform(p, i);
+                    (*value.as_mut_ptr()).$name = <$ty as GLSLType>::get_uniform(p, i);
                     *(&mut i) = {i + <$ty as GLSLType>::uniform_locations() as GLint};
                 )*
 
-                value
+                value.assume_init()
             }
 
             #[inline]
