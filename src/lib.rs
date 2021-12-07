@@ -73,7 +73,7 @@ macro_rules! glenum {
             fn try_from(e: ::gl::types::GLenum) -> Result<$name, GLError>{
                 match e {
                     $(::gl::$gl => Ok($name::$item),)*
-                    _ => Err(::GLError::InvalidEnum(e, stringify!($name).to_string()))
+                    _ => Err(crate::GLError::InvalidEnum(e, stringify!($name).to_string()))
                 }
             }
         }

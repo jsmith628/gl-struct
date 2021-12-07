@@ -198,7 +198,7 @@ macro_rules! glsl_type {
 
 pub use gl::types::*;
 use gl::*;
-use ::*;
+use super::*;
 
 use std::mem::transmute;
 use std::ops::*;

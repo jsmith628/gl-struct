@@ -1,7 +1,8 @@
 [package]
 name = "gl-struct"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["Joshua Smith <jsmith62831@gmail.com>"]
+edition = "2021"
 
 [dependencies]
 gl = "0.12.0"

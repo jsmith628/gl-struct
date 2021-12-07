@@ -1,5 +1,5 @@
 
-use ::*;
+use super::*;
 use std::slice::*;
 
 pub use self::attrib_format::*;

@@ -1,6 +1,6 @@
 
 use gl::types::*;
-use ::*;
+use super::*;
 
 use std::cell::Cell;
 use std::mem::transmute;

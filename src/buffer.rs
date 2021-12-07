@@ -97,7 +97,7 @@ impl Default for BufferUsage {
 }
 
 
-use ::*;
+use super::*;
 
 use std::any::Any;
 use std::marker::PhantomData;
