@@ -141,7 +141,7 @@ glsl! {$
 
 
 fn main() {
-    let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
+    let glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
     let mut window = glfw.create_window(640, 480, "QR-Decomposition", glfw::WindowMode::Windowed).unwrap().0;
     glfw::Context::make_current(&mut window);
 
@@ -179,7 +179,7 @@ fn main() {
 
     let start = ::std::time::Instant::now();
     decomposer.compute(mat_buf.len() as u32, 1, 1, &mut mat_buf, &mut q_buf, &mut r_buf, &mut res_buf);
-    let (b1, b2, b3, b4) = (mat_buf.into_box(), q_buf.into_box(), r_buf.into_box(), res_buf.into_box());
+    let (b1, _b2, _b3, b4) = (mat_buf.into_box(), q_buf.into_box(), r_buf.into_box(), res_buf.into_box());
 
     println!("{:?}", ::std::time::Instant::now() - start);
 

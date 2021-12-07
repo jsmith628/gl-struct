@@ -7,7 +7,7 @@ extern crate gl;
 extern crate rand;
 
 use gl_struct::*;
-use gl_struct::glsl_type::*;
+// use gl_struct::glsl_type::*;
 
 // use std::f32::consts::PI;
 

@@ -8,7 +8,6 @@ extern crate rayon;
 
 use gl_struct::*;
 use rayon::slice::ParallelSliceMut;
-use rayon::iter::*;
 // use gl_struct::glsl_type::glsl::*;
 
 use std::env;
@@ -192,7 +191,7 @@ fn main() {
         let gl_provider = unsafe {
             GLProvider::load(|s| ::std::mem::transmute(glfw.get_proc_address_raw(s)))
         };
-        let context = Context::init(&gl_provider);
+        let _context = Context::init(&gl_provider);
 
         //init the shaders for the gpu sorting
         let mut computer = BitonicSwaps::init(&gl_provider).unwrap();
@@ -240,7 +239,7 @@ fn main() {
 
         println!("Reading GPU buffer");
         let download_start = ::std::time::Instant::now();
-        let res = list.read_into_box();
+        let _res = list.read_into_box();
         println!("Finished Reading in {:?}", ::std::time::Instant::now()-download_start);
         // println!("{:?}", res);
 

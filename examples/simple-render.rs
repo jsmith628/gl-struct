@@ -6,9 +6,6 @@ extern crate gl;
 
 use gl_struct::*;
 
-use std::f32::consts::PI;
-
-
 glsl!{$
 
     pub mod Shaderinator {
