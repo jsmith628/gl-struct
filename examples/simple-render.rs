@@ -4,9 +4,6 @@ extern crate gl_struct;
 extern crate glfw;
 extern crate gl;
 
-#[macro_use]
-extern crate macro_program;
-
 use gl_struct::*;
 
 use std::f32::consts::PI;

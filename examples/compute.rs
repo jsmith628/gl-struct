@@ -7,9 +7,6 @@ extern crate glfw;
 extern crate gl;
 extern crate rand;
 
-#[macro_use]
-extern crate macro_program;
-
 use gl_struct::*;
 use gl_struct::glsl_type::*;
 

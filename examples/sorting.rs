@@ -6,9 +6,6 @@ extern crate gl;
 extern crate rand;
 extern crate rayon;
 
-#[macro_use]
-extern crate macro_program;
-
 use gl_struct::*;
 use rayon::slice::ParallelSliceMut;
 use rayon::iter::*;
