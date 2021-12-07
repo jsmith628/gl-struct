@@ -72,7 +72,10 @@ fn main() {
 
     let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
-    let mut window = glfw.create_window(640*2, 480*2, "WOOOOOOOOOOOOO", glfw::WindowMode::Windowed).unwrap().0;
+    let width = 640;
+    let height = 480;
+
+    let mut window = glfw.create_window(width, height, "Compute test", glfw::WindowMode::Windowed).unwrap().0;
 
     glfw::Context::make_current(&mut window);
     window.set_key_polling(true);
@@ -85,7 +88,7 @@ fn main() {
     let shader = ParticleShader::init(&gl_provider).unwrap();
     let computer = ParticleUpdator::init(&gl_provider).unwrap();
 
-    let num = 2000000;
+    let num = 20000;
     let mut points = Vec::with_capacity(num);
     for _i in 0..num {
         points.push([rand::random::<f32>() * 2.0 - 1.0, rand::random::<f32>() * 2.0 - 1.0, 0.0, 1.0].into());
@@ -93,7 +96,12 @@ fn main() {
     let mut particles: Buffer<[vec4], _> = Buffer::immut_from(&gl_provider, points.into_boxed_slice());
 
     unsafe {
-        gl::Viewport(80*2,0,480*2,480*2);
+        let (w, h) = (width as i32, height as i32);
+        if w > h {
+            gl::Viewport((w-h)/2,0,h,h);
+        } else {
+            gl::Viewport(0,(h-w)/2,w,w);
+        }
         gl::Disable(gl::CULL_FACE);
         gl::Disable(gl::DEPTH_TEST);
         gl::Disable(gl::BLEND);

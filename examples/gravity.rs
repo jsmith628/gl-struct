@@ -1,4 +1,4 @@
-#![recursion_limit="512"]
+#![recursion_limit="1024"]
 #![feature(trivial_bounds)]
 
 extern crate gl_struct;
@@ -104,7 +104,10 @@ fn main() {
 
     let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
-    let mut window = glfw.create_window(640*2, 480*2, "WOOOOOOOOOOOOO", glfw::WindowMode::Windowed).unwrap().0;
+    let width = 640;
+    let height = 480;
+
+    let mut window = glfw.create_window(width, height, "Basic gravity demo", glfw::WindowMode::Windowed).unwrap().0;
 
     glfw::Context::make_current(&mut window);
     window.set_key_polling(true);
@@ -117,8 +120,8 @@ fn main() {
     let mut shader = ParticleShader::init(&gl_provider).unwrap();
     let mut computer = ParticleUpdator::init(&gl_provider).unwrap();
 
-    let num = 3000;
-    let speed = 1.0;
+    let num = 1000;
+    let speed = 0.1;
     let mut init = Vec::with_capacity(num);
     for _i in 0..num {
         init.push(Particle{
@@ -131,7 +134,12 @@ fn main() {
          Buffer::immut_from(&gl_provider, init.into_boxed_slice()));
 
     unsafe {
-        gl::Viewport(80*2,0,480*2,480*2);
+        let (w, h) = (width as i32, height as i32);
+        if w > h {
+            gl::Viewport((w-h)/2,0,h,h);
+        } else {
+            gl::Viewport(0,(h-w)/2,w,w);
+        }
         gl::Disable(gl::CULL_FACE);
         gl::Disable(gl::DEPTH_TEST);
         gl::Disable(gl::BLEND);

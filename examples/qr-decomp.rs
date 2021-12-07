@@ -120,7 +120,7 @@ glsl! {$
                 // ut[id] = r;
                 // result[id] = q*r;
 
-                mat4 u = mat4(denman_beavers_64(mats[id]));
+                mat4 u = mat4(denman_beavers_64(dmat4(mats[id])));
                 ut[id] = u;
                 result[id] = u*u;
 

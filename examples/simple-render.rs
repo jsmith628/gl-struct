@@ -1,4 +1,4 @@
-#![recursion_limit="512"]
+#![recursion_limit="1024"]
 
 extern crate gl_struct;
 extern crate glfw;
@@ -36,7 +36,7 @@ glsl!{$
                 mat4 trans;
             };
 
-            attribute vec3 pos;
+            in vec3 pos;
             out vec4 color;
 
             void main() {
@@ -64,7 +64,7 @@ fn main() {
 
     let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
-    let mut window = glfw.create_window(640, 480, "WOOOOOOOOOOOOO", glfw::WindowMode::Windowed).unwrap().0;
+    let mut window = glfw.create_window(640, 480, "Simple Render", glfw::WindowMode::Windowed).unwrap().0;
 
     glfw::Context::make_current(&mut window);
     window.set_key_polling(true);
@@ -81,8 +81,8 @@ fn main() {
     // let points = [[-0.5f32,-0.5,0.0],[0.5,-0.5,0.0],[-0.5,0.5,0.0],[-0.5,0.5,0.0],[0.5,-0.5,0.0],[0.5,0.5,0.0]];
     let triangle: Buffer<[[f32;3]],_> = Buffer::immut_from(&gl_provider, Box::new(points));
 
-    let theta = PI/4.0;
-    let mat = [[theta.cos(),theta.sin(),0.0,0.0],[-theta.sin(),theta.cos(),0.0,0.0],[0.0,0.0,1.0,0.0],[0.0,0.0,0.0,1.0]];
+    // let theta = PI/4.0;
+    // let mat = [[theta.cos(),theta.sin(),0.0,0.0],[-theta.sin(),theta.cos(),0.0,0.0],[0.0,0.0,1.0,0.0],[0.0,0.0,0.0,1.0]];
 
     let mut theta = 0.0f32;
     let mut mat = [[1.0,0.0,0.0,0.0],[0.0,1.0,0.0,0.0],[0.0,0.0,1.0,0.0],[0.0,0.0,0.0,1.0]];
@@ -110,7 +110,7 @@ fn main() {
             gl::ClearColor(1.0,1.0,1.0,0.0);
         }
 
-        theta = theta + 0.1;
+        theta = theta + 0.01;
         mat = [[theta.cos(),theta.sin(),0.0,0.0],[-theta.sin(),theta.cos(),0.0,0.0],[0.0,0.0,1.0,0.0],[0.0,0.0,0.0,1.0]];
         trans.update_data(mat.into());
 

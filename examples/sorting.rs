@@ -176,9 +176,9 @@ fn main() {
     let num = 1 << order;
     println!("Generating {} random numbers", num);
     let rand_start = ::std::time::Instant::now();
-    let mut points = Vec::with_capacity(num);
-    unsafe {points.set_len(num)};
-    points.par_iter_mut().for_each(|f| *f = rand::random::<f32>());
+    let mut points = vec![rand::random::<f32>(); num];
+    // unsafe {points.set_len(num)};
+    // points.par_iter_mut().for_each(|f| *f = rand::random::<f32>());
     println!("List generated in {:?}", ::std::time::Instant::now() - rand_start);
 
     if gpu {
