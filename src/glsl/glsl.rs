@@ -864,6 +864,7 @@ macro_rules! glsl {
             type AttributeFormat = UnsupportedFormat;
 
             unsafe fn load_uniforms(id: GLint, data: &[Self]) {
+                if id<0 { return; }
 
                 for x in data {
                     #[allow(unused_variables)]
@@ -880,6 +881,7 @@ macro_rules! glsl {
             }
 
             unsafe fn get_uniform(p: GLuint, id:GLint) -> Self {
+                if id<0 { return Self::default(); }
                 let mut value = ::std::mem::MaybeUninit::<Self>::uninit();
 
                 #[allow(unused_variables)]

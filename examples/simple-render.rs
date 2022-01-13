@@ -1,4 +1,4 @@
-#![recursion_limit="512"]
+#![recursion_limit="1024"]
 
 extern crate gl_struct;
 extern crate glfw;
@@ -36,7 +36,7 @@ glsl!{$
                 mat4 trans;
             };
 
-            attribute vec3 pos;
+            in vec3 pos;
             out vec4 color;
 
             void main() {

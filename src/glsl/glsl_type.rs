@@ -158,6 +158,7 @@ macro_rules! glsl_type {
             type AttributeFormat = $fmt;
 
             unsafe fn load_uniforms(id: GLint, data: &[Self]){
+                if id<0 { return; }
                 let f = &$set;
                 gl_builder!{
                     [$mat]
@@ -168,6 +169,7 @@ macro_rules! glsl_type {
             }
 
             unsafe fn get_uniform(p: GLuint, id:GLint) -> Self {
+                if id<0 { return Self::default(); }
                 let mut data = MaybeUninit::<Self>::uninit();
                 let f = &$get;
                 f(p, id, data.as_mut_ptr() as *mut _);
@@ -299,11 +301,13 @@ macro_rules! impl_array_type {
                 }
 
                 unsafe fn load_uniforms(id: GLint, data: &[Self]){
+                    if id<0 { return; }
                     let flattened = from_raw_parts(&data[0][0] as *const T, data.len() * $num);
                     T::load_uniforms(id, flattened);
                 }
 
                 unsafe fn get_uniform(p: GLuint, id:GLint) -> Self {
+                    if id<0 { return Self::default(); }
                     let mut data = MaybeUninit::uninit_array();
                     for i in 0..$num {
                         data[i] = MaybeUninit::new(T::get_uniform(p, id + i as GLint));
@@ -390,6 +394,7 @@ macro_rules! impl_tuple_type {
             type AttributeFormat = UnsupportedFormat;
 
             unsafe fn load_uniforms(id: GLint, data: &[Self]){
+                if id<0 { return; }
                 let mut i = id;
                 for ($($t),*) in data {
                     $(
@@ -400,6 +405,7 @@ macro_rules! impl_tuple_type {
             }
 
             unsafe fn get_uniform(p: GLuint, id:GLint) -> Self {
+                if id<0 { return ($($T::default()),*); }
                 let ($(mut $t),*) = ($(MaybeUninit::<$T>::uninit()),*);
                 let mut i = id;
                 $(

@@ -9,7 +9,7 @@ mod glsl;
 mod attrib_format;
 pub mod glsl_type;
 
-pub unsafe trait GLSLType: Sized + Copy + Debug {
+pub unsafe trait GLSLType: Sized + Copy + Debug + Default{
     type AttributeFormat: AttribFormat;
 
     #[inline] fn uniform_locations() -> GLuint {1}
